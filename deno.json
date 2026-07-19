@@ -1,0 +1,21 @@
+{
+  "workspace": [
+    "./packages/manifest-metadata",
+    "./packages/manifest-generator",
+    "./packages/manifest-downloader"
+  ],
+  "tasks": {
+    "generate:schema": "cargo run -p manifest-schema-generator && deno fmt packages/manifest-metadata/src/types.ts packages/manifest-metadata/schema",
+    "check": "deno fmt --check && deno lint && deno check packages/manifest-metadata/src/mod.ts packages/manifest-generator/main.ts packages/manifest-downloader/main.ts",
+    "test": "deno test"
+  },
+  "fmt": {
+    "exclude": ["files/"]
+  },
+  "lint": {
+    "exclude": ["files/"]
+  },
+  "test": {
+    "exclude": ["files/"]
+  }
+}

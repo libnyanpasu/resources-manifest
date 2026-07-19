@@ -1,0 +1,15 @@
+[package]
+name = "manifest-metadata"
+version = "0.1.0"
+edition.workspace = true
+description = "Resource manifest meta types annotated with serde, schemars and specta"
+license.workspace = true
+
+[dependencies]
+indexmap.workspace = true
+schemars = { workspace = true, features = ["indexmap2"] }
+serde.workspace = true
+specta = { workspace = true, features = ["indexmap"] }
+
+[dev-dependencies]
+serde_json.workspace = true

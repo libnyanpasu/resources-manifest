@@ -1,0 +1,13 @@
+{
+  "name": "@manifest/downloader",
+  "version": "0.1.0",
+  "exports": "./main.ts",
+  "tasks": {
+    "dev": "deno run --watch main.ts",
+    "start": "deno run main.ts"
+  },
+  "imports": {
+    "@std/assert": "jsr:@std/assert@1",
+    "ajv": "npm:ajv@^8.17/dist/2020.js"
+  }
+}

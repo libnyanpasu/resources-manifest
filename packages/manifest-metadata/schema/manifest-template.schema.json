@@ -1,0 +1,521 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ResourceManifestTemplate",
+  "description": "The authored resource manifest template, input of the compiler.",
+  "type": "object",
+  "properties": {
+    "manifest_version": {
+      "$ref": "#/$defs/ManifestVersion"
+    },
+    "registries": {
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "#/$defs/RegistryDefinition"
+      }
+    },
+    "mirrors": {
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "#/$defs/MirrorDefinition"
+      }
+    },
+    "resources": {
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "#/$defs/ResourceTemplate"
+      }
+    },
+    "updated_at": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "manifest_version",
+    "registries",
+    "resources"
+  ],
+  "$defs": {
+    "ManifestVersion": {
+      "type": "integer",
+      "const": 2
+    },
+    "RegistryDefinition": {
+      "description": "A registry produces canonical download/metadata URLs.",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "url_template": {
+          "description": "Template for a canonical URL. Artifact registries normally use\n`{artifact}`; metadata registries may instead expose a release page/API.",
+          "type": "string"
+        },
+        "variables": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "name",
+        "url_template"
+      ]
+    },
+    "MirrorDefinition": {
+      "description": "A mirror transforms a canonical URL into an accelerated/alternative URL.",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "url_template": {
+          "description": "Template for an accelerated/alternative URL. It may use source variables\nand URL components such as `{url}`, `{url_encoded}`, `{host}`, `{path}`\nand `{path_and_query}`.",
+          "type": "string"
+        },
+        "registries": {
+          "description": "Limit this mirror to specific registry IDs.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "priority": {
+          "description": "Lower values are preferred when a caller builds an automatic strategy.\nAny finite number is accepted.",
+          "type": "number"
+        }
+      },
+      "required": [
+        "name",
+        "url_template"
+      ]
+    },
+    "ResourceTemplate": {
+      "description": "A resource as authored in the template.",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "registry": {
+          "type": "string"
+        },
+        "source": {
+          "description": "Resource-wide variables, normally owner/repository identity.",
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "tags": {
+          "description": "Catalog used by variants. Compiled variants contain expanded tag data.",
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/$defs/ResourceTagDefinition"
+          }
+        },
+        "default_variants": {
+          "description": "Platform-specific defaults. A default is inferred when a platform has\nonly one compatible variant; otherwise an explicit value is required.",
+          "type": "object",
+          "properties": {
+            "darwin-arm64": {
+              "type": "string"
+            },
+            "darwin-x64": {
+              "type": "string"
+            },
+            "linux-aarch64": {
+              "type": "string"
+            },
+            "linux-amd64": {
+              "type": "string"
+            },
+            "windows-arm64": {
+              "type": "string"
+            },
+            "windows-x86_64": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "variants": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ResourceVariantTemplate"
+          }
+        }
+      },
+      "required": [
+        "name",
+        "registry",
+        "tags",
+        "variants"
+      ]
+    },
+    "ResourceTagDefinition": {
+      "description": "A tag without its identifier, used by the per-resource tag catalog.",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "group": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "name"
+      ]
+    },
+    "ResourceVariantTemplate": {
+      "description": "A variant as authored in the template.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "description": "A stable, human-readable alias. The semantic identity is still the exact\nset of tags, exposed as `tag_key` in the compiled manifest.",
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "source": {
+          "description": "Channel/release variables belong here when channels share one resource.",
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "artifacts": {
+          "type": "object",
+          "properties": {
+            "darwin-arm64": {
+              "$ref": "#/$defs/ResourceArtifactTemplate"
+            },
+            "darwin-x64": {
+              "$ref": "#/$defs/ResourceArtifactTemplate"
+            },
+            "linux-aarch64": {
+              "$ref": "#/$defs/ResourceArtifactTemplate"
+            },
+            "linux-amd64": {
+              "$ref": "#/$defs/ResourceArtifactTemplate"
+            },
+            "windows-arm64": {
+              "$ref": "#/$defs/ResourceArtifactTemplate"
+            },
+            "windows-x86_64": {
+              "$ref": "#/$defs/ResourceArtifactTemplate"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "name",
+        "tags",
+        "artifacts"
+      ]
+    },
+    "ResourceArtifactTemplate": {
+      "description": "A platform artifact. The historical string shorthand is intentionally not\nmodeled; the compiler rejects it.",
+      "type": "object",
+      "properties": {
+        "artifact": {
+          "type": "string"
+        },
+        "source": {
+          "description": "Artifact-level URL variables.",
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "version": {
+          "description": "Static traceable versions, or a remote version/checksum resolution plan.",
+          "$ref": "#/$defs/ResourceArtifactVersionTemplate"
+        }
+      },
+      "required": [
+        "artifact",
+        "version"
+      ]
+    },
+    "ResourceArtifactVersionTemplate": {
+      "description": "How an artifact's version is resolved.\n\nThe `Remote` plan is intentionally inlined: these types describe a wire\nformat, not a hot data structure.",
+      "oneOf": [
+        {
+          "description": "The manifest contains a bounded, traceable release history.",
+          "type": "object",
+          "properties": {
+            "latest": {
+              "type": "string"
+            },
+            "releases": {
+              "description": "Ordered history; the latest entry need not be first, but must exist.",
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/ResourceStaticReleaseTemplate"
+              }
+            },
+            "type": {
+              "type": "string",
+              "const": "static"
+            }
+          },
+          "required": [
+            "type",
+            "latest",
+            "releases"
+          ]
+        },
+        {
+          "description": "The manifest tells the backend which URLs to request and how to parse\nthe latest version and checksum.",
+          "type": "object",
+          "properties": {
+            "fallback": {
+              "description": "Snapshot generated with the manifest; consumers should still query remote.",
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/ResourceStaticReleaseTemplate"
+                }
+              ]
+            },
+            "version": {
+              "$ref": "#/$defs/RemoteVersionResourceTemplate"
+            },
+            "checksum": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/RemoteChecksumResourceTemplate"
+                }
+              ]
+            },
+            "type": {
+              "type": "string",
+              "const": "remote"
+            }
+          },
+          "required": [
+            "type",
+            "version"
+          ]
+        }
+      ]
+    },
+    "ResourceStaticReleaseTemplate": {
+      "description": "A static, traceable release entry.",
+      "type": "object",
+      "properties": {
+        "version": {
+          "type": "string"
+        },
+        "checksum": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ResourceChecksum"
+            }
+          ]
+        },
+        "published_at": {
+          "type": "string"
+        },
+        "source": {
+          "description": "Per-release variables, for example a release tag that differs from version.",
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "version"
+      ]
+    },
+    "ResourceChecksum": {
+      "type": "string",
+      "pattern": "^(md5:[a-f0-9]{32}|sha256:[a-f0-9]{64}|sha512:[a-f0-9]{128})$"
+    },
+    "RemoteVersionResourceTemplate": {
+      "type": "object",
+      "properties": {
+        "resource": {
+          "$ref": "#/$defs/RemoteResourceTemplate"
+        },
+        "parser": {
+          "$ref": "#/$defs/RemoteVersionParser"
+        }
+      },
+      "required": [
+        "resource",
+        "parser"
+      ]
+    },
+    "RemoteResourceTemplate": {
+      "description": "A remote metadata request described declaratively.",
+      "type": "object",
+      "properties": {
+        "registry": {
+          "description": "Named registry used to create the canonical metadata URL.",
+          "type": "string"
+        },
+        "artifact": {
+          "description": "Optional virtual artifact/path consumed by the registry template.",
+          "type": "string"
+        },
+        "source": {
+          "description": "Variables merged on top of resource/variant/artifact source variables.",
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "registry"
+      ]
+    },
+    "RemoteVersionParser": {
+      "description": "How to parse a remote version response.",
+      "oneOf": [
+        {
+          "description": "Use the response body, optionally trimming whitespace.",
+          "type": "object",
+          "properties": {
+            "trim": {
+              "description": "Defaults to true.",
+              "type": "boolean"
+            },
+            "type": {
+              "type": "string",
+              "const": "text"
+            }
+          },
+          "required": [
+            "type"
+          ]
+        },
+        {
+          "description": "Apply a regular expression and return a capture group.",
+          "type": "object",
+          "properties": {
+            "pattern": {
+              "type": "string"
+            },
+            "group": {
+              "description": "Capture group containing the version. Defaults to 1. Deserializing\nnegative or fractional values fails, matching the reference\nvalidator's non-negative integer rule.",
+              "type": "integer",
+              "minimum": 0
+            },
+            "type": {
+              "type": "string",
+              "const": "regex"
+            }
+          },
+          "required": [
+            "type",
+            "pattern"
+          ]
+        }
+      ]
+    },
+    "RemoteChecksumResourceTemplate": {
+      "type": "object",
+      "properties": {
+        "resource": {
+          "$ref": "#/$defs/RemoteResourceTemplate"
+        },
+        "parser": {
+          "$ref": "#/$defs/RemoteChecksumParser"
+        }
+      },
+      "required": [
+        "resource",
+        "parser"
+      ]
+    },
+    "RemoteChecksumParser": {
+      "description": "How to parse a remote checksum response.",
+      "oneOf": [
+        {
+          "description": "The response body itself is `<algorithm>:<hex>`.",
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "checksum"
+            }
+          },
+          "required": [
+            "type"
+          ]
+        },
+        {
+          "description": "GNU checksum list: `<hex>  <artifact>`.",
+          "type": "object",
+          "properties": {
+            "algorithm": {
+              "$ref": "#/$defs/ChecksumAlgorithm"
+            },
+            "type": {
+              "type": "string",
+              "const": "gnu"
+            }
+          },
+          "required": [
+            "type",
+            "algorithm"
+          ]
+        },
+        {
+          "description": "BSD checksum list: `SHA512 (<artifact>) = <hex>`.",
+          "type": "object",
+          "properties": {
+            "algorithm": {
+              "$ref": "#/$defs/ChecksumAlgorithm"
+            },
+            "type": {
+              "type": "string",
+              "const": "bsd"
+            }
+          },
+          "required": [
+            "type",
+            "algorithm"
+          ]
+        },
+        {
+          "description": "GitHub `/releases/expanded_assets/<tag>` HTML with asset digests.",
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "github-release-assets"
+            }
+          },
+          "required": [
+            "type"
+          ]
+        }
+      ]
+    },
+    "ChecksumAlgorithm": {
+      "description": "Supported checksum algorithms.",
+      "type": "string",
+      "enum": [
+        "md5",
+        "sha256",
+        "sha512"
+      ]
+    }
+  }
+}

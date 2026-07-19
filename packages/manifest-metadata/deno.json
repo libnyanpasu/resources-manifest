@@ -1,0 +1,10 @@
+{
+  "name": "@manifest/metadata",
+  "version": "0.1.0",
+  "exports": {
+    ".": "./src/mod.ts",
+    "./types": "./src/types.ts",
+    "./schema/manifest": "./schema/manifest.schema.json",
+    "./schema/template": "./schema/manifest-template.schema.json"
+  }
+}
