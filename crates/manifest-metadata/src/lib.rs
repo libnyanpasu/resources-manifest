@@ -18,6 +18,13 @@
 //! `crates/manifest-schema-generator` strips it from the exported type graph
 //! (marking the field optional instead) before handing the graph to the
 //! serde-aware TypeScript exporter.
+//!
+//! On input, these Rust types deliberately stay lenient: serde maps an
+//! explicit `null` for an `Option` field to `None`, even though the published
+//! TypeScript and JSON schema contracts only accept "absent or concrete
+//! value". Serialization never produces `null`. Consumers that must reject
+//! `null` should validate against the JSON schema (or a future validator);
+//! the types here prioritize ergonomic parsing.
 
 use std::borrow::Cow;
 use std::collections::BTreeMap;
@@ -723,6 +730,25 @@ mod tests {
     }
 
     #[test]
+    fn explicit_null_is_lenient_input() {
+        // Deliberate (see module docs): explicit `null` parses as `None` even
+        // though the TypeScript and JSON schema contracts reject it. Strict
+        // consumers must validate against the schema, not just these types.
+        let parsed: MirrorDefinition = serde_json::from_value(
+            json!({ "name": "m", "url_template": "{url}", "priority": null }),
+        )
+        .unwrap();
+        assert_eq!(parsed.priority, None);
+
+        let parsed: ResourceStaticReleaseTemplate = serde_json::from_value(
+            json!({ "version": "v1.0.0", "checksum": null, "source": null }),
+        )
+        .unwrap();
+        assert_eq!(parsed.checksum, None);
+        assert_eq!(parsed.source, None);
+    }
+
+    #[test]
     fn template_roundtrips_reference_shape() {
         let template_json = json!({
             "manifest_version": 2,
@@ -830,10 +856,11 @@ mod tests {
 
     #[test]
     fn parses_the_reference_compiled_manifest() {
-        // The compiled v2 manifest produced by the reference generator in
-        // `files/`; guards against drift between the meta types and reality.
+        // A snapshot of the compiled v2 manifest produced by the reference
+        // generator (see `files/manifest/resources.json`); guards against
+        // drift between the meta types and reality.
         let manifest: ResourceManifest =
-            serde_json::from_str(include_str!("../../../files/manifest/resources.json"))
+            serde_json::from_str(include_str!("../tests/fixtures/resources.json"))
                 .expect("deserialize reference manifest");
         assert_eq!(manifest.manifest_version, ManifestVersion);
         assert!(!manifest.resources.is_empty());

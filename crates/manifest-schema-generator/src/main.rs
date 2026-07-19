@@ -36,7 +36,10 @@ const FIELD_SKIP_SERIALIZING_IF: &str = "serde:field:skip_serializing_if";
 /// 4. specta-typescript renders any `f64` as `number | null` because serde_json
 ///    turns NaN/infinity into `null`. The only float in the graph is
 ///    `FiniteF64`, which rejects non-finite values by construction, so the
-///    semantic lossless-float remap (`number`) is applied.
+///    semantic lossless-float remap (`number`) is applied. The remap is
+///    collection-level only (`apply_types`); `map_type` stays unmapped, which
+///    is fine because the exporter only drives `map_types` here. The
+///    `| null` assertion in `export_typescript` pins this invariant.
 struct SerdeShape {
     semantic: specta_typescript::semantic::Configuration,
 }
@@ -237,18 +240,68 @@ fn export_typescript(out_dir: &Path) -> Result<PathBuf, Box<dyn Error>> {
         )
         .into());
     }
-    fs::write(&out, bindings.replace(CHECKSUM_ALIAS, CHECKSUM_TEMPLATE))?;
+    let bindings = bindings.replace(CHECKSUM_ALIAS, CHECKSUM_TEMPLATE);
+
+    // The package contract is "absent or concrete value" (see the metadata
+    // README), so no optional property may render as nullable. Notably this
+    // pins the lossless-float remap: a future plain `f64` field would surface
+    // here instead of silently leaking `| null` into the bindings.
+    if bindings.contains("| null") {
+        return Err(format!(
+            "generated TypeScript in {} contains `| null`; optional fields must \
+             stay non-nullable (see the SerdeShape lossless-float note)",
+            out.display()
+        )
+        .into());
+    }
+
+    fs::write(&out, bindings)?;
     Ok(out)
+}
+
+/// The canonical checksum pattern, matching `ResourceChecksum`'s schemars
+/// impl. Used for the compiled manifest schema.
+const CANONICAL_CHECKSUM_PATTERN: &str =
+    r"^(md5:[a-f0-9]{32}|sha256:[a-f0-9]{64}|sha512:[a-f0-9]{128})$";
+
+/// The template schema accepts anything the compiler can normalize, mirroring
+/// `ResourceChecksum::new` / the reference `parseResourceChecksum`.
+const RELAXED_CHECKSUM_PATTERN: &str = r"^([mM][dD]5:[a-fA-F0-9]{32}|[sS][hH][aA]256:[a-fA-F0-9]{64}|[sS][hH][aA]512:[a-fA-F0-9]{128})$";
+
+/// Authored templates may use any casing in checksums; the compiler
+/// normalizes to lowercase. The compiled manifest schema keeps the canonical
+/// pattern. Fails loudly if the canonical pattern is not where it is
+/// expected, so a changed schemars output cannot drift silently.
+fn relax_checksum_pattern(schema: &mut schemars::Schema) -> Result<(), Box<dyn Error>> {
+    let pattern = schema
+        .as_object_mut()
+        .and_then(|object| object.get_mut("$defs"))
+        .and_then(Value::as_object_mut)
+        .and_then(|defs| defs.get_mut("ResourceChecksum"))
+        .and_then(Value::as_object_mut)
+        .and_then(|checksum| checksum.get_mut("pattern"));
+
+    match pattern {
+        Some(Value::String(pattern)) if *pattern == CANONICAL_CHECKSUM_PATTERN => {
+            *pattern = RELAXED_CHECKSUM_PATTERN.to_string();
+            Ok(())
+        }
+        _ => Err("ResourceChecksum canonical pattern not found in template schema".into()),
+    }
 }
 
 fn export_json_schema<T: schemars::JsonSchema>(
     out_dir: &Path,
     file_name: &str,
+    authored_template: bool,
 ) -> Result<PathBuf, Box<dyn Error>> {
     let settings = schemars::generate::SchemaSettings::draft2020_12().with(|settings| {
         settings.transforms.push(Box::new(normalize_schema));
     });
-    let schema = settings.into_generator().into_root_schema_for::<T>();
+    let mut schema = settings.into_generator().into_root_schema_for::<T>();
+    if authored_template {
+        relax_checksum_pattern(&mut schema)?;
+    }
     let out = out_dir.join("schema").join(file_name);
     fs::write(
         &out,
@@ -265,8 +318,12 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     let written = [
         export_typescript(&out_dir)?,
-        export_json_schema::<ResourceManifest>(&out_dir, "manifest.schema.json")?,
-        export_json_schema::<ResourceManifestTemplate>(&out_dir, "manifest-template.schema.json")?,
+        export_json_schema::<ResourceManifest>(&out_dir, "manifest.schema.json", false)?,
+        export_json_schema::<ResourceManifestTemplate>(
+            &out_dir,
+            "manifest-template.schema.json",
+            true,
+        )?,
     ];
 
     for path in written {

@@ -6,6 +6,7 @@
   ],
   "tasks": {
     "generate:schema": "cargo run -p manifest-schema-generator && deno fmt packages/manifest-metadata/src/types.ts packages/manifest-metadata/schema",
+    "check:generated": "deno task generate:schema && git diff --exit-code -- packages/manifest-metadata",
     "check": "deno fmt --check && deno lint && deno check packages/manifest-metadata/src/mod.ts packages/manifest-generator/main.ts packages/manifest-downloader/main.ts",
     "test": "deno test"
   },

@@ -343,7 +343,7 @@
     },
     "ResourceChecksum": {
       "type": "string",
-      "pattern": "^(md5:[a-f0-9]{32}|sha256:[a-f0-9]{64}|sha512:[a-f0-9]{128})$"
+      "pattern": "^([mM][dD]5:[a-fA-F0-9]{32}|[sS][hH][aA]256:[a-fA-F0-9]{64}|[sS][hH][aA]512:[a-fA-F0-9]{128})$"
     },
     "RemoteVersionResourceTemplate": {
       "type": "object",

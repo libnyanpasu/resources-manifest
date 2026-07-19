@@ -20,6 +20,8 @@
 
 - `deno task generate:schema`：重新生成 TS 类型与 JSON Schema（cargo 运行后 自动
   `deno fmt` 产物）。
+- `deno task check:generated`：重新生成并与已提交产物比对（`git diff`），用于 CI
+  防漂移。
 - `deno task check`：`deno fmt --check` + `deno lint` + `deno check`。
 - `deno task test`：Deno 测试。
 - `cargo test --workspace`、`cargo clippy --workspace --all-targets`：Rust 测试
@@ -31,4 +33,8 @@
   `@manifest/metadata`）。
 - 根 `Cargo.toml` 声明 Cargo workspace（`crates/*`），依赖版本集中在
   `[workspace.dependencies]`。
-- 修改元类型后必须运行 `deno task generate:schema` 并提交生成物。
+- 修改元类型后必须运行 `deno task generate:schema` 并提交生成物；
+  `deno task check:generated` 必须无差异。
+- 真实编译产物 manifest 的测试快照在
+  `crates/manifest-metadata/tests/fixtures/resources.json`（受跟踪，因为
+  `files/` 参考目录不入库）；Rust 与 Deno 测试共用这份快照。

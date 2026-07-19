@@ -3,7 +3,7 @@ import { Ajv2020 } from "ajv";
 import manifestSchema from "@manifest/metadata/schema/manifest" with {
   type: "json",
 };
-import referenceManifest from "../../files/manifest/resources.json" with {
+import referenceManifest from "../../crates/manifest-metadata/tests/fixtures/resources.json" with {
   type: "json",
 };
 

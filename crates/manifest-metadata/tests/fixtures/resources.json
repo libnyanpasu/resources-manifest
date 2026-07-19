@@ -1,0 +1,1344 @@
+{
+  "manifest_version": 2,
+  "registries": {
+    "github-release": {
+      "name": "GitHub Releases",
+      "url_template": "https://github.com/{owner}/{repo}/releases/download/{release}/{artifact}"
+    },
+    "github-release-metadata": {
+      "name": "GitHub Release Assets Metadata",
+      "url_template": "https://github.com/{owner}/{repo}/releases/expanded_assets/{release}"
+    }
+  },
+  "mirrors": {
+    "direct": {
+      "name": "Direct",
+      "url_template": "{url}",
+      "registries": ["github-release", "github-release-metadata"],
+      "priority": 0
+    },
+    "nyanpasu": {
+      "name": "Nyanpasu GitHub mirror",
+      "url_template": "https://nyanpasu-script.majokeiko.com{path_and_query}",
+      "registries": ["github-release", "github-release-metadata"],
+      "priority": 10
+    }
+  },
+  "resources": {
+    "clash_premium": {
+      "name": "Clash Premium",
+      "registry": "github-release",
+      "source": {
+        "owner": "zhongfly",
+        "repo": "Clash-premium-backup"
+      },
+      "tags": [
+        {
+          "id": "channel:stable",
+          "name": "Stable",
+          "group": "channel"
+        },
+        {
+          "id": "toolchain:go",
+          "name": "Go",
+          "group": "toolchain"
+        }
+      ],
+      "default_variants": {
+        "windows-x86_64": "stable-default",
+        "windows-arm64": "stable-default",
+        "linux-aarch64": "stable-default",
+        "linux-amd64": "stable-default",
+        "darwin-arm64": "stable-default",
+        "darwin-x64": "stable-default"
+      },
+      "variants": [
+        {
+          "id": "stable-default",
+          "tag_key": "channel:stable+toolchain:go",
+          "name": "Stable · Default",
+          "tags": [
+            {
+              "id": "channel:stable",
+              "name": "Stable",
+              "group": "channel"
+            },
+            {
+              "id": "toolchain:go",
+              "name": "Go",
+              "group": "toolchain"
+            }
+          ],
+          "source": {
+            "release": "{version}"
+          },
+          "artifacts": {
+            "windows-x86_64": {
+              "artifact": "clash-windows-amd64-n{version}.zip",
+              "version": {
+                "type": "static",
+                "latest": "2023-09-05-gdcc8d87",
+                "releases": [
+                  {
+                    "version": "2023-09-05-gdcc8d87",
+                    "published_at": "2023-09-05T00:00:00Z"
+                  }
+                ]
+              }
+            },
+            "windows-arm64": {
+              "artifact": "clash-windows-arm64-n{version}.zip",
+              "version": {
+                "type": "static",
+                "latest": "2023-09-05-gdcc8d87",
+                "releases": [
+                  {
+                    "version": "2023-09-05-gdcc8d87",
+                    "published_at": "2023-09-05T00:00:00Z"
+                  }
+                ]
+              }
+            },
+            "linux-aarch64": {
+              "artifact": "clash-linux-arm64-n{version}.gz",
+              "version": {
+                "type": "static",
+                "latest": "2023-09-05-gdcc8d87",
+                "releases": [
+                  {
+                    "version": "2023-09-05-gdcc8d87",
+                    "published_at": "2023-09-05T00:00:00Z"
+                  }
+                ]
+              }
+            },
+            "linux-amd64": {
+              "artifact": "clash-linux-amd64-n{version}.gz",
+              "version": {
+                "type": "static",
+                "latest": "2023-09-05-gdcc8d87",
+                "releases": [
+                  {
+                    "version": "2023-09-05-gdcc8d87",
+                    "published_at": "2023-09-05T00:00:00Z"
+                  }
+                ]
+              }
+            },
+            "darwin-arm64": {
+              "artifact": "clash-darwin-arm64-n{version}.gz",
+              "version": {
+                "type": "static",
+                "latest": "2023-09-05-gdcc8d87",
+                "releases": [
+                  {
+                    "version": "2023-09-05-gdcc8d87",
+                    "published_at": "2023-09-05T00:00:00Z"
+                  }
+                ]
+              }
+            },
+            "darwin-x64": {
+              "artifact": "clash-darwin-amd64-n{version}.gz",
+              "version": {
+                "type": "static",
+                "latest": "2023-09-05-gdcc8d87",
+                "releases": [
+                  {
+                    "version": "2023-09-05-gdcc8d87",
+                    "published_at": "2023-09-05T00:00:00Z"
+                  }
+                ]
+              }
+            }
+          }
+        }
+      ]
+    },
+    "clash_rs": {
+      "name": "Clash Rust",
+      "registry": "github-release",
+      "source": {
+        "owner": "Watfaq",
+        "repo": "clash-rs"
+      },
+      "tags": [
+        {
+          "id": "channel:alpha",
+          "name": "Alpha",
+          "group": "channel"
+        },
+        {
+          "id": "channel:stable",
+          "name": "Stable",
+          "group": "channel"
+        },
+        {
+          "id": "toolchain:rust",
+          "name": "Rust",
+          "group": "toolchain"
+        }
+      ],
+      "default_variants": {
+        "windows-x86_64": "stable-default",
+        "windows-arm64": "stable-default",
+        "linux-aarch64": "stable-default",
+        "linux-amd64": "stable-default",
+        "darwin-arm64": "stable-default",
+        "darwin-x64": "stable-default"
+      },
+      "variants": [
+        {
+          "id": "stable-default",
+          "tag_key": "channel:stable+toolchain:rust",
+          "name": "Stable · Default",
+          "tags": [
+            {
+              "id": "channel:stable",
+              "name": "Stable",
+              "group": "channel"
+            },
+            {
+              "id": "toolchain:rust",
+              "name": "Rust",
+              "group": "toolchain"
+            }
+          ],
+          "source": {
+            "release": "{version}"
+          },
+          "artifacts": {
+            "windows-x86_64": {
+              "artifact": "clash-rs-x86_64-pc-windows-msvc.exe",
+              "version": {
+                "type": "static",
+                "latest": "v0.10.7",
+                "releases": [
+                  {
+                    "version": "v0.10.7",
+                    "published_at": "2026-06-01T00:00:00Z"
+                  }
+                ]
+              }
+            },
+            "windows-arm64": {
+              "artifact": "clash-rs-aarch64-pc-windows-msvc.exe",
+              "version": {
+                "type": "static",
+                "latest": "v0.10.7",
+                "releases": [
+                  {
+                    "version": "v0.10.7",
+                    "published_at": "2026-06-01T00:00:00Z"
+                  }
+                ]
+              }
+            },
+            "linux-aarch64": {
+              "artifact": "clash-rs-aarch64-unknown-linux-gnu",
+              "version": {
+                "type": "static",
+                "latest": "v0.10.7",
+                "releases": [
+                  {
+                    "version": "v0.10.7",
+                    "published_at": "2026-06-01T00:00:00Z"
+                  }
+                ]
+              }
+            },
+            "linux-amd64": {
+              "artifact": "clash-rs-x86_64-unknown-linux-gnu-static-crt",
+              "version": {
+                "type": "static",
+                "latest": "v0.10.7",
+                "releases": [
+                  {
+                    "version": "v0.10.7",
+                    "published_at": "2026-06-01T00:00:00Z"
+                  }
+                ]
+              }
+            },
+            "darwin-arm64": {
+              "artifact": "clash-rs-aarch64-apple-darwin",
+              "version": {
+                "type": "static",
+                "latest": "v0.10.7",
+                "releases": [
+                  {
+                    "version": "v0.10.7",
+                    "published_at": "2026-06-01T00:00:00Z"
+                  }
+                ]
+              }
+            },
+            "darwin-x64": {
+              "artifact": "clash-rs-x86_64-apple-darwin",
+              "version": {
+                "type": "static",
+                "latest": "v0.10.7",
+                "releases": [
+                  {
+                    "version": "v0.10.7",
+                    "published_at": "2026-06-01T00:00:00Z"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "id": "alpha-default",
+          "tag_key": "channel:alpha+toolchain:rust",
+          "name": "Alpha · Default",
+          "tags": [
+            {
+              "id": "channel:alpha",
+              "name": "Alpha",
+              "group": "channel"
+            },
+            {
+              "id": "toolchain:rust",
+              "name": "Rust",
+              "group": "toolchain"
+            }
+          ],
+          "source": {
+            "release": "latest"
+          },
+          "artifacts": {
+            "windows-x86_64": {
+              "artifact": "clash-rs-x86_64-pc-windows-msvc.exe",
+              "version": {
+                "type": "remote",
+                "fallback": {
+                  "version": "0.10.7-alpha+sha.85fc166"
+                },
+                "version": {
+                  "resource": {
+                    "registry": "github-release",
+                    "artifact": "version.txt"
+                  },
+                  "parser": {
+                    "type": "text",
+                    "trim": true
+                  }
+                },
+                "checksum": {
+                  "resource": {
+                    "registry": "github-release-metadata"
+                  },
+                  "parser": {
+                    "type": "github-release-assets"
+                  }
+                }
+              }
+            },
+            "windows-arm64": {
+              "artifact": "clash-rs-aarch64-pc-windows-msvc.exe",
+              "version": {
+                "type": "remote",
+                "fallback": {
+                  "version": "0.10.7-alpha+sha.85fc166"
+                },
+                "version": {
+                  "resource": {
+                    "registry": "github-release",
+                    "artifact": "version.txt"
+                  },
+                  "parser": {
+                    "type": "text",
+                    "trim": true
+                  }
+                },
+                "checksum": {
+                  "resource": {
+                    "registry": "github-release-metadata"
+                  },
+                  "parser": {
+                    "type": "github-release-assets"
+                  }
+                }
+              }
+            },
+            "linux-aarch64": {
+              "artifact": "clash-rs-aarch64-unknown-linux-gnu",
+              "version": {
+                "type": "remote",
+                "fallback": {
+                  "version": "0.10.7-alpha+sha.85fc166"
+                },
+                "version": {
+                  "resource": {
+                    "registry": "github-release",
+                    "artifact": "version.txt"
+                  },
+                  "parser": {
+                    "type": "text",
+                    "trim": true
+                  }
+                },
+                "checksum": {
+                  "resource": {
+                    "registry": "github-release-metadata"
+                  },
+                  "parser": {
+                    "type": "github-release-assets"
+                  }
+                }
+              }
+            },
+            "linux-amd64": {
+              "artifact": "clash-rs-x86_64-unknown-linux-gnu-static-crt",
+              "version": {
+                "type": "remote",
+                "fallback": {
+                  "version": "0.10.7-alpha+sha.85fc166"
+                },
+                "version": {
+                  "resource": {
+                    "registry": "github-release",
+                    "artifact": "version.txt"
+                  },
+                  "parser": {
+                    "type": "text",
+                    "trim": true
+                  }
+                },
+                "checksum": {
+                  "resource": {
+                    "registry": "github-release-metadata"
+                  },
+                  "parser": {
+                    "type": "github-release-assets"
+                  }
+                }
+              }
+            },
+            "darwin-arm64": {
+              "artifact": "clash-rs-aarch64-apple-darwin",
+              "version": {
+                "type": "remote",
+                "fallback": {
+                  "version": "0.10.7-alpha+sha.85fc166"
+                },
+                "version": {
+                  "resource": {
+                    "registry": "github-release",
+                    "artifact": "version.txt"
+                  },
+                  "parser": {
+                    "type": "text",
+                    "trim": true
+                  }
+                },
+                "checksum": {
+                  "resource": {
+                    "registry": "github-release-metadata"
+                  },
+                  "parser": {
+                    "type": "github-release-assets"
+                  }
+                }
+              }
+            },
+            "darwin-x64": {
+              "artifact": "clash-rs-x86_64-apple-darwin",
+              "version": {
+                "type": "remote",
+                "fallback": {
+                  "version": "0.10.7-alpha+sha.85fc166"
+                },
+                "version": {
+                  "resource": {
+                    "registry": "github-release",
+                    "artifact": "version.txt"
+                  },
+                  "parser": {
+                    "type": "text",
+                    "trim": true
+                  }
+                },
+                "checksum": {
+                  "resource": {
+                    "registry": "github-release-metadata"
+                  },
+                  "parser": {
+                    "type": "github-release-assets"
+                  }
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "mihomo": {
+      "name": "Mihomo",
+      "registry": "github-release",
+      "source": {
+        "owner": "MetaCubeX",
+        "repo": "mihomo"
+      },
+      "tags": [
+        {
+          "id": "channel:alpha",
+          "name": "Alpha",
+          "group": "channel"
+        },
+        {
+          "id": "channel:stable",
+          "name": "Stable",
+          "group": "channel"
+        },
+        {
+          "id": "cpu:arm64",
+          "name": "ARM64",
+          "group": "cpu"
+        },
+        {
+          "id": "cpu:goamd64-v1",
+          "name": "GOAMD64 v1",
+          "group": "cpu",
+          "description": "AMD64 baseline instruction set"
+        },
+        {
+          "id": "cpu:goamd64-v2",
+          "name": "GOAMD64 v2",
+          "group": "cpu",
+          "description": "AMD64 v2 instruction set"
+        },
+        {
+          "id": "cpu:goamd64-v3",
+          "name": "GOAMD64 v3",
+          "group": "cpu",
+          "description": "AMD64 v3 instruction set"
+        },
+        {
+          "id": "toolchain:go-current",
+          "name": "Current Go",
+          "group": "toolchain",
+          "description": "Built with the current upstream Go toolchain"
+        }
+      ],
+      "default_variants": {
+        "windows-x86_64": "stable-goamd64-v2",
+        "windows-arm64": "stable-arm64",
+        "linux-aarch64": "stable-arm64",
+        "linux-amd64": "stable-goamd64-v2",
+        "darwin-arm64": "stable-arm64",
+        "darwin-x64": "stable-goamd64-v2"
+      },
+      "variants": [
+        {
+          "id": "stable-goamd64-v1",
+          "tag_key": "channel:stable+cpu:goamd64-v1+toolchain:go-current",
+          "name": "Stable · GOAMD64 v1",
+          "tags": [
+            {
+              "id": "channel:stable",
+              "name": "Stable",
+              "group": "channel"
+            },
+            {
+              "id": "toolchain:go-current",
+              "name": "Current Go",
+              "group": "toolchain",
+              "description": "Built with the current upstream Go toolchain"
+            },
+            {
+              "id": "cpu:goamd64-v1",
+              "name": "GOAMD64 v1",
+              "group": "cpu",
+              "description": "AMD64 baseline instruction set"
+            }
+          ],
+          "source": {
+            "release": "{version}"
+          },
+          "artifacts": {
+            "windows-x86_64": {
+              "artifact": "mihomo-windows-amd64-v1-{version}.zip",
+              "version": {
+                "type": "static",
+                "latest": "v1.19.28",
+                "releases": [
+                  {
+                    "version": "v1.19.28",
+                    "published_at": "2026-07-08T00:34:23Z"
+                  },
+                  {
+                    "version": "v1.19.27",
+                    "published_at": "2026-06-06T07:56:33Z"
+                  },
+                  {
+                    "version": "v1.19.26",
+                    "published_at": "2026-05-31T16:53:37Z"
+                  }
+                ]
+              }
+            },
+            "linux-amd64": {
+              "artifact": "mihomo-linux-amd64-v1-{version}.gz",
+              "version": {
+                "type": "static",
+                "latest": "v1.19.28",
+                "releases": [
+                  {
+                    "version": "v1.19.28",
+                    "published_at": "2026-07-08T00:34:23Z"
+                  },
+                  {
+                    "version": "v1.19.27",
+                    "published_at": "2026-06-06T07:56:33Z"
+                  },
+                  {
+                    "version": "v1.19.26",
+                    "published_at": "2026-05-31T16:53:37Z"
+                  }
+                ]
+              }
+            },
+            "darwin-x64": {
+              "artifact": "mihomo-darwin-amd64-v1-{version}.gz",
+              "version": {
+                "type": "static",
+                "latest": "v1.19.28",
+                "releases": [
+                  {
+                    "version": "v1.19.28",
+                    "published_at": "2026-07-08T00:34:23Z"
+                  },
+                  {
+                    "version": "v1.19.27",
+                    "published_at": "2026-06-06T07:56:33Z"
+                  },
+                  {
+                    "version": "v1.19.26",
+                    "published_at": "2026-05-31T16:53:37Z"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "id": "stable-goamd64-v2",
+          "tag_key": "channel:stable+cpu:goamd64-v2+toolchain:go-current",
+          "name": "Stable · GOAMD64 v2",
+          "tags": [
+            {
+              "id": "channel:stable",
+              "name": "Stable",
+              "group": "channel"
+            },
+            {
+              "id": "toolchain:go-current",
+              "name": "Current Go",
+              "group": "toolchain",
+              "description": "Built with the current upstream Go toolchain"
+            },
+            {
+              "id": "cpu:goamd64-v2",
+              "name": "GOAMD64 v2",
+              "group": "cpu",
+              "description": "AMD64 v2 instruction set"
+            }
+          ],
+          "source": {
+            "release": "{version}"
+          },
+          "artifacts": {
+            "windows-x86_64": {
+              "artifact": "mihomo-windows-amd64-v2-{version}.zip",
+              "version": {
+                "type": "static",
+                "latest": "v1.19.28",
+                "releases": [
+                  {
+                    "version": "v1.19.28",
+                    "published_at": "2026-07-08T00:34:23Z"
+                  },
+                  {
+                    "version": "v1.19.27",
+                    "published_at": "2026-06-06T07:56:33Z"
+                  },
+                  {
+                    "version": "v1.19.26",
+                    "published_at": "2026-05-31T16:53:37Z"
+                  }
+                ]
+              }
+            },
+            "linux-amd64": {
+              "artifact": "mihomo-linux-amd64-v2-{version}.gz",
+              "version": {
+                "type": "static",
+                "latest": "v1.19.28",
+                "releases": [
+                  {
+                    "version": "v1.19.28",
+                    "published_at": "2026-07-08T00:34:23Z"
+                  },
+                  {
+                    "version": "v1.19.27",
+                    "published_at": "2026-06-06T07:56:33Z"
+                  },
+                  {
+                    "version": "v1.19.26",
+                    "published_at": "2026-05-31T16:53:37Z"
+                  }
+                ]
+              }
+            },
+            "darwin-x64": {
+              "artifact": "mihomo-darwin-amd64-v2-{version}.gz",
+              "version": {
+                "type": "static",
+                "latest": "v1.19.28",
+                "releases": [
+                  {
+                    "version": "v1.19.28",
+                    "published_at": "2026-07-08T00:34:23Z"
+                  },
+                  {
+                    "version": "v1.19.27",
+                    "published_at": "2026-06-06T07:56:33Z"
+                  },
+                  {
+                    "version": "v1.19.26",
+                    "published_at": "2026-05-31T16:53:37Z"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "id": "stable-goamd64-v3",
+          "tag_key": "channel:stable+cpu:goamd64-v3+toolchain:go-current",
+          "name": "Stable · GOAMD64 v3",
+          "tags": [
+            {
+              "id": "channel:stable",
+              "name": "Stable",
+              "group": "channel"
+            },
+            {
+              "id": "toolchain:go-current",
+              "name": "Current Go",
+              "group": "toolchain",
+              "description": "Built with the current upstream Go toolchain"
+            },
+            {
+              "id": "cpu:goamd64-v3",
+              "name": "GOAMD64 v3",
+              "group": "cpu",
+              "description": "AMD64 v3 instruction set"
+            }
+          ],
+          "source": {
+            "release": "{version}"
+          },
+          "artifacts": {
+            "windows-x86_64": {
+              "artifact": "mihomo-windows-amd64-v3-{version}.zip",
+              "version": {
+                "type": "static",
+                "latest": "v1.19.28",
+                "releases": [
+                  {
+                    "version": "v1.19.28",
+                    "published_at": "2026-07-08T00:34:23Z"
+                  },
+                  {
+                    "version": "v1.19.27",
+                    "published_at": "2026-06-06T07:56:33Z"
+                  },
+                  {
+                    "version": "v1.19.26",
+                    "published_at": "2026-05-31T16:53:37Z"
+                  }
+                ]
+              }
+            },
+            "linux-amd64": {
+              "artifact": "mihomo-linux-amd64-v3-{version}.gz",
+              "version": {
+                "type": "static",
+                "latest": "v1.19.28",
+                "releases": [
+                  {
+                    "version": "v1.19.28",
+                    "published_at": "2026-07-08T00:34:23Z"
+                  },
+                  {
+                    "version": "v1.19.27",
+                    "published_at": "2026-06-06T07:56:33Z"
+                  },
+                  {
+                    "version": "v1.19.26",
+                    "published_at": "2026-05-31T16:53:37Z"
+                  }
+                ]
+              }
+            },
+            "darwin-x64": {
+              "artifact": "mihomo-darwin-amd64-v3-{version}.gz",
+              "version": {
+                "type": "static",
+                "latest": "v1.19.28",
+                "releases": [
+                  {
+                    "version": "v1.19.28",
+                    "published_at": "2026-07-08T00:34:23Z"
+                  },
+                  {
+                    "version": "v1.19.27",
+                    "published_at": "2026-06-06T07:56:33Z"
+                  },
+                  {
+                    "version": "v1.19.26",
+                    "published_at": "2026-05-31T16:53:37Z"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "id": "stable-arm64",
+          "tag_key": "channel:stable+cpu:arm64+toolchain:go-current",
+          "name": "Stable · ARM64",
+          "tags": [
+            {
+              "id": "channel:stable",
+              "name": "Stable",
+              "group": "channel"
+            },
+            {
+              "id": "toolchain:go-current",
+              "name": "Current Go",
+              "group": "toolchain",
+              "description": "Built with the current upstream Go toolchain"
+            },
+            {
+              "id": "cpu:arm64",
+              "name": "ARM64",
+              "group": "cpu"
+            }
+          ],
+          "source": {
+            "release": "{version}"
+          },
+          "artifacts": {
+            "windows-arm64": {
+              "artifact": "mihomo-windows-arm64-{version}.zip",
+              "version": {
+                "type": "static",
+                "latest": "v1.19.28",
+                "releases": [
+                  {
+                    "version": "v1.19.28",
+                    "published_at": "2026-07-08T00:34:23Z"
+                  },
+                  {
+                    "version": "v1.19.27",
+                    "published_at": "2026-06-06T07:56:33Z"
+                  },
+                  {
+                    "version": "v1.19.26",
+                    "published_at": "2026-05-31T16:53:37Z"
+                  }
+                ]
+              }
+            },
+            "linux-aarch64": {
+              "artifact": "mihomo-linux-arm64-{version}.gz",
+              "version": {
+                "type": "static",
+                "latest": "v1.19.28",
+                "releases": [
+                  {
+                    "version": "v1.19.28",
+                    "published_at": "2026-07-08T00:34:23Z"
+                  },
+                  {
+                    "version": "v1.19.27",
+                    "published_at": "2026-06-06T07:56:33Z"
+                  },
+                  {
+                    "version": "v1.19.26",
+                    "published_at": "2026-05-31T16:53:37Z"
+                  }
+                ]
+              }
+            },
+            "darwin-arm64": {
+              "artifact": "mihomo-darwin-arm64-{version}.gz",
+              "version": {
+                "type": "static",
+                "latest": "v1.19.28",
+                "releases": [
+                  {
+                    "version": "v1.19.28",
+                    "published_at": "2026-07-08T00:34:23Z"
+                  },
+                  {
+                    "version": "v1.19.27",
+                    "published_at": "2026-06-06T07:56:33Z"
+                  },
+                  {
+                    "version": "v1.19.26",
+                    "published_at": "2026-05-31T16:53:37Z"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "id": "alpha-goamd64-v1",
+          "tag_key": "channel:alpha+cpu:goamd64-v1+toolchain:go-current",
+          "name": "Alpha · GOAMD64 v1",
+          "tags": [
+            {
+              "id": "channel:alpha",
+              "name": "Alpha",
+              "group": "channel"
+            },
+            {
+              "id": "toolchain:go-current",
+              "name": "Current Go",
+              "group": "toolchain",
+              "description": "Built with the current upstream Go toolchain"
+            },
+            {
+              "id": "cpu:goamd64-v1",
+              "name": "GOAMD64 v1",
+              "group": "cpu",
+              "description": "AMD64 baseline instruction set"
+            }
+          ],
+          "source": {
+            "release": "Prerelease-Alpha"
+          },
+          "artifacts": {
+            "windows-x86_64": {
+              "artifact": "mihomo-windows-amd64-v1-{version}.zip",
+              "version": {
+                "type": "remote",
+                "fallback": {
+                  "version": "alpha-e911985"
+                },
+                "version": {
+                  "resource": {
+                    "registry": "github-release",
+                    "artifact": "version.txt"
+                  },
+                  "parser": {
+                    "type": "text",
+                    "trim": true
+                  }
+                },
+                "checksum": {
+                  "resource": {
+                    "registry": "github-release-metadata"
+                  },
+                  "parser": {
+                    "type": "github-release-assets"
+                  }
+                }
+              }
+            },
+            "linux-amd64": {
+              "artifact": "mihomo-linux-amd64-v1-{version}.gz",
+              "version": {
+                "type": "remote",
+                "fallback": {
+                  "version": "alpha-e911985"
+                },
+                "version": {
+                  "resource": {
+                    "registry": "github-release",
+                    "artifact": "version.txt"
+                  },
+                  "parser": {
+                    "type": "text",
+                    "trim": true
+                  }
+                },
+                "checksum": {
+                  "resource": {
+                    "registry": "github-release-metadata"
+                  },
+                  "parser": {
+                    "type": "github-release-assets"
+                  }
+                }
+              }
+            },
+            "darwin-x64": {
+              "artifact": "mihomo-darwin-amd64-v1-{version}.gz",
+              "version": {
+                "type": "remote",
+                "fallback": {
+                  "version": "alpha-e911985"
+                },
+                "version": {
+                  "resource": {
+                    "registry": "github-release",
+                    "artifact": "version.txt"
+                  },
+                  "parser": {
+                    "type": "text",
+                    "trim": true
+                  }
+                },
+                "checksum": {
+                  "resource": {
+                    "registry": "github-release-metadata"
+                  },
+                  "parser": {
+                    "type": "github-release-assets"
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "id": "alpha-goamd64-v2",
+          "tag_key": "channel:alpha+cpu:goamd64-v2+toolchain:go-current",
+          "name": "Alpha · GOAMD64 v2",
+          "tags": [
+            {
+              "id": "channel:alpha",
+              "name": "Alpha",
+              "group": "channel"
+            },
+            {
+              "id": "toolchain:go-current",
+              "name": "Current Go",
+              "group": "toolchain",
+              "description": "Built with the current upstream Go toolchain"
+            },
+            {
+              "id": "cpu:goamd64-v2",
+              "name": "GOAMD64 v2",
+              "group": "cpu",
+              "description": "AMD64 v2 instruction set"
+            }
+          ],
+          "source": {
+            "release": "Prerelease-Alpha"
+          },
+          "artifacts": {
+            "windows-x86_64": {
+              "artifact": "mihomo-windows-amd64-v2-{version}.zip",
+              "version": {
+                "type": "remote",
+                "fallback": {
+                  "version": "alpha-e911985"
+                },
+                "version": {
+                  "resource": {
+                    "registry": "github-release",
+                    "artifact": "version.txt"
+                  },
+                  "parser": {
+                    "type": "text",
+                    "trim": true
+                  }
+                },
+                "checksum": {
+                  "resource": {
+                    "registry": "github-release-metadata"
+                  },
+                  "parser": {
+                    "type": "github-release-assets"
+                  }
+                }
+              }
+            },
+            "linux-amd64": {
+              "artifact": "mihomo-linux-amd64-v2-{version}.gz",
+              "version": {
+                "type": "remote",
+                "fallback": {
+                  "version": "alpha-e911985"
+                },
+                "version": {
+                  "resource": {
+                    "registry": "github-release",
+                    "artifact": "version.txt"
+                  },
+                  "parser": {
+                    "type": "text",
+                    "trim": true
+                  }
+                },
+                "checksum": {
+                  "resource": {
+                    "registry": "github-release-metadata"
+                  },
+                  "parser": {
+                    "type": "github-release-assets"
+                  }
+                }
+              }
+            },
+            "darwin-x64": {
+              "artifact": "mihomo-darwin-amd64-v2-{version}.gz",
+              "version": {
+                "type": "remote",
+                "fallback": {
+                  "version": "alpha-e911985"
+                },
+                "version": {
+                  "resource": {
+                    "registry": "github-release",
+                    "artifact": "version.txt"
+                  },
+                  "parser": {
+                    "type": "text",
+                    "trim": true
+                  }
+                },
+                "checksum": {
+                  "resource": {
+                    "registry": "github-release-metadata"
+                  },
+                  "parser": {
+                    "type": "github-release-assets"
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "id": "alpha-goamd64-v3",
+          "tag_key": "channel:alpha+cpu:goamd64-v3+toolchain:go-current",
+          "name": "Alpha · GOAMD64 v3",
+          "tags": [
+            {
+              "id": "channel:alpha",
+              "name": "Alpha",
+              "group": "channel"
+            },
+            {
+              "id": "toolchain:go-current",
+              "name": "Current Go",
+              "group": "toolchain",
+              "description": "Built with the current upstream Go toolchain"
+            },
+            {
+              "id": "cpu:goamd64-v3",
+              "name": "GOAMD64 v3",
+              "group": "cpu",
+              "description": "AMD64 v3 instruction set"
+            }
+          ],
+          "source": {
+            "release": "Prerelease-Alpha"
+          },
+          "artifacts": {
+            "windows-x86_64": {
+              "artifact": "mihomo-windows-amd64-v3-{version}.zip",
+              "version": {
+                "type": "remote",
+                "fallback": {
+                  "version": "alpha-e911985"
+                },
+                "version": {
+                  "resource": {
+                    "registry": "github-release",
+                    "artifact": "version.txt"
+                  },
+                  "parser": {
+                    "type": "text",
+                    "trim": true
+                  }
+                },
+                "checksum": {
+                  "resource": {
+                    "registry": "github-release-metadata"
+                  },
+                  "parser": {
+                    "type": "github-release-assets"
+                  }
+                }
+              }
+            },
+            "linux-amd64": {
+              "artifact": "mihomo-linux-amd64-v3-{version}.gz",
+              "version": {
+                "type": "remote",
+                "fallback": {
+                  "version": "alpha-e911985"
+                },
+                "version": {
+                  "resource": {
+                    "registry": "github-release",
+                    "artifact": "version.txt"
+                  },
+                  "parser": {
+                    "type": "text",
+                    "trim": true
+                  }
+                },
+                "checksum": {
+                  "resource": {
+                    "registry": "github-release-metadata"
+                  },
+                  "parser": {
+                    "type": "github-release-assets"
+                  }
+                }
+              }
+            },
+            "darwin-x64": {
+              "artifact": "mihomo-darwin-amd64-v3-{version}.gz",
+              "version": {
+                "type": "remote",
+                "fallback": {
+                  "version": "alpha-e911985"
+                },
+                "version": {
+                  "resource": {
+                    "registry": "github-release",
+                    "artifact": "version.txt"
+                  },
+                  "parser": {
+                    "type": "text",
+                    "trim": true
+                  }
+                },
+                "checksum": {
+                  "resource": {
+                    "registry": "github-release-metadata"
+                  },
+                  "parser": {
+                    "type": "github-release-assets"
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "id": "alpha-arm64",
+          "tag_key": "channel:alpha+cpu:arm64+toolchain:go-current",
+          "name": "Alpha · ARM64",
+          "tags": [
+            {
+              "id": "channel:alpha",
+              "name": "Alpha",
+              "group": "channel"
+            },
+            {
+              "id": "toolchain:go-current",
+              "name": "Current Go",
+              "group": "toolchain",
+              "description": "Built with the current upstream Go toolchain"
+            },
+            {
+              "id": "cpu:arm64",
+              "name": "ARM64",
+              "group": "cpu"
+            }
+          ],
+          "source": {
+            "release": "Prerelease-Alpha"
+          },
+          "artifacts": {
+            "windows-arm64": {
+              "artifact": "mihomo-windows-arm64-{version}.zip",
+              "version": {
+                "type": "remote",
+                "fallback": {
+                  "version": "alpha-e911985"
+                },
+                "version": {
+                  "resource": {
+                    "registry": "github-release",
+                    "artifact": "version.txt"
+                  },
+                  "parser": {
+                    "type": "text",
+                    "trim": true
+                  }
+                },
+                "checksum": {
+                  "resource": {
+                    "registry": "github-release-metadata"
+                  },
+                  "parser": {
+                    "type": "github-release-assets"
+                  }
+                }
+              }
+            },
+            "linux-aarch64": {
+              "artifact": "mihomo-linux-arm64-{version}.gz",
+              "version": {
+                "type": "remote",
+                "fallback": {
+                  "version": "alpha-e911985"
+                },
+                "version": {
+                  "resource": {
+                    "registry": "github-release",
+                    "artifact": "version.txt"
+                  },
+                  "parser": {
+                    "type": "text",
+                    "trim": true
+                  }
+                },
+                "checksum": {
+                  "resource": {
+                    "registry": "github-release-metadata"
+                  },
+                  "parser": {
+                    "type": "github-release-assets"
+                  }
+                }
+              }
+            },
+            "darwin-arm64": {
+              "artifact": "mihomo-darwin-arm64-{version}.gz",
+              "version": {
+                "type": "remote",
+                "fallback": {
+                  "version": "alpha-e911985"
+                },
+                "version": {
+                  "resource": {
+                    "registry": "github-release",
+                    "artifact": "version.txt"
+                  },
+                  "parser": {
+                    "type": "text",
+                    "trim": true
+                  }
+                },
+                "checksum": {
+                  "resource": {
+                    "registry": "github-release-metadata"
+                  },
+                  "parser": {
+                    "type": "github-release-assets"
+                  }
+                }
+              }
+            }
+          }
+        }
+      ]
+    }
+  },
+  "updated_at": "2026-07-18T00:00:00.000Z"
+}

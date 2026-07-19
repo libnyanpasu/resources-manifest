@@ -50,7 +50,8 @@
       },
       "packages/manifest-generator": {
         "dependencies": [
-          "jsr:@std/assert@1"
+          "jsr:@std/assert@1",
+          "npm:ajv@^8.17.0"
         ]
       }
     }
