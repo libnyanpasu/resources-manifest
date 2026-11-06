@@ -143,7 +143,7 @@
 **验证**
 
 - `pnpm check:generated` 的差异只包含 `manifest_version` 的类型与 pattern、`$id`、版本常量。
-- `rg -n '"manifest_version": 2\b' crates packages docs` 退出码 1。
+- `rg -n '"manifest_version": 2\b' crates packages docs/design` 退出码 1。
 - `conformance/compat` 中有关版本格式的用例在 Rust 端通过（运行器在 A2 建好之前，先以 metadata 的单元测试形式覆盖）。
 
 ## S0g — 编译产物侧对新 minor 的宽松解码（行为卡）

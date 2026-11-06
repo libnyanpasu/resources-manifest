@@ -43,6 +43,61 @@ const template = {
   },
 };
 
+for (const schema of [manifestSchema, templateSchema]) {
+  test(`${schema.title} ManifestVersion accepts only canonical major.minor strings`, () => {
+    const validateVersion = ajv.compile({
+      $ref: "#/$defs/ManifestVersion",
+      $defs: schema.$defs,
+    });
+    for (const version of ["2.0", "2.7", "2.10"]) {
+      assert.ok(
+        validateVersion(version),
+        `${version}: ${ajv.errorsText(validateVersion.errors)}`,
+      );
+    }
+    for (const version of ["2.07", "2.1.5", "2", "2.", "3.0", " 2.0", 2]) {
+      assert.equal(validateVersion(version), false, JSON.stringify(version));
+    }
+  });
+}
+
+test("schema IDs are distinct and include the current version path", () => {
+  assert.notEqual(manifestSchema.$id, templateSchema.$id);
+  for (const schema of [manifestSchema, templateSchema]) {
+    assert.ok(schema.$id.includes("/schema/2.0/"), schema.$id);
+  }
+});
+
+test("both schemas reject unknown version parser types", () => {
+  const compiled = structuredClone(referenceManifest);
+  const authored = structuredClone(template);
+  const remoteVersion =
+    compiled.resources.clash_rs.variants[1].artifacts["windows-x86_64"].version;
+  assert.ok(remoteVersion.version);
+  Object.assign(
+    authored.resources.example.variants[0].artifacts["windows-x86_64"],
+    { version: remoteVersion },
+  );
+  const cases = [
+    { validate: validateManifest, fixture: compiled },
+    { validate: validateTemplate, fixture: authored },
+  ];
+  for (const { validate, fixture } of cases) {
+    assert.ok(validate(fixture), ajv.errorsText(validate.errors));
+  }
+
+  remoteVersion.version.parser.type = "future-parser";
+  for (const { validate, fixture } of cases) {
+    assert.equal(validate(fixture), false);
+    assert.ok(
+      validate.errors?.some((error) =>
+        error.instancePath.endsWith("/version/version/parser/type"),
+      ),
+      ajv.errorsText(validate.errors),
+    );
+  }
+});
+
 test("template schema rejects unknown fields in template-only types", () => {
   assert.ok(
     validateTemplate(template),

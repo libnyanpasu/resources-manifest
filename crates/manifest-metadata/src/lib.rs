@@ -377,6 +377,33 @@ pub struct RemoteResourceTemplate {
     pub source: Option<SourceVariables>,
 }
 
+fn deserialize_parser_object<'de, D: Deserializer<'de>>(
+    deserializer: D,
+) -> Result<serde_json::Value, D::Error> {
+    struct ParserObjectVisitor;
+
+    impl<'de> Visitor<'de> for ParserObjectVisitor {
+        type Value = serde_json::Value;
+
+        fn expecting(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+            formatter.write_str("a parser object")
+        }
+
+        fn visit_map<A: MapAccess<'de>>(self, mut map: A) -> Result<Self::Value, A::Error> {
+            let mut fields = serde_json::Map::new();
+            while let Some(key) = map.next_key::<String>()? {
+                if fields.contains_key(&key) {
+                    return Err(serde::de::Error::custom(format!("duplicate field `{key}`")));
+                }
+                fields.insert(key, map.next_value()?);
+            }
+            Ok(serde_json::Value::Object(fields))
+        }
+    }
+
+    deserializer.deserialize_map(ParserObjectVisitor)
+}
+
 /// How to parse a remote version response.
 #[derive(Debug, Clone, PartialEq, Serialize, JsonSchema, Type)]
 #[serde(tag = "type", rename_all = "snake_case")]
@@ -417,7 +444,7 @@ impl<'de> Deserialize<'de> for RemoteVersionParser {
             Regex { pattern: String, group: Option<u32> },
         }
 
-        let value = serde_json::Value::deserialize(deserializer)?;
+        let value = deserialize_parser_object(deserializer)?;
         let parser_type = value
             .get("type")
             .and_then(serde_json::Value::as_str)
@@ -466,7 +493,7 @@ impl<'de> Deserialize<'de> for RemoteChecksumParser {
             GithubReleaseAssets,
         }
 
-        let value = serde_json::Value::deserialize(deserializer)?;
+        let value = deserialize_parser_object(deserializer)?;
         let parser_type = value
             .get("type")
             .and_then(serde_json::Value::as_str)
@@ -1486,6 +1513,80 @@ mod tests {
                 serde_json::from_value::<RemoteChecksumParser>(expected).unwrap(),
                 checksum
             );
+        }
+    }
+
+    #[test]
+    fn parser_decoding_rejects_duplicate_keys_in_compiled_manifests_and_templates() {
+        let compiled = sample_manifest_json();
+        let artifact =
+            compiled["resources"]["mihomo"]["variants"][0]["artifacts"]["windows-x86_64"].clone();
+        let template = json!({
+            "manifest_version": "2.0",
+            "registries": {},
+            "resources": {"mihomo": {
+                "name": "Mihomo", "registry": "github-release", "tags": {},
+                "variants": [{"name": "Alpha", "tags": [], "artifacts": {"windows-x86_64": artifact}}]
+            }}
+        });
+
+        for (context, fixture) in [("compiled", compiled), ("template", template)] {
+            let valid = serde_json::to_string(&fixture).unwrap();
+            if context == "compiled" {
+                serde_json::from_str::<ResourceManifest>(&valid).unwrap();
+            } else {
+                serde_json::from_str::<ResourceManifestTemplate>(&valid).unwrap();
+            }
+            for (kind, cases) in [
+                (
+                    "version",
+                    [
+                        (r#"{"type":"text","type":"future-parser"}"#, "type"),
+                        (r#"{"type":"text","trim":"invalid","trim":true}"#, "trim"),
+                        (r#"{"type":"text","extra":1,"extra":2}"#, "extra"),
+                        (r#"{"type":"future-parser","extra":1,"extra":2}"#, "extra"),
+                    ],
+                ),
+                (
+                    "checksum",
+                    [
+                        (
+                            r#"{"type":"gnu","algorithm":"sha256","type":"future-parser"}"#,
+                            "type",
+                        ),
+                        (
+                            r#"{"type":"gnu","algorithm":"sha1","algorithm":"sha256"}"#,
+                            "algorithm",
+                        ),
+                        (
+                            r#"{"type":"gnu","algorithm":"sha256","extra":1,"extra":2}"#,
+                            "extra",
+                        ),
+                        (r#"{"type":"future-parser","extra":1,"extra":2}"#, "extra"),
+                    ],
+                ),
+            ] {
+                let mut input = fixture.clone();
+                let path = format!(
+                    "/resources/mihomo/variants/0/artifacts/windows-x86_64/version/{kind}/parser"
+                );
+                *input.pointer_mut(&path).unwrap() = json!("parser-placeholder");
+                let input = serde_json::to_string(&input).unwrap();
+                for (parser, field) in cases {
+                    let input = input.replace("\"parser-placeholder\"", parser);
+                    let error = if context == "compiled" {
+                        serde_json::from_str::<ResourceManifest>(&input).unwrap_err()
+                    } else {
+                        serde_json::from_str::<ResourceManifestTemplate>(&input).unwrap_err()
+                    };
+                    assert!(
+                        error
+                            .to_string()
+                            .contains(&format!("duplicate field `{field}`")),
+                        "{context} {kind} {parser}: {error}"
+                    );
+                }
+            }
         }
     }
 
