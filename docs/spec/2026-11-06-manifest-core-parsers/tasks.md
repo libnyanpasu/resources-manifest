@@ -187,6 +187,7 @@
 - [ ] 两个 parser 枚举加 `#[non_exhaustive]`（design §6.6）。
 - [ ] 测试集运行器 `crates/manifest-parser/tests/conformance.rs` 读取 `conformance/parsers/version.json`，以 `name` 作子测试名执行。
 - [ ] 用快照中的全部版本做回归，确认它们都满足 `VersionLabel`。
+- [ ] parser 错误的 `path` 按 design §5.6 使用 `response.body` / `response.headers.<小写名称>`，并为至少一个 header 用例补上 `path`（A5）。
 - [ ] 增加 design §5.5 上限的一致性用例：`body_too_large`、regex pattern 长度与编译大小上限。
 
 **验证**

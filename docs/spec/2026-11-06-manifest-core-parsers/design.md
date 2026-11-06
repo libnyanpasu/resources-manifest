@@ -227,7 +227,7 @@ parser 的输入是 `RemoteResponse { body: &str, headers: &[(String, String)] }
 | `github-release-assets` | 把 HTML 切成资产条目：名称取自下载链接 `href` 的最后一个路径段（百分号解码后），digest 只从同一条目内读取。名称必须完全相等；没有匹配报 `not_found`；匹配条目没有 digest 报 `digest_missing`；同名条目 digest 冲突报 `ambiguous` |
 | `header`（新增）        | `{ type: "header", name, algorithm, encoding: "hex" \| "base64" }`：读取指定的响应头。没有这个头报 `not_found`；同名头出现多次且值不同报 `ambiguous`；`base64` 先解码再转成小写 hex；长度必须等于该算法的长度                    |
 
-header 的 base64 非法时报 `parser.invalid_encoding`；hex 含非十六进制字符或字符数为奇数，以及解码后 digest 长度不等于算法长度，均报 `parser.invalid_checksum`。单个 header 值超过 8 KiB 时优先报 `parser.body_too_large`（`{ limit, actual }`）；此码同时适用于 body 和单个 header 值，不新增错误码。
+header 的 base64 非法时报 `parser.invalid_encoding`；hex 含非十六进制字符或字符数为奇数，以及解码后 digest 长度不等于算法长度，均报 `parser.invalid_checksum`。单个 header 值超过单值上限（默认 8 KiB，§5.5；宿主调低后以生效值为准）时优先报 `parser.body_too_large`（`{ limit, actual }`）；此码同时适用于 body 和单个 header 值，不新增错误码。
 
 version parser 不支持 header，需求出现时再按 minor 增加。
 
@@ -285,7 +285,7 @@ body 和单个 header 值的大小按 UTF-8 字节数计算；超限均报 `pars
 | `verify.`   | `digest_mismatch`                                                                                                          | `{ algorithm, expected, actual }` |
 | `validate.` | 每条不变量一个码                                                                                                           | B1 定义完整码与字段               |
 
-错误都带 `path`，统一使用从输入文档根开始的 dotted locator：以 `.` 连接字段或对象键，数组下标写作 `[<i>]`，例如 `manifest_version`、`resources.<id>.variants[<i>].tags`。宿主传入参数使用同一形式的 `arg.<name>`，例如 `arg.version`；不使用裸参数名或其他路径语法。一致性运行器对声明的 `path` 做精确字符串比较。
+错误都带 `path`，统一使用 dotted locator，根为输入文档、宿主参数 `arg` 或 parser 响应 `response`：以 `.` 连接字段或对象键，数组下标写作 `[<i>]`，例如 `manifest_version`、`resources.<id>.variants[<i>].tags`。宿主传入参数使用同一形式的 `arg.<name>`，例如 `arg.version`；parser 错误使用 `response.body` 或 `response.headers.<小写名称>`；不使用裸参数名或其他路径语法。一致性运行器对声明的 `path` 做精确字符串比较。
 
 消费者按 `code` 与结构字段进行程序化匹配，不解析 `message`。`parser.ambiguous` 的 `name` 是请求的 artifact 文件名或 header 规则中的名称；`groups` 是包含 group 0 的捕获组总数。
 

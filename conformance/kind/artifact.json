@@ -97,5 +97,41 @@
     "expect": {
       "ok": "none"
     }
+  },
+  {
+    "name": "kind.remote.unsupported_parser",
+    "input": {
+      "artifact": "selected-{version}.zip",
+      "version": {
+        "type": "remote",
+        "fallback": {
+          "version": "v1.2.3",
+          "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+        },
+        "version": {
+          "resource": {
+            "registry": "github-release",
+            "artifact": "version.txt"
+          },
+          "parser": {
+            "type": "text",
+            "trim": true
+          }
+        },
+        "checksum": {
+          "resource": {
+            "registry": "github-release",
+            "artifact": "checksums.txt"
+          },
+          "parser": {
+            "type": "future-digest-format",
+            "algorithm": "sha256"
+          }
+        }
+      }
+    },
+    "expect": {
+      "ok": "none"
+    }
   }
 ]

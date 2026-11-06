@@ -24,7 +24,7 @@
 - `input` 总是对象，各目录的形状和操作见下表。
 - `expect` 恰有一个分支：`{ "ok": <结果> }` 或 `{ "error": { "code": "...", "path": "...", "fields": {} } }`。
   `path` 和 `fields` 可省略；省略表示不约束，有值时精确比较。消费者按稳定的 `code` 与结构字段进行程序化匹配，不解析消息文本。运行器比较 `code`、声明的 `fields`（完整对象结构相等）和声明的 `path`（精确字符串相等）。
-  `path` 统一为从输入文档根开始的 dotted locator：以 `.` 连接字段或对象键，数组下标写作 `[<i>]`，如 `manifest_version`、`resources.<id>.variants[<i>].tags`。宿主传入参数使用 `arg.<name>`，例如 `arg.version`，不使用裸参数名或其他路径语法。
+  `path` 统一为从输入文档根开始的 dotted locator：以 `.` 连接字段或对象键，数组下标写作 `[<i>]`，如 `manifest_version`、`resources.<id>.variants[<i>].tags`。宿主传入参数使用 `arg.<name>`，例如 `arg.version`，parser 错误使用 `response.body` 或 `response.headers.<小写名称>`。不使用裸参数名或其他路径语法。
 - 结果按 JSON 结构相等比较，对象键顺序无关，数组顺序保留。不得先 trim、规范化输入或丢弃重复 header。
 - checksum 成功结果是 `ResourceChecksum` 的序列化字符串：`<algorithm>:<lowercase-hex>`。
   SHA-256 digest 使用 64 个十六进制字符（32 字节），base64 输入表示同样的 32 字节。
@@ -49,7 +49,7 @@ checksum 的 `artifact` 是具体文件名，不是带 `{version}` 的模板。
 `checksum.header.invalid_base64` 断言 `parser.invalid_encoding`；
 `checksum.header.invalid_hex` 与 `checksum.header.wrong_length` 断言 `parser.invalid_checksum`。
 非 hex 字符、奇数个 hex 字符和 digest 长度不符都属于 `parser.invalid_checksum`。
-单个 header 值超过 8 KiB 使用 `parser.body_too_large`，同 body 超限一样携带
+单个 header 值超过单值上限（默认 8 KiB，宿主调低后以生效值为准）使用 `parser.body_too_large`，同 body 超限一样携带
 `{ limit, actual }`（UTF-8 字节数）；上限一致性用例由 A2 / A5 补充。
 
 ### Validate 的阶段边界

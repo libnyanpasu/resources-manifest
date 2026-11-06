@@ -310,7 +310,8 @@ minor addition after release.
   match the configured algorithm. Invalid base64 fails with
   `parser.invalid_encoding`; non-hex characters, odd hex length, or a decoded
   digest length that differs from the algorithm fail with
-  `parser.invalid_checksum`. A single header value exceeding 8 KiB fails first
+  `parser.invalid_checksum`. A single header value exceeding the single-header-value limit (default
+  8 KiB, see [Limits](#limits)) fails first
   with `parser.body_too_large`, carrying `{ limit, actual }`; this code applies
   to both the body and a single header value.
 
@@ -536,10 +537,12 @@ is recorded in the protocol decisions in the associated design spec.
 Errors are typed snafu enums with structured fields and a stable `code()` for
 each variant. Across languages, consumers identify errors by `code` and fields,
 not by parsing `message`. Every error carries a `path` using a single dotted
-locator rooted at the input document: join fields or object keys with `.`, and
+locator rooted at the input document, at `arg` for host-supplied arguments,
+or at `response` for parser errors: join fields or object keys with `.`, and
 write array indices as `[<i>]`, for example `manifest_version` or
 `resources.<id>.variants[<i>].tags`. Host-supplied arguments use `arg.<name>`,
-for example `arg.version`, rather than a bare argument name. The conformance
+for example `arg.version`, rather than a bare argument name. Parser errors
+use `response.body` or `response.headers.<lowercase-name>`. The conformance
 runner compares a declared `path` exactly.
 
 For `parser.ambiguous`, `name` is the requested artifact filename or the declared
