@@ -1,0 +1,17 @@
+{
+  "name": "@manifest/downloader",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": "./main.ts",
+  "scripts": {
+    "dev": "node --watch main.ts",
+    "start": "node main.ts"
+  },
+  "dependencies": {
+    "@manifest/metadata": "workspace:*"
+  },
+  "devDependencies": {
+    "ajv": "8.20.0"
+  }
+}

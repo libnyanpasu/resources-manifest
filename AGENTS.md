@@ -1,6 +1,6 @@
 # resources-manifest
 
-资源 manifest（v2）工作区：Rust 定义元类型，Deno 包负责生成与消费。
+资源 manifest（v2）工作区：Rust 定义元类型，Node.js（pnpm workspace）包负责生成与消费。
 
 ## 布局约束
 
@@ -11,30 +11,43 @@
   Schema，写入 `packages/manifest-metadata`。
 - `packages/manifest-metadata`：纯 TypeScript 库，存放生成的类型与 schema
   （`src/types.ts`、`schema/` 均为生成物，禁止手改）。契约层级说明见其 README。
-- `packages/manifest-generator`：生成完整 manifest 的 Deno 可执行包。
-- `packages/manifest-downloader`：解析 manifest 并按需下载的 Deno 可执行包。
+- `packages/manifest-generator`：生成完整 manifest 的 Node.js 可执行包。
+- `packages/manifest-downloader`：解析 manifest 并按需下载的 Node.js 可执行包。
 - `files/`：上游参考实现与设计文档（只读参考，不参与 lint/fmt/test）。
 - `docs/design/`：设计文档。
 
+## 运行时
+
+- Node.js >= 24.2（直接运行 `.ts`：依赖原生 type stripping 与 `import.meta.main`），
+  pnpm 版本由根 `package.json` 的 `packageManager` 锁定。
+- TS 源码只能使用可擦除语法（`erasableSyntaxOnly`：禁止 `enum`、`namespace`、
+  参数属性等），相对导入写 `.ts` 扩展名。
+- 包以 TS 源码形式导出（不构建）；Node 不会对 `node_modules` 内的 `.ts`
+  做 type stripping，因此目前只适合 workspace 内消费，发布前需增加构建步骤。
+
 ## 常用命令
 
-- `deno task generate:schema`：重新生成 TS 类型与 JSON Schema（cargo 运行后 自动
-  `deno fmt` 产物）。
-- `deno task check:generated`：重新生成并与已提交产物比对（`git diff`），用于 CI
+- `pnpm install`：安装依赖。
+- `pnpm generate:schema`：重新生成 TS 类型与 JSON Schema（cargo 运行后自动
+  `prettier --write` 产物）。
+- `pnpm check:generated`：重新生成并与已提交产物比对（`git diff`），用于 CI
   防漂移。
-- `deno task check`：`deno fmt --check` + `deno lint` + `deno check`。
-- `deno task test`：Deno 测试。
+- `pnpm check`：`prettier --check` + `oxlint` + `tsc --noEmit`。
+- `pnpm fmt`：`prettier --write .`。
+- `pnpm test`：`node --test` 运行 `packages/*/*_test.ts`。
 - `cargo test --workspace`、`cargo clippy --workspace --all-targets`：Rust 测试
   与静态检查。
 
 ## 约定
 
-- 根 `deno.json` 声明 Deno workspace（`packages/*`），跨包按包名引用 （如
-  `@manifest/metadata`）。
+- 根 `pnpm-workspace.yaml` 声明 pnpm workspace（`packages/*`），跨包按包名引用
+  （如 `@manifest/metadata`，依赖写 `workspace:*`）。
+- 根 `tsconfig.json` 统一类型检查所有包（`module: nodenext`）。
 - 根 `Cargo.toml` 声明 Cargo workspace（`crates/*`），依赖版本集中在
   `[workspace.dependencies]`。
-- 修改元类型后必须运行 `deno task generate:schema` 并提交生成物；
-  `deno task check:generated` 必须无差异。
+- 修改元类型后必须运行 `pnpm generate:schema` 并提交生成物；
+  `pnpm check:generated` 必须无差异。
 - 真实编译产物 manifest 的测试快照在
   `crates/manifest-metadata/tests/fixtures/resources.json`（受跟踪，因为
-  `files/` 参考目录不入库）；Rust 与 Deno 测试共用这份快照。
+  `files/` 参考目录不入库；`.prettierignore` 排除以保持原样）；Rust 与 Node
+  测试共用这份快照。
