@@ -21,7 +21,8 @@
 - `packages/manifest-downloader`：解析 manifest 并按需下载的 Node.js 可执行包。
 - `conformance/`：语言无关的一致性语料，Rust 运行器位于
   `crates/manifest-parser/tests/conformance.rs`（parser 与全局名称检查）和
-  `crates/manifest-core/tests/conformance.rs`（validate / compat）。
+  `crates/manifest-core/tests/{conformance,resolve,reference_golden}.rs`（validate / compat /
+  kind / resolve）；Node 运行器为 `packages/manifest-runtime/conformance_test.ts`。
 - `files/`：上游参考实现与设计文档（只读参考，不参与 lint/fmt/test）。
 - `docs/design/`：设计文档。
 
@@ -43,7 +44,13 @@
   用于 CI 防漂移。
 - `pnpm check`：`prettier --check` + `oxlint` + `tsc --noEmit`。
 - `pnpm fmt`：`prettier --write .`。
-- `pnpm test`：`node --test` 运行 `packages/*/*_test.ts`。
+- `pnpm build:wasm`：构建 wasm 并生成 runtime glue；需要版本与 Cargo.lock 一致的
+  wasm-bindgen CLI 和 `wasm32-unknown-unknown` target。
+- `pnpm test`：先自动执行 `build:wasm`，再用 `node --test` 运行
+  `packages/*/*_test.ts`（含 runtime 一致性测试），支持首次检出。
+- `pnpm check:conformance`：先构建 wasm，再执行四个 Rust 运行器和 Node 一致性运行器，
+  通过 `MANIFEST_CONFORMANCE_LIST` 记录实际通过的用例名，检查重复、空清单及两端差集；
+  包括 GitHub HTML fixture 的逐资产用例，输出各目录计数。
 - `cargo test --workspace`、`cargo clippy --workspace --all-targets`：Rust 测试
   与静态检查。
 

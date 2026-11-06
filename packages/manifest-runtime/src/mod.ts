@@ -1,8 +1,12 @@
 import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import type {
+  ChecksumAlgorithm,
+  RemoteChecksumParser,
   RemoteVersionParser,
   ResourceArtifactTemplate,
+  ResourceChecksum,
+  ResourceManifest,
   ResourceVariant,
   SupportedPlatform,
 } from "@manifest/metadata";
@@ -13,6 +17,7 @@ import type {
   ResolvedChecksum,
   RuntimeErrorShape,
   VariantSelection,
+  VariantChecksumKind,
   VerifyPolicy,
   VersionOptions,
   VersionPlan as VersionPlanValue,
@@ -34,6 +39,7 @@ interface WasmHandle<Name extends string> {
 
 export interface ValidatedManifest extends WasmHandle<"ValidatedManifest"> {
   readonly newerMinor: boolean;
+  readonly value: ResourceManifest;
 }
 
 export interface SelectedArtifact extends WasmHandle<"SelectedArtifact"> {
@@ -72,6 +78,11 @@ interface WasmExports {
   parseVersion: typeof parseVersion;
   finishChecksum: typeof finishChecksum;
   checkPolicy: typeof checkPolicy;
+  parseChecksum: typeof parseChecksum;
+  listVariantChecksumKinds: typeof listVariantChecksumKinds;
+  renderTemplate: typeof renderTemplate;
+  renderArtifact: typeof renderArtifact;
+  compareDigest: typeof compareDigest;
 }
 
 const wasm = createRequire(import.meta.url)(
@@ -185,4 +196,50 @@ export function checkPolicy(
   policy?: VerifyPolicy | null,
 ): void {
   return call(() => wasm.checkPolicy(kind, policy));
+}
+
+export function parseChecksum(
+  parser: RemoteChecksumParser,
+  response: RemoteResponseInput,
+  artifact: string,
+  limits?: LimitsInput | null,
+): ResourceChecksum {
+  return call(() => wasm.parseChecksum(parser, response, artifact, limits));
+}
+
+export function listVariantChecksumKinds(
+  manifest: ValidatedManifest,
+  resource: string,
+  platform: SupportedPlatform,
+): VariantChecksumKind[] {
+  return call(() =>
+    wasm.listVariantChecksumKinds(manifest, resource, platform),
+  );
+}
+
+export type TemplateValue = { authored: string } | { literal: string };
+
+export function renderTemplate(
+  template: string,
+  values: Record<string, TemplateValue>,
+  path: string,
+  limits?: LimitsInput | null,
+): string {
+  return call(() => wasm.renderTemplate(template, values, path, limits));
+}
+
+export function renderArtifact(
+  selected: SelectedArtifact,
+  options?: Pick<DownloadOptions, "version" | "source"> | null,
+  limits?: LimitsInput | null,
+): { artifact: string; canonical_url: string } {
+  return call(() => wasm.renderArtifact(selected, options, limits));
+}
+
+export function compareDigest(
+  algorithm: ChecksumAlgorithm,
+  expected: string,
+  actual: string,
+): void {
+  return call(() => wasm.compareDigest(algorithm, expected, actual));
 }

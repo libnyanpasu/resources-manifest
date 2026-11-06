@@ -11,6 +11,20 @@ use manifest_parser::{Limits, ParseError, RemoteResponse};
 use serde::Deserialize;
 use serde_json::{Value, json};
 
+fn record_case(name: &str) {
+    use std::io::Write;
+    static LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
+    if let Some(path) = std::env::var_os("MANIFEST_CONFORMANCE_LIST") {
+        let _guard = LOCK.lock().expect("case list lock poisoned");
+        let mut file = std::fs::OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(path)
+            .expect("case list is writable");
+        writeln!(file, "{}", serde_json::to_string(name).unwrap()).unwrap();
+    }
+}
+
 #[derive(Deserialize)]
 struct Case {
     name: String,
@@ -102,6 +116,7 @@ mod validate {
                 false
             };
             if passed {
+                record_case(&case.name);
                 println!("PASS {}", case.name);
             } else {
                 failures.push(format!(
@@ -220,6 +235,7 @@ fn compat() {
             }
             assert_eq!(serialized, normalized, "{}: preserved wire data", case.name);
         }
+        record_case(&case.name);
         println!("PASS {}", case.name);
     }
     println!("compat: {count} cases");
@@ -380,6 +396,7 @@ fn kind() {
     for case in cases {
         let actual = kind_case(case.input);
         assert_eq!(actual, case.expect, "{}", case.name);
+        record_case(&case.name);
         println!("PASS {}", case.name);
     }
     println!("kind: {count} cases");

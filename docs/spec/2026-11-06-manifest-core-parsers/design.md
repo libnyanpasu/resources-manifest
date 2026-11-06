@@ -574,16 +574,23 @@ kind 列表按 manifest 中 variant 顺序，仅列出支持目标平台的 `{ v
 - 值的转换用 `serde-wasm-bindgen`，采用 `Serializer::json_compatible()`。错误一律转成 `{ code, path, message, fields }`。`ValidatedManifest` 以不透明句柄留在 wasm 内。
 - C1 的 JS 边界签名如下；`?` 表示可以省略、传 `undefined` 或 `null`，使用默认值。
 
-  | JS API                                                                                                                                                                              | 返回值                         |
-  | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------ |
-  | `validateManifest(raw: ResourceManifest)`                                                                                                                                           | `ValidatedManifest` 句柄       |
-  | `artifactChecksumKind(artifact: ResourceArtifactTemplate)`                                                                                                                          | `ChecksumKind` 字符串          |
-  | `selectVariant(manifest: ValidatedManifest, resource: string, platform: SupportedPlatform, selection?: { id?: string, tags?: string[] })`                                           | `SelectedArtifact` 句柄        |
-  | `planVersion(selected: SelectedArtifact, options?: { source?: SourceVariables, mirror?: string }, limits?: LimitsInput)`                                                            | `VersionPlan` 句柄             |
-  | `planDownload(selected: SelectedArtifact, options?: { version?: string, source?: SourceVariables, mirror?: string, checksum_mode?: "remote" \| "snapshot" }, limits?: LimitsInput)` | `DownloadPlan` 句柄            |
-  | `parseVersion(parser: RemoteVersionParser, response: RemoteResponseInput, limits?: LimitsInput)`                                                                                    | 经过 VersionLabel 校验的字符串 |
-  | `finishChecksum(plan: DownloadPlan, response: RemoteResponseInput)`                                                                                                                 | `{ checksum, kind: "parsed" }` |
-  | `checkPolicy(kind: ChecksumKind, policy?: VerifyPolicy)`                                                                                                                            | `void`（拒绝时抛出）           |
+  | JS API                                                                                                                                                                              | 返回值                                          |
+  | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------- |
+  | `validateManifest(raw: ResourceManifest)`                                                                                                                                           | `ValidatedManifest` 句柄                        |
+  | `artifactChecksumKind(artifact: ResourceArtifactTemplate)`                                                                                                                          | `ChecksumKind` 字符串                           |
+  | `selectVariant(manifest: ValidatedManifest, resource: string, platform: SupportedPlatform, selection?: { id?: string, tags?: string[] })`                                           | `SelectedArtifact` 句柄                         |
+  | `planVersion(selected: SelectedArtifact, options?: { source?: SourceVariables, mirror?: string }, limits?: LimitsInput)`                                                            | `VersionPlan` 句柄                              |
+  | `planDownload(selected: SelectedArtifact, options?: { version?: string, source?: SourceVariables, mirror?: string, checksum_mode?: "remote" \| "snapshot" }, limits?: LimitsInput)` | `DownloadPlan` 句柄                             |
+  | `parseVersion(parser: RemoteVersionParser, response: RemoteResponseInput, limits?: LimitsInput)`                                                                                    | 经过 VersionLabel 校验的字符串                  |
+  | `finishChecksum(plan: DownloadPlan, response: RemoteResponseInput)`                                                                                                                 | `{ checksum, kind: "parsed" }`                  |
+  | `checkPolicy(kind: ChecksumKind, policy?: VerifyPolicy)`                                                                                                                            | `void`（拒绝时抛出）                            |
+  | `parseChecksum(parser: RemoteChecksumParser, response: RemoteResponseInput, artifact: string, limits?: LimitsInput)`                                                                | `ResourceChecksum` 字符串                       |
+  | `listVariantChecksumKinds(manifest: ValidatedManifest, resource: string, platform: SupportedPlatform)`                                                                              | `VariantChecksumKind[]`                         |
+  | `renderTemplate(template: string, values: Record<string, TemplateValueInput>, path: string, limits?: LimitsInput)`                                                                  | 渲染后的字符串                                  |
+  | `renderArtifact(selected: SelectedArtifact, options?: { version?: string, source?: SourceVariables }, limits?: LimitsInput)`                                                        | `{ artifact, canonical_url }`                   |
+  | `compareDigest(algorithm: ChecksumAlgorithm, expected: string, actual: string)`                                                                                                     | `void`（不一致时抛出 `verify.digest_mismatch`） |
+
+  后五个导出由 C3 为一致性运行器追加（独立 checksum parser、variant kind 列表、模板渲染与 digest 比较）。`TemplateValueInput` 为 `{ authored: string }` 或 `{ literal: string }`。
 
 - `ValidatedManifest.newerMinor` 是只读布尔属性。`SelectedArtifact.value` 返回所选 variant；
   `VersionPlan.value`、`DownloadPlan.value` 返回 core 的 serde 计划投影，wire 字段保持 snake_case。

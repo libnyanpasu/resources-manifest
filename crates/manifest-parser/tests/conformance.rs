@@ -4,6 +4,20 @@ use manifest_parser::{
 use serde::Deserialize;
 use serde_json::Value;
 
+fn record_case(name: &str) {
+    use std::io::Write;
+    static LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
+    if let Some(path) = std::env::var_os("MANIFEST_CONFORMANCE_LIST") {
+        let _guard = LOCK.lock().expect("case list lock poisoned");
+        let mut file = std::fs::OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(path)
+            .expect("case list is writable");
+        writeln!(file, "{}", serde_json::to_string(name).unwrap()).unwrap();
+    }
+}
+
 #[derive(Deserialize)]
 struct Case {
     name: String,
@@ -132,7 +146,10 @@ fn run_cases(corpus: &str, execute: impl Fn(Value) -> Result<Value, ParseError>)
         }
         executed += 1;
         match compare(execute(case.input), &case.expect) {
-            Ok(()) => println!("PASS {}", case.name),
+            Ok(()) => {
+                record_case(&case.name);
+                println!("PASS {}", case.name);
+            }
             Err(error) => failures.push(format!("{}: {error}", case.name)),
         }
     }
@@ -296,6 +313,11 @@ fn github_expanded_assets_fixtures() {
                     assert_eq!(error.fields(), serde_json::json!({ "name": asset.name }));
                 }
             }
+            record_case(&format!(
+                "fixtures.github-expanded-assets.{}.{}",
+                path.file_stem().unwrap().to_str().unwrap(),
+                asset.name
+            ));
         }
     }
     assert!(

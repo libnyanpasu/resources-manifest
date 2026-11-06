@@ -1,3 +1,4 @@
+use std::collections::BTreeMap;
 use std::rc::Rc;
 
 use manifest_core::{ChecksumMode, DownloadOptions, VariantSelection, VersionOptions};
@@ -5,9 +6,9 @@ use manifest_metadata::{
     ManifestVersion, ParseManifestVersionError, ResourceArtifactTemplate, ResourceManifest,
     SourceVariables, SupportedPlatform,
 };
-use manifest_parser::{Limits, RemoteResponse, RemoteVersionParser};
-use serde::Serialize;
+use manifest_parser::{Limits, RemoteChecksumParser, RemoteResponse, RemoteVersionParser};
 use serde::de::DeserializeOwned;
+use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value, json};
 use wasm_bindgen::prelude::*;
 
@@ -100,6 +101,11 @@ pub struct ValidatedManifest {
 
 #[wasm_bindgen]
 impl ValidatedManifest {
+    #[wasm_bindgen(getter)]
+    pub fn value(&self) -> Result<JsValue, JsValue> {
+        to_js(self.inner.manifest())
+    }
+
     #[wasm_bindgen(getter, js_name = newerMinor)]
     #[must_use]
     pub fn newer_minor(&self) -> bool {
@@ -352,4 +358,123 @@ pub fn check_policy(kind: JsValue, policy: JsValue) -> Result<(), JsValue> {
     };
     manifest_core::check_policy(kind, &policy)
         .map_err(|source| error(source.code(), source.path(), &source, source.fields()))
+}
+
+#[wasm_bindgen(js_name = parseChecksum)]
+pub fn parse_checksum(
+    parser: JsValue,
+    response: JsValue,
+    artifact: JsValue,
+    input_limits: JsValue,
+) -> Result<JsValue, JsValue> {
+    let parser: RemoteChecksumParser = from_js(parser, "arg.parser")?;
+    let artifact: String = from_js(artifact, "arg.artifact")?;
+    let mut response = object(response, "response")?;
+    let body: String = required(&mut response, "body", "response")?;
+    let headers: Vec<(String, String)> =
+        field(&mut response, "headers", "response")?.unwrap_or_default();
+    let checksum = parser
+        .parse(
+            &RemoteResponse {
+                body: &body,
+                headers: &headers,
+            },
+            &artifact,
+            &limits(input_limits)?,
+        )
+        .map_err(|source| error(source.code(), &source.path(), &source, source.fields()))?;
+    to_js(&checksum)
+}
+
+#[wasm_bindgen(js_name = listVariantChecksumKinds)]
+pub fn list_variant_checksum_kinds(
+    manifest: &ValidatedManifest,
+    resource: JsValue,
+    platform: JsValue,
+) -> Result<JsValue, JsValue> {
+    let resource: String = from_js(resource, "arg.resource")?;
+    let platform = from_js(platform, "arg.platform")?;
+    let kinds = manifest_core::list_variant_checksum_kinds(&manifest.inner, &resource, platform)
+        .map_err(|source| error(source.code(), &source.path(), &source, source.fields()))?;
+    to_js(&kinds)
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "snake_case")]
+enum WireTemplateValue {
+    Authored(String),
+    Literal(String),
+}
+
+#[wasm_bindgen(js_name = renderTemplate)]
+pub fn render_template(
+    template: JsValue,
+    values: JsValue,
+    path: JsValue,
+    input_limits: JsValue,
+) -> Result<JsValue, JsValue> {
+    let template: String = from_js(template, "arg.template")?;
+    let values: BTreeMap<String, WireTemplateValue> = from_js(values, "arg.values")?;
+    let path: String = from_js(path, "arg.path")?;
+    let values = values
+        .iter()
+        .map(|(key, value)| {
+            let value = match value {
+                WireTemplateValue::Authored(value) => manifest_core::TemplateValue::Authored(value),
+                WireTemplateValue::Literal(value) => manifest_core::TemplateValue::Literal(value),
+            };
+            (key.as_str(), value)
+        })
+        .collect();
+    let rendered =
+        manifest_core::render_template(&template, &values, &path, &limits(input_limits)?)
+            .map_err(|source| error(source.code(), source.path(), &source, source.fields()))?;
+    to_js(&rendered)
+}
+
+#[wasm_bindgen(js_name = renderArtifact)]
+pub fn render_artifact(
+    selected: &SelectedArtifact,
+    input: JsValue,
+    input_limits: JsValue,
+) -> Result<JsValue, JsValue> {
+    let mut input = options(input, "arg.options")?;
+    let version: Option<String> = field(&mut input, "version", "arg.options")?;
+    let source: Option<SourceVariables> = field(&mut input, "source", "arg.options")?;
+    let rendered = selected
+        .selected()
+        .render(
+            manifest_core::ArtifactRenderOptions {
+                version: version.as_deref(),
+                source: source.as_ref(),
+            },
+            &limits(input_limits)?,
+        )
+        .map_err(|source| error(source.code(), source.path(), &source, source.fields()))?;
+    to_js(&json!({ "artifact": rendered.artifact(), "canonical_url": rendered.canonical_url() }))
+}
+
+#[wasm_bindgen(js_name = compareDigest)]
+pub fn compare_digest(
+    algorithm: JsValue,
+    expected: JsValue,
+    actual: JsValue,
+) -> Result<(), JsValue> {
+    let algorithm = from_js(algorithm, "arg.algorithm")?;
+    let expected: String = from_js(expected, "arg.expected")?;
+    let actual: String = from_js(actual, "arg.actual")?;
+    if expected == actual {
+        return Ok(());
+    }
+    let source = manifest_core::VerifyError::CompareDigest {
+        algorithm,
+        expected,
+        actual,
+    };
+    Err(error(
+        source.code(),
+        source.path(),
+        &source,
+        source.fields(),
+    ))
 }
