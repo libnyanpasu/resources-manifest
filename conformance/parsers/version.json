@@ -1,0 +1,125 @@
+[
+  {
+    "name": "version.text.trim_default",
+    "input": {
+      "parser": {
+        "type": "text"
+      },
+      "response": {
+        "body": " \tv1.2.3\r\n",
+        "headers": []
+      }
+    },
+    "expect": {
+      "ok": "v1.2.3"
+    }
+  },
+  {
+    "name": "version.text.trim_false_clean",
+    "input": {
+      "parser": {
+        "type": "text",
+        "trim": false
+      },
+      "response": {
+        "body": "alpha-e911985",
+        "headers": []
+      }
+    },
+    "expect": {
+      "ok": "alpha-e911985"
+    }
+  },
+  {
+    "name": "version.text.trim_false_newline",
+    "input": {
+      "parser": {
+        "type": "text",
+        "trim": false
+      },
+      "response": {
+        "body": "v1.2.3\n",
+        "headers": []
+      }
+    },
+    "expect": {
+      "error": {
+        "code": "parser.invalid_version"
+      }
+    }
+  },
+  {
+    "name": "version.text.query_fragment",
+    "input": {
+      "parser": {
+        "type": "text",
+        "trim": true
+      },
+      "response": {
+        "body": "alpha?x=1#f",
+        "headers": []
+      }
+    },
+    "expect": {
+      "error": {
+        "code": "parser.invalid_version"
+      }
+    }
+  },
+  {
+    "name": "version.regex.capture",
+    "input": {
+      "parser": {
+        "type": "regex",
+        "pattern": "version=([^;]+);"
+      },
+      "response": {
+        "body": "version= v1.2.3 ; version=v9.0.0;",
+        "headers": []
+      }
+    },
+    "expect": {
+      "ok": "v1.2.3"
+    }
+  },
+  {
+    "name": "version.regex.group_zero",
+    "input": {
+      "parser": {
+        "type": "regex",
+        "pattern": "v[0-9]+\\.[0-9]+\\.[0-9]+",
+        "group": 0
+      },
+      "response": {
+        "body": "latest: v1.2.3",
+        "headers": []
+      }
+    },
+    "expect": {
+      "ok": "v1.2.3"
+    }
+  },
+  {
+    "name": "version.regex.group_out_of_range",
+    "input": {
+      "parser": {
+        "type": "regex",
+        "pattern": "version=(v[0-9.]+)",
+        "group": 2
+      },
+      "response": {
+        "body": "version=v1.2.3",
+        "headers": []
+      }
+    },
+    "expect": {
+      "error": {
+        "code": "parser.group_out_of_range",
+        "fields": {
+          "group": 2,
+          "groups": 2
+        }
+      }
+    }
+  }
+]
