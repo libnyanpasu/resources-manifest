@@ -66,7 +66,7 @@ checksum 的 `artifact` 是具体文件名，不是带 `{version}` 的模板。
 ### Resolve 模板用例（B2）
 
 `resolve/templates.json` 由 `crates/manifest-core/tests/resolve.rs` 执行，所有用例
-继续受 parser 运行器的递归全局名称唯一性检查覆盖。B4 将另增 reference golden。
+继续受 parser 运行器的递归全局名称唯一性检查覆盖。B4 reference golden 见下文。
 
 产物用例 input 为 `{ manifest, resource, variant, platform, version?, source?, limits? }`：
 `manifest` 是完整编译产物，或恰为 `{ "snapshot": "resources.json" }`，后者加载
@@ -361,6 +361,129 @@ static 下载按实际选择的 release 取 kind。未知 parser 在 snapshot �
 mirror 用例覆盖缺省、空、匹配、不匹配的 registries，以及 version / checksum 使用独立 registry
 时的限制，确认 B1 只检查 mirror 允许的 registry 作用域。组件替换、url_encoded、URL 安全校验
 与内置变量优先级也精确比较。策略用例穷举四个 kind × 两个 bool 开关的全部 16 种组合。
+
+### Resolve 参考差分（B4）
+
+`resolve/reference-golden.json` 保持上述命名用例格式：input 为
+`{ manifest: { snapshot: "resources.json" }, resource, platform, variant, version }`，
+expect.ok 为 `{ artifact, canonical_url, download_url }`。对象键递归按码点排序，
+数组按 resource、platform 排序，使用 LF 和 Prettier JSON 格式。
+
+参考来源为上游 [libnyanpasu/clash-nyanpasu](https://github.com/libnyanpasu/clash-nyanpasu)
+的 `scripts/resource-template.ts`，本次使用只读 vendored 副本
+`files/scripts/resource-template.ts`。`files/` 未附带可确定上游 commit 的 Git 元数据；
+副本的 SHA-256 为
+`0a02398a48d35465e4cf23e54abf8777d2d0f4b8a5543f033d716c8974069213`。
+参考模块没有运行时 import；使用 Deno `--no-config --no-lock`，避免其
+`files/scripts/deno.jsonc` 中的自动 node_modules 配置产生写入。
+
+参考 resolver 仍要求整数 manifest_version 2；脚本仅在内存副本中适配该字段，
+对应 design V-9，不改快照的 `"2.0"`。每个资源的平台集合取所有 variant 的 artifact
+平台并集，通过参考实现的默认选择解析。static 不传 version，使用 latest；remote
+显式传 fallback.version，缺少默认产物或 fallback 立即失败。未选择 mirror，两个 URL
+必须相等。当前快照覆盖 3 个资源 × 6 个平台，共 18 个默认组合（18 static、0 remote），
+54 项产物名 / URL 字节比较全部一致，无新增偏差。
+
+`crates/manifest-core/tests/reference_golden.rs` 对每项通过公开 API
+`select_variant`（默认选择）和 `plan_download`（无 mirror）比较结果，并检查覆盖集合
+与快照全部 resource/platform 完全相同、无重复，以及 variant 和版本选择一致。
+`resolve.rs` 的 B2 模板运行器明确排除此文件，交给上述独立差分测试执行；
+parser 的全局名称检查仍覆盖它，不跳过任何 golden 条目。
+
+在仓库根目录使用 Git Bash 执行以下完整命令重建。一次性脚本写入临时目录，
+不入库；只读参考无需联网，测试本身也不依赖 Deno 或 `files/`。
+
+```bash
+printf '%s\n' '0a02398a48d35465e4cf23e54abf8777d2d0f4b8a5543f033d716c8974069213  files/scripts/resource-template.ts' | sha256sum --check
+b4_scratch="$(mktemp -d)"
+cat > "$b4_scratch/generate.ts" <<'TS'
+const root = new URL(`file:///${Deno.cwd().replaceAll("\\", "/")}/`);
+const { RESOURCE_MANIFEST_VERSION, resolveResourceDownload } = await import(
+  new URL("files/scripts/resource-template.ts", root).href
+);
+const snapshot = JSON.parse(
+  await Deno.readTextFile(
+    "crates/manifest-metadata/tests/fixtures/resources.json",
+  ),
+);
+if (snapshot.manifest_version !== "2.0") {
+  throw new Error("expected snapshot manifest_version 2.0");
+}
+const manifest = { ...snapshot, manifest_version: RESOURCE_MANIFEST_VERSION };
+const cases = [];
+let remote = 0;
+for (const resource of Object.keys(snapshot.resources).sort()) {
+  const definition = snapshot.resources[resource];
+  const platforms = [...new Set<string>(
+    definition.variants.flatMap((variant: { artifacts: object }) =>
+      Object.keys(variant.artifacts)
+    ),
+  )].sort();
+  for (const platform of platforms) {
+    const variant = definition.default_variants[platform];
+    const selected = definition.variants.find(
+      (entry: { id: string }) => entry.id === variant,
+    );
+    const artifact = selected?.artifacts[platform];
+    if (!artifact) throw new Error(`${resource}/${platform}: missing default`);
+    const isRemote = artifact.version.type === "remote";
+    const version = isRemote
+      ? artifact.version.fallback?.version
+      : artifact.version.latest;
+    if (!version) throw new Error(`${resource}/${platform}: missing version`);
+    const result = resolveResourceDownload(manifest, resource, {
+      platform,
+      ...(isRemote ? { version } : {}),
+    });
+    if (result.variant.id !== variant || result.version !== version) {
+      throw new Error(`${resource}/${platform}: unexpected selection`);
+    }
+    if (result.canonical_url !== result.download_url) {
+      throw new Error(`${resource}/${platform}: unexpected mirror`);
+    }
+    cases.push({
+      name: `resolve.reference.${resource}.${platform}`,
+      input: {
+        manifest: { snapshot: "resources.json" },
+        resource,
+        platform,
+        variant,
+        version,
+      },
+      expect: {
+        ok: {
+          artifact: result.artifact,
+          canonical_url: result.canonical_url,
+          download_url: result.download_url,
+        },
+      },
+    });
+    if (isRemote) remote += 1;
+  }
+}
+function sorted(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(sorted);
+  if (value !== null && typeof value === "object") {
+    return Object.fromEntries(
+      Object.entries(value).sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0)
+        .map(([key, entry]) => [key, sorted(entry)]),
+    );
+  }
+  return value;
+}
+await Deno.writeTextFile(
+  "conformance/resolve/reference-golden.json",
+  `${JSON.stringify(sorted(cases), null, 2)}\n`,
+);
+console.log(
+  `${Object.keys(snapshot.resources).length} resources, ${cases.length} entries (${remote} remote, ${cases.length - remote} static)`,
+);
+TS
+deno run --no-config --no-lock \
+  --allow-read=files/scripts/resource-template.ts,crates/manifest-metadata/tests/fixtures/resources.json \
+  --allow-write=conformance/resolve "$b4_scratch/generate.ts"
+pnpm exec prettier --write conformance/resolve/reference-golden.json
+```
 
 ## 来源与参考校验
 

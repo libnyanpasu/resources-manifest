@@ -83,6 +83,12 @@ fn load(directory: &Path, cases: &mut Vec<Case>) {
         .collect();
     paths.sort();
     for path in paths {
+        if path
+            .file_name()
+            .is_some_and(|name| name == "reference-golden.json")
+        {
+            continue;
+        }
         if path.is_dir() {
             load(&path, cases);
         } else if path
