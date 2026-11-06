@@ -29,6 +29,7 @@
       "type": "string"
     }
   },
+  "additionalProperties": false,
   "required": ["manifest_version", "registries", "resources"],
   "$defs": {
     "ManifestVersion": {
@@ -136,6 +137,7 @@
           }
         }
       },
+      "additionalProperties": false,
       "required": ["name", "registry", "tags", "variants"]
     },
     "ResourceTagDefinition": {
@@ -152,6 +154,7 @@
           "type": "string"
         }
       },
+      "additionalProperties": false,
       "required": ["name"]
     },
     "ResourceVariantTemplate": {
@@ -203,6 +206,7 @@
           "additionalProperties": false
         }
       },
+      "additionalProperties": false,
       "required": ["name", "tags", "artifacts"]
     },
     "ResourceArtifactTemplate": {
@@ -374,7 +378,8 @@
             "group": {
               "description": "Capture group containing the version. Defaults to 1. Deserializing\nnegative or fractional values fails, matching the reference\nvalidator's non-negative integer rule.",
               "type": "integer",
-              "minimum": 0
+              "minimum": 0,
+              "maximum": 4294967295
             },
             "type": {
               "type": "string",

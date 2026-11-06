@@ -313,6 +313,7 @@ pub enum RemoteVersionParser {
         /// validator's non-negative integer rule.
         #[serde(skip_serializing_if = "Option::is_none")]
         #[specta(optional)]
+        #[schemars(range(max = 4_294_967_295_u32))]
         group: Option<u32>,
     },
 }
@@ -386,6 +387,7 @@ pub struct ResourceArtifactTemplate {
 
 /// A tag without its identifier, used by the per-resource tag catalog.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema, Type)]
+#[serde(deny_unknown_fields)]
 pub struct ResourceTagDefinition {
     pub name: String,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -411,6 +413,7 @@ pub struct ResourceTag {
 
 /// A variant as authored in the template.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema, Type)]
+#[serde(deny_unknown_fields)]
 pub struct ResourceVariantTemplate {
     /// A stable, human-readable alias. The semantic identity is still the exact
     /// set of tags, exposed as `tag_key` in the compiled manifest.
@@ -550,6 +553,7 @@ pub struct MirrorDefinition {
 
 /// A resource as authored in the template.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema, Type)]
+#[serde(deny_unknown_fields)]
 pub struct ResourceTemplate {
     pub name: String,
     pub registry: String,
@@ -583,6 +587,7 @@ pub struct ResourceDefinition {
 
 /// The authored resource manifest template, input of the compiler.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema, Type)]
+#[serde(deny_unknown_fields)]
 pub struct ResourceManifestTemplate {
     pub manifest_version: ManifestVersion,
     pub registries: BTreeMap<String, RegistryDefinition>,
@@ -767,6 +772,49 @@ mod tests {
             serde_json::from_value(template_json.clone()).expect("deserialize template");
         let serialized = serde_json::to_value(&template).expect("serialize template");
         assert_eq!(serialized, template_json);
+    }
+
+    #[test]
+    fn template_rejects_unknown_fields() {
+        let template_json = json!({
+            "manifest_version": 2,
+            "registries": {},
+            "resources": {
+                "example": {
+                    "name": "Example",
+                    "registry": "example",
+                    "tags": { "stable": { "name": "Stable" } },
+                    "variants": [{
+                        "name": "Stable",
+                        "tags": ["stable"],
+                        "artifacts": {}
+                    }]
+                }
+            }
+        });
+        serde_json::from_value::<ResourceManifestTemplate>(template_json.clone())
+            .expect("deserialize valid template");
+
+        for path in [
+            "",
+            "/resources/example",
+            "/resources/example/variants/0",
+            "/resources/example/tags/stable",
+        ] {
+            let mut invalid = template_json.clone();
+            invalid
+                .pointer_mut(path)
+                .expect("template object exists")
+                .as_object_mut()
+                .expect("template node is an object")
+                .insert("unknown_field".into(), json!(true));
+            let error = serde_json::from_value::<ResourceManifestTemplate>(invalid)
+                .expect_err("unknown template field must be rejected");
+            assert!(
+                error.to_string().contains("unknown field `unknown_field`"),
+                "unexpected error at {path}: {error}"
+            );
+        }
     }
 
     #[test]

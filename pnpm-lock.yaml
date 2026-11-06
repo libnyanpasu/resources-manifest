@@ -199,7 +199,11 @@ importers:
         specifier: 8.20.0
         version: 8.20.0
 
-  packages/manifest-metadata: {}
+  packages/manifest-metadata:
+    devDependencies:
+      ajv:
+        specifier: 8.20.0
+        version: 8.20.0
 
 packages:
 
