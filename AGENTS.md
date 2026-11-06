@@ -10,6 +10,8 @@
 - `crates/manifest-parser`：checksum / parser 的 wire 类型与无 IO 实现，以及
   `Limits`、`RemoteResponse`、`ParseError`；不引入 IO / async 依赖。
   metadata 依赖 parser，禁止反向依赖；`ResourceChecksum` 的实现也位于此 crate。
+- `crates/manifest-core`：编译产物的纯语义校验与 `ValidatedManifest`，依赖 metadata
+  和 parser；不引入 IO / async 依赖，metadata 和 parser 禁止反向依赖 core。
 - `crates/manifest-schema-generator`：从元类型生成 TypeScript 类型定义、版本常量与 JSON
   Schema，写入 `packages/manifest-metadata`。
 - `packages/manifest-metadata`：纯 TypeScript 库，存放生成的类型与 schema
@@ -17,7 +19,8 @@
 - `packages/manifest-generator`：生成完整 manifest 的 Node.js 可执行包。
 - `packages/manifest-downloader`：解析 manifest 并按需下载的 Node.js 可执行包。
 - `conformance/`：语言无关的一致性语料，Rust 运行器位于
-  `crates/manifest-parser/tests/conformance.rs`。
+  `crates/manifest-parser/tests/conformance.rs`（parser 与全局名称检查）和
+  `crates/manifest-core/tests/conformance.rs`（validate / compat）。
 - `files/`：上游参考实现与设计文档（只读参考，不参与 lint/fmt/test）。
 - `docs/design/`：设计文档。
 

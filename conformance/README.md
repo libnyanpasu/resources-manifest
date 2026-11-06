@@ -34,6 +34,9 @@
   所有错误期望都必须声明 `path` 和完整的 `fields`，即使字段对象为空也不省略。消费者按稳定的 `code` 与结构字段进行程序化匹配，不解析消息文本。运行器比较 `code`、声明的 `fields`（完整对象结构相等）和声明的 `path`（精确字符串相等）。
   `path` 统一为从输入文档根开始的 dotted locator：以 `.` 连接字段或对象键，数组下标写作 `[<i>]`，如 `manifest_version`、`resources.<id>.variants[<i>].tags`。宿主传入参数使用 `arg.<name>`，例如 `arg.version`，parser 响应错误使用 `response.body` 或 `response.headers.<小写名称>`，规则错误按输入的 `parser` 对象定位：`parser.invalid_pattern` → `parser.pattern`、`parser.group_out_of_range` → `parser.group`、`resolve.unsupported_parser` → `parser.type`。不使用裸参数名或其他路径语法。
 - 结果按 JSON 结构相等比较，对象键顺序无关，数组顺序保留。不得先 trim、规范化输入或丢弃重复 header。
+  validate 用例可在 `expect.error` 之外声明 `expect.additional_errors` 数组，列出其余所有错误；
+  不增加合成的 aggregate 错误码。运行器把首条与 additional_errors 合并为多重集合，
+  精确比较全部 code、path、fields，错误排列不影响结果，但不会忽略多余、缺失或重复的错误。
 - checksum 成功结果是 `ResourceChecksum` 的序列化字符串：`<algorithm>:<lowercase-hex>`。
   SHA-256 digest 使用 64 个十六进制字符（32 字节），base64 输入表示同样的 32 字节。
 
@@ -195,14 +198,43 @@ A3 再次直接调用只读参考函数，24 个正常路径成功结果与 corp
 
 `validate.manifest.reference_fixture` 的 `input` 内嵌完整的
 [`resources.json`](../crates/manifest-metadata/tests/fixtures/resources.json) 快照副本，
-仅将副本的 `manifest_version` 从当前整数 `2` 改成设计要求的字符串 `"2.0"`。
-其他字段和值均保持 JSON 结构相等；原始 fixture 不变。
-运行器直接消费本文件的 `input`，无需对版本做隐式迁移。
+与当前快照在 JSON 结构上相等；两者均为字符串版本 `"2.0"`。
+运行器直接消费本文件的 `input`，无需对版本做隐式迁移，另有直接加载快照的回归测试。
 
-B1 尚未定义每条 invariant 的完整 `validate.*` 错误码，因此此文件暂时只有这一条正向占位用例。
-B1 必须补齐重复 variant、伪造 `tag_key`、悬空 default、registry / mirror 引用、
-static history、parser 可编译性和模板变量依赖等适用不变量的正反用例，使用届时确定的精确码；
-本卡不预造错误码。
+B1 运行器位于 `crates/manifest-core/tests/conformance.rs`，递归加载 validate / compat
+目录下所有 JSON 文件，不跳过用例。`validate/invariants.json` 包含 55 条用例，
+加上既有快照共 56 条（19 正、37 反），覆盖 design §7.1 的 10 组不变量，满足 G6。
+下表名称均省略 `validate.` 前缀；对应稳定错误码与完整字段见
+[design §5.6](../docs/spec/2026-11-06-manifest-core-parsers/design.md#56-错误码)。
+
+| 不变量 / code 后缀  | 正向用例                                                                    | 反向用例示例                                                                                                                                                                                         |
+| ------------------- | --------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `ids`               | `ids.valid`                                                                 | `ids.invalid_variant`、`ids.duplicate_catalog`、`ids.duplicate_variant_tag`、`ids.duplicate_variant`                                                                                                 |
+| `tag_key`           | `tag_key.canonical`                                                         | `tag_key.forged`、`tag_key.unsorted`                                                                                                                                                                 |
+| `expanded_tag`      | `expanded_tag.consistent`                                                   | `expanded_tag.unknown`、`expanded_tag.mismatched_name` / `group` / `description`                                                                                                                     |
+| `tag_group`         | `tag_group.empty_and_distinct`                                              | `tag_group.conflict`                                                                                                                                                                                 |
+| `tag_combination`   | `tag_combination.distinct`                                                  | `tag_combination.duplicate`                                                                                                                                                                          |
+| `default_variant`   | `default_variant.multiple_configured`、`default_variant.single_inferred`    | `default_variant.missing` / `unknown` / `unsupported_platform`                                                                                                                                       |
+| `reference`         | `reference.existing`                                                        | `reference.resource_registry_missing`、`reference.remote_registries_missing`、`reference.mirror_registry_missing`                                                                                    |
+| `static_history`    | `static_history.latest_not_first`                                           | `static_history.latest_missing`、`static_history.duplicate`                                                                                                                                          |
+| `parser_compile`    | `parser_compile.known`、`parser_compile.unsupported_accepted`               | `parser_compile.pattern` / `group` / `pattern_limit` / `header_name`                                                                                                                                 |
+| `template_variable` | `template_variable.complete`、`template_variable.release_and_remote_scopes` | `template_variable.artifact_missing` / `registry_missing` / `nested_missing` / `release_missing` / `remote_source_missing` / `remote_artifact_missing` / `remote_artifact_absent` / `mirror_missing` |
+
+`all_violations.collected` 同时触发七条跨不变量违规，确认没有提前返回；
+重复 tag 的用例也同时断言重复 ID 与非规范 key。
+`template_variable.cycle_deferred` 确认 B1 只检查来源完整，环由 B2 处理。
+`artifact_alias_complete` / `remote_artifact_alias_complete` 确认 registry 变量可引用
+生成后的 artifact；`artifact_source_dependency_missing` 确认 artifact 模板实际使用的
+source 依赖仍逐项检查，错误定位到包含缺失引用的 source 字段。
+未实例化的 registry 可保留上下文变量。B1 不实际渲染、不验证 URL 或值可得的阶段；
+内置 `version` 计作运行时来源，因此已有 compat 用例保持原样。
+checksum 没有 compile API，B1 只预检 header 名称，其余配置约束已在类型内；
+version 的 compile 使用默认 Limits，错误包为 `validate.parser_compile` 并保留原码和字段。
+manifest wire 不含具名 mirror 引用，mirror 的 registry 允许列表必须引用已知 registry。
+
+运行 `cargo test -p manifest-core --test conformance -- --nocapture` 可打印完整用例名和数量。
+原 `validate/manifest.json` 与 `compat/manifest.json` 的名称、输入和期望均未改动；
+parser 运行器的全局名称检查递归覆盖新增文件。
 
 ### Compat 的结果投影
 
