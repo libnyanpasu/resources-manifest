@@ -205,11 +205,16 @@ pub fn select_variant<'a>(
                     reason: reason.to_owned(),
                 });
             }
-            let key = unique.into_iter().collect::<Vec<_>>().join("+");
             available
                 .iter()
                 .copied()
-                .find(|variant| variant.tag_key == key)
+                .find(|variant| {
+                    variant.tags.len() == unique.len()
+                        && variant
+                            .tags
+                            .iter()
+                            .all(|tag| unique.contains(tag.id.as_str()))
+                })
                 .ok_or_else(|| ResolveError::SelectTags {
                     tags: tags.to_vec(),
                     reason: "not_found".to_owned(),

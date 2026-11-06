@@ -2586,5 +2586,229 @@
         "kind": "authoritative"
       }
     }
+  },
+  {
+    "name": "kind.select.tags_joined_key_rejected",
+    "input": {
+      "operation": "select",
+      "manifest": {
+        "manifest_version": "2.0",
+        "registries": {
+          "main": {
+            "name": "Main",
+            "url_template": "https://origin.test/{artifact}"
+          },
+          "meta": {
+            "name": "Metadata",
+            "url_template": "https://meta.test/{artifact}"
+          }
+        },
+        "mirrors": {},
+        "resources": {
+          "sample": {
+            "name": "Sample",
+            "registry": "main",
+            "tags": [
+              {
+                "id": "stable",
+                "name": "Stable"
+              },
+              {
+                "id": "fast",
+                "name": "Fast"
+              },
+              {
+                "id": "alpha",
+                "name": "Alpha"
+              }
+            ],
+            "default_variants": {
+              "linux-amd64": "stable",
+              "windows-x86_64": "alpha"
+            },
+            "variants": [
+              {
+                "id": "stable",
+                "name": "Stable",
+                "tag_key": "stable",
+                "tags": [
+                  {
+                    "id": "stable",
+                    "name": "Stable"
+                  }
+                ],
+                "artifacts": {
+                  "linux-amd64": {
+                    "artifact": "pkg-{version}.zip",
+                    "version": {
+                      "type": "static",
+                      "latest": "v2",
+                      "releases": [
+                        {
+                          "version": "v2",
+                          "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+                        }
+                      ]
+                    }
+                  }
+                }
+              },
+              {
+                "id": "fast",
+                "name": "Fast",
+                "tag_key": "fast+stable",
+                "tags": [
+                  {
+                    "id": "fast",
+                    "name": "Fast"
+                  },
+                  {
+                    "id": "stable",
+                    "name": "Stable"
+                  }
+                ],
+                "artifacts": {
+                  "linux-amd64": {
+                    "artifact": "pkg-{version}.zip",
+                    "version": {
+                      "type": "remote",
+                      "fallback": {
+                        "version": "v1",
+                        "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+                        "source": {
+                          "release": "fallback-{version}"
+                        }
+                      },
+                      "version": {
+                        "resource": {
+                          "registry": "meta",
+                          "artifact": "version.txt"
+                        },
+                        "parser": {
+                          "type": "text",
+                          "trim": true
+                        }
+                      },
+                      "checksum": {
+                        "resource": {
+                          "registry": "meta",
+                          "artifact": "checksums.txt"
+                        },
+                        "parser": {
+                          "type": "gnu",
+                          "algorithm": "sha256"
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              {
+                "id": "alpha",
+                "name": "Alpha",
+                "tag_key": "alpha",
+                "tags": [
+                  {
+                    "id": "alpha",
+                    "name": "Alpha"
+                  }
+                ],
+                "artifacts": {
+                  "windows-x86_64": {
+                    "artifact": "pkg-{version}.zip",
+                    "version": {
+                      "type": "static",
+                      "latest": "v2",
+                      "releases": [
+                        {
+                          "version": "v2"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "resource": "sample",
+      "platform": "linux-amd64",
+      "tags": ["fast+stable"]
+    },
+    "expect": {
+      "error": {
+        "code": "resolve.tags_rejected",
+        "path": "arg.tags",
+        "fields": {
+          "tags": ["fast+stable"],
+          "reason": "not_found"
+        }
+      }
+    }
+  },
+  {
+    "name": "kind.select.tags_empty_id_rejected",
+    "input": {
+      "operation": "select",
+      "manifest": {
+        "manifest_version": "2.0",
+        "registries": {
+          "main": {
+            "name": "Main",
+            "url_template": "https://origin.test/{artifact}"
+          },
+          "meta": {
+            "name": "Metadata",
+            "url_template": "https://meta.test/{artifact}"
+          }
+        },
+        "mirrors": {},
+        "resources": {
+          "sample": {
+            "name": "Sample",
+            "registry": "main",
+            "tags": [],
+            "default_variants": {},
+            "variants": [
+              {
+                "id": "stable",
+                "name": "Stable",
+                "tag_key": "",
+                "tags": [],
+                "artifacts": {
+                  "linux-amd64": {
+                    "artifact": "pkg-{version}.zip",
+                    "version": {
+                      "type": "static",
+                      "latest": "v2",
+                      "releases": [
+                        {
+                          "version": "v2",
+                          "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "resource": "sample",
+      "platform": "linux-amd64",
+      "tags": [""]
+    },
+    "expect": {
+      "error": {
+        "code": "resolve.tags_rejected",
+        "path": "arg.tags",
+        "fields": {
+          "tags": [""],
+          "reason": "not_found"
+        }
+      }
+    }
   }
 ]

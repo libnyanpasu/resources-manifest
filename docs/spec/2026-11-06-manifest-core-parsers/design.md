@@ -268,22 +268,23 @@ body 和单个 header 值的大小按 UTF-8 字节数计算；超限均报 `pars
 
 错误是带结构字段的类型化枚举（rust.md §7.2，用 snafu）。每个变体有稳定的 `code()`；跨语言只靠 `code` 加结构字段识别，不解析 `message`。
 
-| 前缀        | 码                                                                                                                         | Fields                            |
-| ----------- | -------------------------------------------------------------------------------------------------------------------------- | --------------------------------- |
-| `manifest.` | `unsupported_major`                                                                                                        | `{ major }`                       |
-| `manifest.` | `invalid_version_format`                                                                                                   | `{}`                              |
-| `parser.`   | `body_too_large`                                                                                                           | `{ limit, actual }`               |
-| `parser.`   | `ambiguous`                                                                                                                | `{ name }`                        |
-| `parser.`   | `group_out_of_range`                                                                                                       | `{ group, groups }`               |
-| `parser.`   | `not_found`, `digest_missing`, `invalid_version`, `invalid_checksum`, `invalid_encoding`, `invalid_pattern`                | 结构字段待对应实现卡细化          |
-| `template.` | `unknown_variable`, `cycle`, `depth_exceeded`, `output_too_large`, `invalid_literal`                                       | 见下方 B2 渲染错误表              |
-| `url.`      | `invalid`, `unsupported_scheme`, `forbidden_component`                                                                     | 见下方 B2 渲染错误表              |
-| `select.`   | `unknown_resource`, `unsupported_platform`, `unknown_variant`, `no_exact_tags`, `conflicting_selection`, `default_missing` | 结构字段待对应实现卡细化          |
-| `resolve.`  | `unsupported_parser`                                                                                                       | `{ parser_type }`                 |
-| `resolve.`  | `version_required`, `version_not_in_history`, `mirror_not_allowed`, `unknown_registry`, `unknown_mirror`                   | 结构字段待对应实现卡细化          |
-| `verify.`   | `kind_rejected`                                                                                                            | `{ kind }`                        |
-| `verify.`   | `digest_mismatch`                                                                                                          | `{ algorithm, expected, actual }` |
-| `validate.` | 完整清单见下方 B1 校验错误表                                                                                               | —                                 |
+| 前缀        | 码                                                                                                          | Fields                            |
+| ----------- | ----------------------------------------------------------------------------------------------------------- | --------------------------------- |
+| `manifest.` | `unsupported_major`                                                                                         | `{ major }`                       |
+| `manifest.` | `invalid_version_format`                                                                                    | `{}`                              |
+| `parser.`   | `body_too_large`                                                                                            | `{ limit, actual }`               |
+| `parser.`   | `ambiguous`                                                                                                 | `{ name }`                        |
+| `parser.`   | `group_out_of_range`                                                                                        | `{ group, groups }`               |
+| `parser.`   | `not_found`, `digest_missing`, `invalid_version`, `invalid_checksum`, `invalid_encoding`, `invalid_pattern` | 结构字段待对应实现卡细化          |
+| `template.` | `unknown_variable`, `cycle`, `depth_exceeded`, `output_too_large`, `invalid_literal`                        | 见下方 B2 渲染错误表              |
+| `url.`      | `invalid`, `unsupported_scheme`, `forbidden_component`                                                      | 见下方 B2 渲染错误表              |
+| `resolve.`  | `unknown_resource`, `unsupported_platform`, `variant_not_found`                                             | 见下方 B3 错误表                  |
+| `resolve.`  | `tags_rejected`, `selection_conflict`, `default_variant_missing`                                            | 见下方 B3 错误表                  |
+| `resolve.`  | `unknown_mirror`, `mirror_not_allowed`, `snapshot_unavailable`                                              | 见下方 B3 错误表                  |
+| `resolve.`  | `version_required`, `version_not_in_history`, `unsupported_parser`                                          | 见下方 B3 错误表                  |
+| `verify.`   | `kind_rejected`                                                                                             | `{ kind }`                        |
+| `verify.`   | `digest_mismatch`                                                                                           | `{ algorithm, expected, actual }` |
+| `validate.` | 完整清单见下方 B1 校验错误表                                                                                | —                                 |
 
 错误都带 `path`，统一使用 dotted locator，根为输入文档、宿主参数 `arg` 或 parser 响应 `response`：以 `.` 连接字段或对象键，数组下标写作 `[<i>]`，例如 `manifest_version`、`resources.<id>.variants[<i>].tags`。宿主传入参数使用同一形式的 `arg.<name>`，例如 `arg.version`；parser 响应错误使用 `response.body` 或 `response.headers.<小写名称>`；不使用裸参数名或其他路径语法。一致性运行器对声明的 `path` 做精确字符串比较。
 
