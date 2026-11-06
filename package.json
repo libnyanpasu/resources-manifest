@@ -6,8 +6,8 @@
   "license": "GPL-3.0-only",
   "scripts": {
     "build:wasm": "node scripts/build-wasm.ts",
-    "generate:schema": "cargo run -p manifest-schema-generator && prettier --write packages/manifest-metadata/src/types.ts packages/manifest-metadata/src/version.ts packages/manifest-metadata/schema",
-    "check:generated": "pnpm generate:schema && node scripts/check-generated-clean.ts packages/manifest-metadata",
+    "generate:schema": "cargo run -p manifest-schema-generator && prettier --write packages/manifest-metadata/src/types.ts packages/manifest-metadata/src/version.ts packages/manifest-metadata/schema packages/manifest-runtime/src/types.ts",
+    "check:generated": "pnpm generate:schema && node scripts/check-generated-clean.ts packages/manifest-metadata packages/manifest-runtime/src/types.ts",
     "check": "pnpm fmt:check && pnpm lint && pnpm typecheck",
     "fmt": "prettier --write .",
     "fmt:check": "prettier --check .",

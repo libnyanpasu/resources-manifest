@@ -24,6 +24,14 @@ pub use render::{
     render_template,
 };
 
+#[derive(Debug, Clone, PartialEq, serde::Serialize, specta::Type)]
+pub struct RuntimeErrorShape<Fields> {
+    pub code: String,
+    pub path: String,
+    pub message: String,
+    pub fields: Fields,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[non_exhaustive]
 pub enum ValidateIdsKind {

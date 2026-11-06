@@ -144,9 +144,11 @@ impl From<RenderError> for ResolveError {
     }
 }
 
-#[derive(Debug, Clone, Copy, Default)]
+#[derive(Debug, Clone, Copy, Default, Type)]
 pub struct VariantSelection<'a> {
+    #[specta(optional)]
     pub id: Option<&'a str>,
+    #[specta(optional)]
     pub tags: Option<&'a [String]>,
 }
 
@@ -317,9 +319,11 @@ impl VersionPlan {
     }
 }
 
-#[derive(Debug, Clone, Copy, Default)]
+#[derive(Debug, Clone, Copy, Default, Type)]
 pub struct VersionOptions<'a> {
+    #[specta(optional)]
     pub source: Option<&'a SourceVariables>,
+    #[specta(optional)]
     pub mirror: Option<&'a str>,
 }
 
@@ -334,11 +338,15 @@ pub enum ChecksumMode {
     Snapshot,
 }
 
-#[derive(Debug, Clone, Copy, Default)]
+#[derive(Debug, Clone, Copy, Default, Type)]
 pub struct DownloadOptions<'a> {
+    #[specta(optional)]
     pub version: Option<&'a str>,
+    #[specta(optional)]
     pub source: Option<&'a SourceVariables>,
+    #[specta(optional)]
     pub mirror: Option<&'a str>,
+    #[specta(optional)]
     pub checksum_mode: ChecksumMode,
 }
 

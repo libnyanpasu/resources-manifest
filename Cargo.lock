@@ -262,6 +262,7 @@ dependencies = [
 name = "manifest-schema-generator"
 version = "0.1.0"
 dependencies = [
+ "manifest-core",
  "manifest-metadata",
  "schemars",
  "serde_json",
