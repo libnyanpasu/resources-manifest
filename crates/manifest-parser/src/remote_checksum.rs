@@ -53,14 +53,111 @@ impl RemoteChecksumParser {
             Self::Bsd { algorithm } => parse_list(response.body, artifact, *algorithm, |line| {
                 bsd_digest(line, artifact, *algorithm)
             }),
-            Self::GithubReleaseAssets => Err(ParseError::Unsupported {
-                parser: "github-release-assets".to_owned(),
-            }),
+            Self::GithubReleaseAssets => parse_github_assets(response.body, artifact),
             Self::Unsupported { parser_type } => Err(ParseError::ResolveParser {
                 parser_type: parser_type.clone(),
             }),
         }
     }
+}
+
+fn parse_github_assets(body: &str, artifact: &str) -> Result<ResourceChecksum, ParseError> {
+    let dom = tl::parse(body, tl::ParserOptions::default())
+        .map_err(|_| ParseError::ValidateChecksum {})?;
+    let parser = dom.parser();
+    let mut selected = None;
+    for row in dom.nodes().iter().filter_map(tl::Node::as_tag) {
+        if !row.name().as_utf8_str().eq_ignore_ascii_case("li") {
+            continue;
+        }
+        let Some(digests) = github_entry_digests(row, parser, artifact) else {
+            continue;
+        };
+        if digests.is_empty() {
+            return Err(ParseError::ReadDigest {
+                name: artifact.to_owned(),
+            });
+        }
+        for digest in digests {
+            let checksum =
+                ResourceChecksum::new(digest).map_err(|_| ParseError::ValidateChecksum {})?;
+            if let Some(previous) = &selected
+                && previous != &checksum
+            {
+                return Err(ParseError::SelectChecksum {
+                    name: artifact.to_owned(),
+                });
+            }
+            selected = Some(checksum);
+        }
+    }
+    selected.ok_or_else(|| ParseError::FindChecksum {
+        name: artifact.to_owned(),
+    })
+}
+
+fn github_entry_digests(
+    row: &tl::HTMLTag<'_>,
+    parser: &tl::Parser<'_>,
+    artifact: &str,
+) -> Option<Vec<String>> {
+    let mut pending: Vec<_> = row
+        .children()
+        .top()
+        .as_slice()
+        .iter()
+        .rev()
+        .copied()
+        .collect();
+    let mut matched = false;
+    let mut digests = Vec::new();
+    while let Some(handle) = pending.pop() {
+        let Some(tag) = handle.get(parser).and_then(tl::Node::as_tag) else {
+            continue;
+        };
+        let name = tag.name().as_utf8_str();
+        if ["li", "script", "style"]
+            .iter()
+            .any(|excluded| name.eq_ignore_ascii_case(excluded))
+        {
+            continue;
+        }
+        if name.eq_ignore_ascii_case("a")
+            && let Some(href) = tag.attributes().get("href").flatten()
+        {
+            matched |= github_asset_matches(&href.as_utf8_str(), artifact);
+        }
+        if tag
+            .attributes()
+            .get("class")
+            .flatten()
+            .is_some_and(|classes| {
+                classes
+                    .as_utf8_str()
+                    .split_ascii_whitespace()
+                    .any(|class| class == "Truncate-text")
+            })
+        {
+            digests.push(tag.inner_text(parser).trim().to_owned());
+            continue;
+        }
+        pending.extend(tag.children().top().as_slice().iter().rev().copied());
+    }
+    matched.then_some(digests)
+}
+
+fn github_asset_matches(href: &str, artifact: &str) -> bool {
+    let Some((_, path)) = href.split_once("/releases/download/") else {
+        return false;
+    };
+    let path = path.split(['?', '#']).next().unwrap_or_default();
+    let Some((_, name)) = path.rsplit_once('/') else {
+        return false;
+    };
+    !name.is_empty()
+        && percent_encoding::percent_decode_str(name)
+            .decode_utf8()
+            .is_ok_and(|name| name == artifact)
 }
 
 fn parse_list<'a>(

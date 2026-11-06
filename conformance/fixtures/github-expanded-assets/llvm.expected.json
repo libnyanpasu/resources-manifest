@@ -1,0 +1,246 @@
+[
+  {
+    "name": "bolt-21.1.0.src.tar.xz",
+    "checksum": "sha256:ffd7f4525883d3e6a0e656e86672e93d1740e1d87940621ca9d235802576f688"
+  },
+  {
+    "name": "bolt-21.1.0.src.tar.xz.sig",
+    "checksum": "sha256:9537323f88ef889219bda2503e23fccb0c59142220e4b1ff68a09e10b662a3e0"
+  },
+  {
+    "name": "clang+llvm-21.1.0-aarch64-pc-windows-msvc.tar.xz",
+    "checksum": "sha256:c2869e4173ed18185fa599174faeedab3fdaaf1fd86926d4b62df9bf137bef53"
+  },
+  {
+    "name": "clang+llvm-21.1.0-aarch64-pc-windows-msvc.tar.xz.sig",
+    "checksum": "sha256:e5af47c25e7519716779fa6d7baf27ead395c8bdfb6153ddd0f3d2cdb92bf4fd"
+  },
+  {
+    "name": "clang+llvm-21.1.0-armv7a-linux-gnueabihf.tar.gz",
+    "checksum": "sha256:41fcc7c995b1aa1ba4e9d771796a5997d9582a710fc15e86cc8a881323d8eca8"
+  },
+  {
+    "name": "clang+llvm-21.1.0-armv7a-linux-gnueabihf.tar.gz.sig",
+    "checksum": "sha256:bdb2bc7b728ea018e3db66c660798daf94493859400c6556101704add3562876"
+  },
+  {
+    "name": "clang+llvm-21.1.0-x86_64-pc-windows-msvc.tar.xz",
+    "checksum": "sha256:751aab63f074f041883a5317ad100dbe1e60794693f896df83958824cbc4962a"
+  },
+  {
+    "name": "clang+llvm-21.1.0-x86_64-pc-windows-msvc.tar.xz.sig",
+    "checksum": "sha256:0acef8e21f56b9a5d7b8a74cb42849772e5666760dbf69d44913b1a1a240d71b"
+  },
+  {
+    "name": "clang-21.1.0.src.tar.xz",
+    "checksum": "sha256:4c8d148d4c5931c65116d1a5fdebd9d9579c3d135f36551b1cad53e220986cb2"
+  },
+  {
+    "name": "clang-21.1.0.src.tar.xz.sig",
+    "checksum": "sha256:e0f6c2ff2b0f9ee5924beb61361832065cb507c2a378d1a1f7a208044e1124ad"
+  },
+  {
+    "name": "clang-tools-extra-21.1.0.src.tar.xz",
+    "checksum": "sha256:d9a39be773f551e88b95180de5261e7020553557052f1d332ca99675acd7f42f"
+  },
+  {
+    "name": "clang-tools-extra-21.1.0.src.tar.xz.sig",
+    "checksum": "sha256:3eb87c1ec628c85ecbee973263b24dc03fedb37f58e53304ee7dd1a04d4ddced"
+  },
+  {
+    "name": "clang-tools-extra_doxygen-21.1.0.tar.xz",
+    "checksum": "sha256:226798d92dd8794d74521b770f2c66173d84dc6a38e6e91ba267dab53a73fd5f"
+  },
+  {
+    "name": "clang_doxygen-21.1.0.tar.xz",
+    "checksum": "sha256:7c30cb33847fc29c572558069a5e1be6d593a541e815d35d8841d4abf5988367"
+  },
+  {
+    "name": "cmake-21.1.0.src.tar.xz",
+    "checksum": "sha256:528347c84c3571d9d387b825ef8b07c7ad93e9437243c32173838439c3b6028f"
+  },
+  {
+    "name": "cmake-21.1.0.src.tar.xz.sig",
+    "checksum": "sha256:72f18d39a50ae3ab49d50ac4f7844e729f00fdff46d76e2bcfe96b17695733b0"
+  },
+  {
+    "name": "compiler-rt-21.1.0.src.tar.xz",
+    "checksum": "sha256:b065a2686674d931f2696517965260b1c92ffd18a492efb847fafb54457d690f"
+  },
+  {
+    "name": "compiler-rt-21.1.0.src.tar.xz.sig",
+    "checksum": "sha256:f5c506ccc7293b54a576361970814d9cb02c90f617d6dc7dd29720e968edfa5e"
+  },
+  {
+    "name": "flang-21.1.0.src.tar.xz",
+    "checksum": "sha256:7aac5c745808dc3d626a42854ad96e1d4f1ec9d1b6d21fbdebaf81cb3dc55b4d"
+  },
+  {
+    "name": "flang-21.1.0.src.tar.xz.sig",
+    "checksum": "sha256:502d1578905a3e774a8357e9a4f79f55dda8bb297e33cd2c59a010afc1fe6cc9"
+  },
+  {
+    "name": "flang_doxygen-21.1.0.tar.xz",
+    "checksum": "sha256:c694eec540344c864e449f14083eb6c155c5904972905efeb448a078542a5101"
+  },
+  {
+    "name": "libclc-21.1.0.src.tar.xz",
+    "checksum": "sha256:1fa36516a5bd56fd2bd4e6d327a85b6ee226747a79a17b004fc1a09933376743"
+  },
+  {
+    "name": "libclc-21.1.0.src.tar.xz.sig",
+    "checksum": "sha256:695d568b8df99c0338bea7aa85c5604981b2ecfd506913bc0b452884004461a6"
+  },
+  {
+    "name": "libcxx-21.1.0.src.tar.xz",
+    "checksum": "sha256:16338b4b99d1b3162e20c26819a595a39b3c1376df45088227d6d38f8ca1b835"
+  },
+  {
+    "name": "libcxx-21.1.0.src.tar.xz.sig",
+    "checksum": "sha256:a7c8e87c0e75e001f54adbfb48346d4343bde5d1a89e85cd293333d339c6c4d0"
+  },
+  {
+    "name": "libcxxabi-21.1.0.src.tar.xz",
+    "checksum": "sha256:215943d26f38f9c66565951d25ce17638b7ecbeeb28aa1fa63576c29fbb3407a"
+  },
+  {
+    "name": "libcxxabi-21.1.0.src.tar.xz.sig",
+    "checksum": "sha256:076e6458ab21b7271d8546e732de5f8bcf8dc0b792b6bb15ee57c6465a1ede8b"
+  },
+  {
+    "name": "libunwind-21.1.0.src.tar.xz",
+    "checksum": "sha256:bbee5d791ed693d57ff0668e7f150e43cb9616501fd20a48f96768b16cab2ca2"
+  },
+  {
+    "name": "libunwind-21.1.0.src.tar.xz.sig",
+    "checksum": "sha256:70ba9779716aa31483bc3c78a62894ef01817d3a56cf66e499608eefafde044a"
+  },
+  {
+    "name": "lld-21.1.0.src.tar.xz",
+    "checksum": "sha256:0394c634edb6fa421b3690b042cfd5a42d7f7ab141aebedecb0b1d23ff882422"
+  },
+  {
+    "name": "lld-21.1.0.src.tar.xz.sig",
+    "checksum": "sha256:f0b9e3c9d3259c72348cc77c46271f1c58fc0cf0cb52e0895d989fec0e005b29"
+  },
+  {
+    "name": "lldb-21.1.0.src.tar.xz",
+    "checksum": "sha256:3878c4663fa68a44c0531e87c6567b1281ee60ce552227e23307a3fda170dc85"
+  },
+  {
+    "name": "lldb-21.1.0.src.tar.xz.sig",
+    "checksum": "sha256:f066824f33f1396c3050de8c79d43217c3379ff9a2b570f594b0d7487c6992ba"
+  },
+  {
+    "name": "LLVM-21.1.0-Linux-ARM64.tar.xz",
+    "checksum": "sha256:ffd51d9a583c1f662abc101f3a125d7303b21ad7d4e15773c8ad2c14cf621d5e"
+  },
+  {
+    "name": "LLVM-21.1.0-Linux-ARM64.tar.xz.jsonl",
+    "checksum": "sha256:5bb467f1183de64964af59dbb84630b7befeeb8972ba369a2908c8d70db8cb7e"
+  },
+  {
+    "name": "LLVM-21.1.0-Linux-X64.tar.xz",
+    "checksum": "sha256:4a8c4b07646a4a2eb76ccf1d73522c3e13519745b72ef09d631c09b7577b0ed2"
+  },
+  {
+    "name": "LLVM-21.1.0-Linux-X64.tar.xz.jsonl",
+    "checksum": "sha256:157c725c61e72c73fd0f37af7f3e391316667a1a4793f4462af8b606ac0ad0b8"
+  },
+  {
+    "name": "LLVM-21.1.0-win32.exe",
+    "checksum": "sha256:e149ed75ee6c8cbad225aa723feb40bf11d37c56f94b1b5815de4c61e5f7f3f7"
+  },
+  {
+    "name": "LLVM-21.1.0-win32.exe.sig",
+    "checksum": "sha256:a4319f2c630f48d851be03fdae187ba054033d7fd8ff615bc9cebbae1b69cf5b"
+  },
+  {
+    "name": "LLVM-21.1.0-win64.exe",
+    "checksum": "sha256:e751be8019b7500b100456c915b4b3c339d8d88b81b3aad49796d39f700e7ef3"
+  },
+  {
+    "name": "LLVM-21.1.0-win64.exe.sig",
+    "checksum": "sha256:59da3829cf0a217400f9ecc1fd749723d112f30c9097fbea6f8489fa0859fdf5"
+  },
+  {
+    "name": "LLVM-21.1.0-woa64.exe",
+    "checksum": "sha256:3f181aecc83d0eb40fb966ce18b97a3602871dbff83fc91745e7e0fd6661a7f7"
+  },
+  {
+    "name": "LLVM-21.1.0-woa64.exe.sig",
+    "checksum": "sha256:ea3fdb8a15cae7b93b626d045fd3017de07260600cf66c3f2121fd8d327b7858"
+  },
+  {
+    "name": "llvm-21.1.0.src.tar.xz",
+    "checksum": "sha256:0582ee18cb6e93f4e370cb4aa1e79465ba1100408053e1ff8294cef7fb230bd8"
+  },
+  {
+    "name": "llvm-21.1.0.src.tar.xz.sig",
+    "checksum": "sha256:11d56af376393929434be9287f8fbddb06d0a507c20c81020602fcb3f413e4c1"
+  },
+  {
+    "name": "llvm-project-21.1.0.src.tar.xz",
+    "checksum": "sha256:1672e3efb4c2affd62dbbe12ea898b28a451416c7d95c1bd0190c26cbe878825"
+  },
+  {
+    "name": "llvm-project-21.1.0.src.tar.xz.sig",
+    "checksum": "sha256:fd92e76b43b32b504de22fb948ea4c723aa6bbd44b9fe59aaca90e83a3ffcaed"
+  },
+  {
+    "name": "llvm_doxygen-21.1.0.tar.xz",
+    "checksum": "sha256:41a7d730093d99a272ae2077817847b248ed687b7f0d8a91e0b5d542b41c6de8"
+  },
+  {
+    "name": "mlir-21.1.0.src.tar.xz",
+    "checksum": "sha256:307a41c5e1a25885309383a076781a74ec71a5749dec541417b9f1b6596e50c8"
+  },
+  {
+    "name": "mlir-21.1.0.src.tar.xz.sig",
+    "checksum": "sha256:c281be01abf81abbf8a1089661ec045ef4d9b92cc7ceed3c7a16f21a0372727d"
+  },
+  {
+    "name": "openmp-21.1.0.src.tar.xz",
+    "checksum": "sha256:60d6c4d2019d546aefc029c9b2c4006dc78419dba4cfd0a376ae025be8ff9778"
+  },
+  {
+    "name": "openmp-21.1.0.src.tar.xz.sig",
+    "checksum": "sha256:dd7acf57a1110eb05f7380a734df7710b4bf655b33f5be66bd3c3e30a419aefb"
+  },
+  {
+    "name": "polly-21.1.0.src.tar.xz",
+    "checksum": "sha256:5027686259b94d245c40a566336fdf0c746e85a7541c379a56244ef2a06c7de7"
+  },
+  {
+    "name": "polly-21.1.0.src.tar.xz.sig",
+    "checksum": "sha256:d9ee89dc667497d9cfc2e4beb6b27d0e7feab3b5756780a9e90c15ba2167e9e4"
+  },
+  {
+    "name": "runtimes-21.1.0.src.tar.xz",
+    "checksum": "sha256:d92a197171b3ebef6e35eeb9724c9c7fcfbd369ffba6b052c79711b8adbda69a"
+  },
+  {
+    "name": "runtimes-21.1.0.src.tar.xz.sig",
+    "checksum": "sha256:816566a42a65d83112350eab781820e17726e22f1455c9450010eec3002e79a2"
+  },
+  {
+    "name": "sources.jsonl",
+    "checksum": "sha256:b878e2bdbdffe92354a34c6e3dc19235e02d4c52c6191d8d627c52e8413177ce"
+  },
+  {
+    "name": "test-suite-21.1.0.src.tar.xz",
+    "checksum": "sha256:0eef3c27534dbdf0885951f768588206ee56eb7d331c11e3249d10935e1ddb0c"
+  },
+  {
+    "name": "test-suite-21.1.0.src.tar.xz.sig",
+    "checksum": "sha256:a0ccb08e7b4e2ca3fbd56cc9d692db742f0ceb33da4672a301343687ba4b5cb2"
+  },
+  {
+    "name": "third-party-21.1.0.src.tar.xz",
+    "checksum": "sha256:60b3d8c2d1d8d43a705f467299144d232b8061a10541eaa3b0d6eaa2049a462f"
+  },
+  {
+    "name": "third-party-21.1.0.src.tar.xz.sig",
+    "checksum": "sha256:585934a8b4bee219d2ae222cf463c96ac32ef565ac6955fab617f76dc8d6fff1"
+  }
+]

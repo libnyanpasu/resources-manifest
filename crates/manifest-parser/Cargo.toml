@@ -6,9 +6,11 @@ description = "Resource checksum and remote parser definitions"
 license.workspace = true
 
 [dependencies]
+percent-encoding.workspace = true
 regex.workspace = true
 schemars.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 snafu.workspace = true
 specta.workspace = true
+tl.workspace = true

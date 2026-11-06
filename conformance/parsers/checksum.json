@@ -79,7 +79,11 @@
     },
     "expect": {
       "error": {
-        "code": "parser.digest_missing"
+        "code": "parser.digest_missing",
+        "path": "response.body",
+        "fields": {
+          "name": "selected.zip"
+        }
       }
     }
   },
@@ -1259,6 +1263,406 @@
         "path": "response.body",
         "fields": {
           "parser_type": "future-checksum"
+        }
+      }
+    }
+  },
+  {
+    "name": "checksum.github_release_assets.prefix_only",
+    "input": {
+      "parser": {
+        "type": "github-release-assets"
+      },
+      "response": {
+        "body": "<li class=\"Box-row\"><a href=\"/example/project/releases/download/v1/selected.zip.sig\">selected.zip.sig</a><span class=\"Truncate-text\">sha256:abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789</span></li>",
+        "headers": []
+      },
+      "artifact": "selected.zip"
+    },
+    "expect": {
+      "error": {
+        "code": "parser.not_found",
+        "path": "response.body",
+        "fields": {
+          "name": "selected.zip"
+        }
+      }
+    }
+  },
+  {
+    "name": "checksum.github_release_assets.display_text_is_not_name",
+    "input": {
+      "parser": {
+        "type": "github-release-assets"
+      },
+      "response": {
+        "body": "<li class=\"Box-row\"><a href=\"/example/project/releases/download/v1/other.zip\">selected.zip</a><span class=\"Truncate-text\">sha256:abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789</span></li>",
+        "headers": []
+      },
+      "artifact": "selected.zip"
+    },
+    "expect": {
+      "error": {
+        "code": "parser.not_found",
+        "path": "response.body",
+        "fields": {
+          "name": "selected.zip"
+        }
+      }
+    }
+  },
+  {
+    "name": "checksum.github_release_assets.duplicate_same_digest",
+    "input": {
+      "parser": {
+        "type": "github-release-assets"
+      },
+      "response": {
+        "body": "<li class=\"Box-row\"><a href=\"/example/project/releases/download/v1/selected.zip\">selected.zip</a><span class=\"Truncate-text\">sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef</span></li><li class=\"Box-row\"><a href=\"/example/project/releases/download/v1/selected.zip\">selected.zip</a><span class=\"Truncate-text\">SHA256:0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF</span></li>",
+        "headers": []
+      },
+      "artifact": "selected.zip"
+    },
+    "expect": {
+      "ok": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+    }
+  },
+  {
+    "name": "checksum.github_release_assets.duplicate_conflicting_digest",
+    "input": {
+      "parser": {
+        "type": "github-release-assets"
+      },
+      "response": {
+        "body": "<li class=\"Box-row\"><a href=\"/example/project/releases/download/v1/selected.zip\">selected.zip</a><span class=\"Truncate-text\">sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef</span></li><li class=\"Box-row\"><a href=\"/example/project/releases/download/v1/selected.zip\">selected.zip</a><span class=\"Truncate-text\">sha256:abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789</span></li>",
+        "headers": []
+      },
+      "artifact": "selected.zip"
+    },
+    "expect": {
+      "error": {
+        "code": "parser.ambiguous",
+        "path": "response.body",
+        "fields": {
+          "name": "selected.zip"
+        }
+      }
+    }
+  },
+  {
+    "name": "checksum.github_release_assets.same_entry_conflicting_digest",
+    "input": {
+      "parser": {
+        "type": "github-release-assets"
+      },
+      "response": {
+        "body": "<li class=\"Box-row\"><a href=\"/example/project/releases/download/v1/selected.zip\">selected.zip</a><span class=\"Truncate-text\">sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef</span><span class=\"Truncate-text\">sha256:abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789</span></li>",
+        "headers": []
+      },
+      "artifact": "selected.zip"
+    },
+    "expect": {
+      "error": {
+        "code": "parser.ambiguous",
+        "path": "response.body",
+        "fields": {
+          "name": "selected.zip"
+        }
+      }
+    }
+  },
+  {
+    "name": "checksum.github_release_assets.missing_duplicate_digest",
+    "input": {
+      "parser": {
+        "type": "github-release-assets"
+      },
+      "response": {
+        "body": "<li class=\"Box-row\"><a href=\"/example/project/releases/download/v1/selected.zip\">selected.zip</a><span class=\"Truncate-text\">sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef</span></li><li class=\"Box-row\"><a href=\"/example/project/releases/download/v1/selected.zip\">selected.zip</a></li>",
+        "headers": []
+      },
+      "artifact": "selected.zip"
+    },
+    "expect": {
+      "error": {
+        "code": "parser.digest_missing",
+        "path": "response.body",
+        "fields": {
+          "name": "selected.zip"
+        }
+      }
+    }
+  },
+  {
+    "name": "checksum.github_release_assets.invalid_hex",
+    "input": {
+      "parser": {
+        "type": "github-release-assets"
+      },
+      "response": {
+        "body": "<li class=\"Box-row\"><a href=\"/example/project/releases/download/v1/selected.zip\">selected.zip</a><span class=\"Truncate-text\">sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdeg</span></li>",
+        "headers": []
+      },
+      "artifact": "selected.zip"
+    },
+    "expect": {
+      "error": {
+        "code": "parser.invalid_checksum",
+        "path": "response.body",
+        "fields": {}
+      }
+    }
+  },
+  {
+    "name": "checksum.github_release_assets.wrong_length",
+    "input": {
+      "parser": {
+        "type": "github-release-assets"
+      },
+      "response": {
+        "body": "<li class=\"Box-row\"><a href=\"/example/project/releases/download/v1/selected.zip\">selected.zip</a><span class=\"Truncate-text\">sha256:abcd</span></li>",
+        "headers": []
+      },
+      "artifact": "selected.zip"
+    },
+    "expect": {
+      "error": {
+        "code": "parser.invalid_checksum",
+        "path": "response.body",
+        "fields": {}
+      }
+    }
+  },
+  {
+    "name": "checksum.github_release_assets.unsupported_algorithm",
+    "input": {
+      "parser": {
+        "type": "github-release-assets"
+      },
+      "response": {
+        "body": "<li class=\"Box-row\"><a href=\"/example/project/releases/download/v1/selected.zip\">selected.zip</a><span class=\"Truncate-text\">sha1:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa</span></li>",
+        "headers": []
+      },
+      "artifact": "selected.zip"
+    },
+    "expect": {
+      "error": {
+        "code": "parser.invalid_checksum",
+        "path": "response.body",
+        "fields": {}
+      }
+    }
+  },
+  {
+    "name": "checksum.github_release_assets.empty_digest",
+    "input": {
+      "parser": {
+        "type": "github-release-assets"
+      },
+      "response": {
+        "body": "<li class=\"Box-row\"><a href=\"/example/project/releases/download/v1/selected.zip\">selected.zip</a><span class=\"Truncate-text\"></span></li>",
+        "headers": []
+      },
+      "artifact": "selected.zip"
+    },
+    "expect": {
+      "error": {
+        "code": "parser.invalid_checksum",
+        "path": "response.body",
+        "fields": {}
+      }
+    }
+  },
+  {
+    "name": "checksum.github_release_assets.invalid_neighbor_is_ignored",
+    "input": {
+      "parser": {
+        "type": "github-release-assets"
+      },
+      "response": {
+        "body": "<li class=\"Box-row\"><a href=\"/example/project/releases/download/v1/neighbor.zip\">neighbor.zip</a><span class=\"Truncate-text\">sha256:invalid</span></li><li class=\"Box-row\"><a href=\"/example/project/releases/download/v1/selected.zip\">selected.zip</a><span class=\"Truncate-text\">sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef</span></li>",
+        "headers": []
+      },
+      "artifact": "selected.zip"
+    },
+    "expect": {
+      "ok": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+    }
+  },
+  {
+    "name": "checksum.github_release_assets.outside_entry_digest",
+    "input": {
+      "parser": {
+        "type": "github-release-assets"
+      },
+      "response": {
+        "body": "<li class=\"Box-row\"><a href=\"/example/project/releases/download/v1/selected.zip\">selected.zip</a></li><span class=\"Truncate-text\">sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef</span>",
+        "headers": []
+      },
+      "artifact": "selected.zip"
+    },
+    "expect": {
+      "error": {
+        "code": "parser.digest_missing",
+        "path": "response.body",
+        "fields": {
+          "name": "selected.zip"
+        }
+      }
+    }
+  },
+  {
+    "name": "checksum.github_release_assets.nested_entry_isolation",
+    "input": {
+      "parser": {
+        "type": "github-release-assets"
+      },
+      "response": {
+        "body": "<li class=\"Box-row\"><a href=\"/example/project/releases/download/v1/selected.zip\">selected.zip</a><ul><li class=\"Box-row\"><a href=\"/example/project/releases/download/v1/neighbor.zip\">neighbor.zip</a><span class=\"Truncate-text\">sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef</span></li></ul></li>",
+        "headers": []
+      },
+      "artifact": "selected.zip"
+    },
+    "expect": {
+      "error": {
+        "code": "parser.digest_missing",
+        "path": "response.body",
+        "fields": {
+          "name": "selected.zip"
+        }
+      }
+    }
+  },
+  {
+    "name": "checksum.github_release_assets.digest_before_link",
+    "input": {
+      "parser": {
+        "type": "github-release-assets"
+      },
+      "response": {
+        "body": "<li><span class=\"Truncate-text\">sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef</span><a href=\"/example/project/releases/download/v1/selected.zip\">label</a></li>",
+        "headers": []
+      },
+      "artifact": "selected.zip"
+    },
+    "expect": {
+      "ok": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+    }
+  },
+  {
+    "name": "checksum.github_release_assets.literal_plus",
+    "input": {
+      "parser": {
+        "type": "github-release-assets"
+      },
+      "response": {
+        "body": "<li class=\"Box-row\"><a href=\"/example/project/releases/download/v1/foo+bar.zip\">foo+bar.zip</a><span class=\"Truncate-text\">sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef</span></li>",
+        "headers": []
+      },
+      "artifact": "foo+bar.zip"
+    },
+    "expect": {
+      "ok": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+    }
+  },
+  {
+    "name": "checksum.github_release_assets.plus_is_not_space",
+    "input": {
+      "parser": {
+        "type": "github-release-assets"
+      },
+      "response": {
+        "body": "<li class=\"Box-row\"><a href=\"/example/project/releases/download/v1/foo+bar.zip\">foo+bar.zip</a><span class=\"Truncate-text\">sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef</span></li>",
+        "headers": []
+      },
+      "artifact": "foo bar.zip"
+    },
+    "expect": {
+      "error": {
+        "code": "parser.not_found",
+        "path": "response.body",
+        "fields": {
+          "name": "foo bar.zip"
+        }
+      }
+    }
+  },
+  {
+    "name": "checksum.github_release_assets.percent_decode_once",
+    "input": {
+      "parser": {
+        "type": "github-release-assets"
+      },
+      "response": {
+        "body": "<li class=\"Box-row\"><a href=\"/example/project/releases/download/v1/foo%252Bbar.zip\">foo%252Bbar.zip</a><span class=\"Truncate-text\">sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef</span></li>",
+        "headers": []
+      },
+      "artifact": "foo%2Bbar.zip"
+    },
+    "expect": {
+      "ok": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+    }
+  },
+  {
+    "name": "checksum.github_release_assets.invalid_utf8_name",
+    "input": {
+      "parser": {
+        "type": "github-release-assets"
+      },
+      "response": {
+        "body": "<li class=\"Box-row\"><a href=\"/example/project/releases/download/v1/foo%FF.zip\">foo%FF.zip</a><span class=\"Truncate-text\">sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef</span></li>",
+        "headers": []
+      },
+      "artifact": "selected.zip"
+    },
+    "expect": {
+      "error": {
+        "code": "parser.not_found",
+        "path": "response.body",
+        "fields": {
+          "name": "selected.zip"
+        }
+      }
+    }
+  },
+  {
+    "name": "checksum.github_release_assets.href_query",
+    "input": {
+      "parser": {
+        "type": "github-release-assets"
+      },
+      "response": {
+        "body": "<li class=\"Box-row\"><a href=\"/example/project/releases/download/v1/selected.zip?download=1#asset\">selected.zip?download=1#asset</a><span class=\"Truncate-text\">sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef</span></li>",
+        "headers": []
+      },
+      "artifact": "selected.zip"
+    },
+    "expect": {
+      "ok": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+    }
+  },
+  {
+    "name": "checksum.github_release_assets.body_limit_utf8",
+    "input": {
+      "parser": {
+        "type": "github-release-assets"
+      },
+      "response": {
+        "body": "é",
+        "headers": []
+      },
+      "artifact": "selected.zip",
+      "limits": {
+        "body_bytes": 1
+      }
+    },
+    "expect": {
+      "error": {
+        "code": "parser.body_too_large",
+        "path": "response.body",
+        "fields": {
+          "limit": 1,
+          "actual": 2
         }
       }
     }

@@ -77,11 +77,11 @@ version parser 不支持 header，不把 header helper 当作 version parser 类
 大小写、相同值去重、冲突、缺失及 `response.headers.<小写名称>` 路径由 Rust
 集成测试验证。A5 再在 checksum corpus 中为 header parser 声明路径。
 
-### Checksum 的阶段边界与错误字段（A3）
+### Checksum 的阶段边界与错误字段（A3 / A4）
 
-Rust 运行器读取整个 `parsers/checksum.json`，执行 `checksum`、`gnu`、`bsd`
-和未知 parser type 用例。`github-release-assets` 与 `header` 用例分别留给 A4、A5，
-当前逐项打印 `SKIP <name>: implemented in A4 / A5`，不改动这些用例的名称或期望。
+Rust 运行器读取整个 `parsers/checksum.json`，执行 `checksum`、`gnu`、`bsd`、
+`github-release-assets` 和未知 parser type 用例。只有 `header` 用例留给 A5，
+逐项打印 `SKIP <name>: implemented in A5`。
 查看完整名称与跳过记录可运行 `cargo test -p manifest-parser --test conformance -- --nocapture`。
 
 `RemoteChecksumParser::parse` 在分派 parser 之前检查 body 的 UTF-8 字节数，
@@ -102,11 +102,25 @@ BSD 使用固定分隔符 `<LABEL> (<name>) = <hex>`，名称完全相等，
 列表的 `parser.not_found` 和 `parser.ambiguous` 字段都是 `{ name }`，
 其中 `name` 为调用者请求的 artifact 原值；`checksum` 的 `parser.invalid_checksum`
 字段为 `{}`。上述错误路径统一为 `response.body`。
-GitHub parser 当前返回临时 `ParseError::Unsupported { parser }`，
-code 为 `resolve.unsupported_parser`、fields 为 `{ "parser_type": "github-release-assets" }`；
-A4 将删除该临时错误变体。未知 type 使用现有 `ResolveParser { parser_type }`，
-同样返回 `resolve.unsupported_parser` 和保留原始 tag 的 `{ parser_type }`。
-两种 unsupported 错误路径也是 `response.body`，由独立 Rust 测试固定。
+GitHub parser 使用轻量 `tl` 解析 HTML 的 `li` 资产条目，
+从下载链接 href 的最后路径段百分号解码后精确匹配，不看显示文本，字面 `+` 保持原样。
+digest 读取同一条目内的 `.Truncate-text`，不跨相邻或嵌套的 `li`，也不读脚本和注释。
+未找到名称报 `parser.not_found`；匹配条目没有 digest 报 `parser.digest_missing`；
+同名条目（或同一条目）有不同 digest 报 `parser.ambiguous`，三者 fields 都是 `{ name }`。
+相同 digest 在算法名和 hex 归一化后去重。任意匹配条目没有 digest 都拒绝，
+即使另一个同名条目有 digest。不支持的算法、非法 hex、长度错误或空 digest
+报 `parser.invalid_checksum`，fields 为 `{}`；不校验未匹配条目的 digest。
+这些错误路径均为 `response.body`；body 上限仍在 HTML 解析前检查。
+临时 `ParseError::Unsupported` 已删除；未知 type 继续使用
+`ResolveParser { parser_type }`，返回 `resolve.unsupported_parser` 和保留原始 tag 的
+`{ parser_type }`，路径也是 `response.body`。
+
+真实页面、采集 URL/UTC 时间、独立期望清单及 O-3 体积比较见
+[GitHub fixture README](fixtures/github-expanded-assets/README.md)。
+`github_expanded_assets_fixtures` 自动遍历每份 HTML，按旁边固定的
+`*.expected.json` 检查每个有 digest 的资产，并确认旧页面的无 digest 资产报错；
+覆盖 4 份 fixture、219 个资产（191 个 digest）。百分号编码 fixture 明确标为合成，
+真实 HTML 保持原样。运行 `cargo test -p manifest-parser --test conformance` 即可复核。
 
 A3 再次直接调用只读参考函数，24 个正常路径成功结果与 corpus 相同。
 有意差异为 S0b 已记录的 GNU 同名冲突、BSD 错误算法标签；
@@ -194,8 +208,8 @@ static 用例只有一个 release，且等于 `latest`，不引入历史版本�
   compat manifest 按它的 registry、resource、展开 tag、variant 和 artifact 布局手写缩小。
 - 上游只读参考：`files/scripts/resource-template.ts` 的 `parseRemoteVersion`
   和 `parseRemoteChecksum`（约 1211–1280 行）。`files/` 不入库，运行器不依赖它。
-- parser body、digest 和 GitHub HTML 均为确定性的合成输入；HTML 使用独立 `<li>` 资产条目和
-  download 链接，不声称为抓取的真实页面。A4 再收集真实 expanded-assets fixtures 并记录来源和时间。
+- `parsers/checksum.json` 中的内嵌 GitHub HTML 是确定性的合成输入；A4 的真实页面另存于
+  `fixtures/github-expanded-assets/`，来源、独立期望值和唯一合成 fixture 的说明见其 README。
 
 创建时通过 Node 原生 TS stripping 直接 import 只读参考模块，逐项比较了以下正常路径：
 

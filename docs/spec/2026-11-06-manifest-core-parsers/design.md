@@ -287,6 +287,8 @@ body 和单个 header 值的大小按 UTF-8 字节数计算；超限均报 `pars
 
 错误都带 `path`，统一使用 dotted locator，根为输入文档、宿主参数 `arg` 或 parser 响应 `response`：以 `.` 连接字段或对象键，数组下标写作 `[<i>]`，例如 `manifest_version`、`resources.<id>.variants[<i>].tags`。宿主传入参数使用同一形式的 `arg.<name>`，例如 `arg.version`；parser 错误使用 `response.body` 或 `response.headers.<小写名称>`；不使用裸参数名或其他路径语法。一致性运行器对声明的 `path` 做精确字符串比较。
 
+A4 细化：GitHub 的 `not_found`、`digest_missing`、`ambiguous` 字段均为 `{ name }`，名称为请求的 artifact 原值；`invalid_checksum` 字段为 `{}`，包括不支持的算法、非法 hex 和算法长度错误。上述错误的 `path` 均为 `response.body`。匹配条目没有 digest 时拒绝，即使另有同名条目带 digest；未匹配条目的畸形 digest 不参与校验。
+
 消费者按 `code` 与结构字段进行程序化匹配，不解析 `message`。`parser.ambiguous` 的 `name` 是请求的 artifact 文件名或 header 规则中的名称；`groups` 是包含 group 0 的捕获组总数。
 
 ### 5.7 消费者边界
@@ -457,7 +459,7 @@ body 和单个 header 值的大小按 UTF-8 字节数计算；超限均报 `pars
 | ---- | -------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | O-1  | 默认校验策略                     | **已定（2026-11-06）：** 只接受权威来源（manifest 内嵌、随签名覆盖）的 checksum。经 parser 取得的一律是 `parsed`；从 header 取必须由 parser 规则显式声明；前端感知 kind 并提示（§5.1） |
 | O-2  | manifest 签名                    | **部分已定（2026-11-06）：** 签名只覆盖权威来源，即 manifest 本身。方案（minisign/ed25519 等）与流程另出 spec（D5）                                                                    |
-| O-3  | `github-release-assets` 的解析器 | **待定：** A4 实测后在轻量 tokenizer 与完整 DOM 之间选一个。基于 JSON API 的 parser 不在本 spec 内                                                                                     |
+| O-3  | `github-release-assets` 的解析器 | **已定（A4，2026-11-06）：** 用轻量 tokenizer `tl`；fixture 结果与完整 DOM 相同，wasm 增量约 64 KiB 对 605 KiB（测量见 `conformance/fixtures/github-expanded-assets/README.md`）       |
 | O-4  | Clash Rust alpha 的版本来源      | **待定：** D4 开工前确认 `latest/version.txt` 的实际内容                                                                                                                               |
 | O-5  | 模板侧是否 `deny_unknown_fields` | **推荐：是**（S0c）；编译产物侧保持宽松（§5.4 第 5 条）                                                                                                                                |
 | O-6  | wasm 的消费者                    | **已定（2026-11-06）：** 只有 Node 包，用于构建期胶水脚本下载并校验资源                                                                                                                |

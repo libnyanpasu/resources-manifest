@@ -22,10 +22,10 @@ pub enum ParseError {
     ValidateChecksum {},
     #[snafu(display("checksum for {name:?} was not found"))]
     FindChecksum { name: String },
+    #[snafu(display("artifact {name:?} has no digest"))]
+    ReadDigest { name: String },
     #[snafu(display("artifact {name:?} has conflicting digests"))]
     SelectChecksum { name: String },
-    #[snafu(display("parser {parser:?} is not implemented yet"))]
-    Unsupported { parser: String },
     #[snafu(display("unsupported parser type {parser_type:?}"))]
     ResolveParser { parser_type: String },
     #[snafu(display("header {name:?} was not found"))]
@@ -48,7 +48,8 @@ impl ParseError {
             }
             Self::ValidateVersion { .. } => "parser.invalid_version",
             Self::ValidateChecksum { .. } => "parser.invalid_checksum",
-            Self::ResolveParser { .. } | Self::Unsupported { .. } => "resolve.unsupported_parser",
+            Self::ReadDigest { .. } => "parser.digest_missing",
+            Self::ResolveParser { .. } => "resolve.unsupported_parser",
             Self::SelectHeader { .. } | Self::SelectChecksum { .. } => "parser.ambiguous",
         }
     }
@@ -72,10 +73,10 @@ impl ParseError {
             }
             Self::ValidateGroup { group, groups } => json!({ "group": group, "groups": groups }),
             Self::ResolveParser { parser_type } => json!({ "parser_type": parser_type }),
-            Self::Unsupported { parser } => json!({ "parser_type": parser }),
             Self::FindHeader { name }
             | Self::SelectHeader { name }
             | Self::FindChecksum { name }
+            | Self::ReadDigest { name }
             | Self::SelectChecksum { name } => json!({ "name": name }),
             Self::CompilePattern { .. }
             | Self::FindVersion {}
