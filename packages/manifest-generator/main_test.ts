@@ -8,7 +8,7 @@ const validateTemplate = ajv.compile(templateSchema);
 
 test("template schema accepts an authored template with normalizable checksum", () => {
   const template = {
-    manifest_version: 2,
+    manifest_version: "2.0",
     registries: {
       "github-release": {
         name: "GitHub Releases",

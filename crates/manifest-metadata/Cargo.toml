@@ -9,7 +9,6 @@ license.workspace = true
 indexmap.workspace = true
 schemars = { workspace = true, features = ["indexmap2"] }
 serde.workspace = true
-specta = { workspace = true, features = ["indexmap"] }
-
-[dev-dependencies]
 serde_json.workspace = true
+snafu.workspace = true
+specta = { workspace = true, features = ["indexmap"] }
