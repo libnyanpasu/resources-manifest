@@ -116,7 +116,20 @@ fn check_all(manifest: &ResourceManifest, errors: &mut Errors<'_>) {
                 if releases.is_empty() {
                     releases.push((None, String::new()));
                 }
+                // Releases without source overrides share the base scope, and
+                // errors are deduplicated per (path, variable), so that scope is
+                // inspected once instead of once per release.
+                let mut base_inspected = false;
                 for (release, release_path) in releases {
+                    let overrides = release
+                        .and_then(|release| release.source.as_ref())
+                        .is_some_and(|source| !source.is_empty());
+                    if !overrides {
+                        if base_inspected {
+                            continue;
+                        }
+                        base_inspected = true;
+                    }
                     let mut values = base.clone();
                     if let Some(release) = release {
                         merge(
