@@ -123,6 +123,10 @@ header 名称在 metadata 的 `ResourceVariantTemplate` artifacts 解码边界�
 GNU 和 BSD 按 `\n` 分行，每行只移除一个末尾 `\r`。
 GNU 使用 `<hex>[ \t]+[* ]?<name>[ \t]*`，按完整 artifact 名称匹配，
 保留名称内部的空格、特殊字符，以及 artifact 自身的首尾空格。
+名称起点最多比较两处：无标记时按 artifact 的前导空白长度回退，有 `*` 标记时从其后开始；
+空格标记等价于分隔空白的一部分。全空白名称在分隔空白中线性定位。
+每个候选必须以完整 artifact 开头，余下只能是空格或制表符；不会先 trim 名称或枚举所有出现位置，
+整行解析为线性时间。
 BSD 使用固定分隔符 `<LABEL> (<name>) = <hex>`，名称完全相等，
 算法标签按 ASCII 大小写不敏感比较，不符合配置算法的行直接跳过。
 两种列表都会跳过格式不符、非 hex 或 digest 长度不符的行，即使名称相同；
@@ -130,6 +134,9 @@ BSD 使用固定分隔符 `<LABEL> (<name>) = <hex>`，名称完全相等，
 只有找到格式和长度都正确的候选行后才参与重复值比较；
 归一化后相同的 digest 合并，不同的 digest 报 `parser.ambiguous`。
 没有有效候选行报 `parser.not_found`。
+两种列表均不接受空 artifact 名称：即使输入为 `<hex>  ` 或 `SHA256 () = <hex>`，
+请求 `artifact: ""` 仍返回 `parser.not_found`（`fields: { name: "" }`）；
+仅含空格或制表符的非空名称仍按完整名称匹配。
 
 列表的 `parser.not_found` 和 `parser.ambiguous` 字段都是 `{ name }`，
 其中 `name` 为调用者请求的 artifact 原值；`checksum` 的 `parser.invalid_checksum`
@@ -137,12 +144,29 @@ BSD 使用固定分隔符 `<LABEL> (<name>) = <hex>`，名称完全相等，
 GitHub parser 使用轻量 `tl` 解析 HTML 的 `li` 资产条目，
 下载链接 href 先解码一次 HTML 字符引用，再去掉 query / fragment，
 提取最后路径段并百分号解码一次后精确匹配；不看显示文本，字面 `+` 保持原样。
-支持带分号的十进制 / 十六进制数字引用，以及常见命名引用
-`amp`、`quot`、`apos`、`lt`、`gt`、`nbsp`
-（也接受 `AMP`、`QUOT`、`LT`、`GT`）；未知引用保留原文，不递归解码。
+字符引用采用明确的子集，以控制 wasm 体积，不引入完整 WHATWG 命名引用表。
+支持的引用遵循 [WHATWG 属性值规则](https://html.spec.whatwg.org/multipage/parsing.html#named-character-reference-state)：
+
+- 十进制 `&#N;` 与十六进制 `&#xH;` / `&#XH;` 消费连续有效数字，末尾分号可省略。
+  按 [数字引用规则](https://html.spec.whatwg.org/multipage/parsing.html#numeric-character-reference-end-state)
+  应用 0x80–0x9F 的 C1 替换表（例如 `&#128;` → `€`，表中未列出的值保持原码点）；
+  0、代理码点及大于 U+10FFFF 的值（含整数溢出）替换为 U+FFFD。
+- 带分号的命名引用支持 `amp`、`lt`、`gt`、`quot`、`apos`、`nbsp`，以及 ASCII 标点引用
+  `num`、`sol`、`colon`、`quest`、`equals`、`period`、`plus`、`percnt`、`excl`、`commat`、
+  `lpar`、`rpar`、`lsqb`、`rsqb`、`lowbar`、`Hat`、`grave`、`verbar`、`tilde`；
+  另支持 `AMP`、`LT`、`GT`、`QUOT`。
+- 仅 `amp`、`lt`、`gt`、`quot` 及其上述大写形式支持省略分号，且紧随字符必须不是
+  ASCII 字母、数字或 `=`（属性值结束也可）。因此 `a&amp.zip` 解码为 `a&.zip`，
+  `a&ampx` 和 `a&amp=b` 保持原文。
+
+其余引用（如 `&copy;`）保留原文；单次线性扫描，不递归解码。
+解码后先从完整 href 去掉 query / fragment，再要求路径包含 `/releases/download/`；
+仅在 query / fragment 中出现该片段不算下载链接，`&sol;` 则可改变实际路径边界。
 从根遍历资产条目时剪除 script / style / 注释；digest 读取同一条目内的
 `.Truncate-text`，文本收集同样跳过 li / script / style / 注释。
 若 digest 容器只含被排除的内容，视为当前条目缺少 digest。
+若 `.Truncate-text` 内有效 digest 文本与注释或 script 等被排除内容并列，
+仍读取保留的文本并返回 digest。
 未找到名称报 `parser.not_found`；匹配条目没有 digest 报 `parser.digest_missing`；
 同名条目（或同一条目）有不同 digest 报 `parser.ambiguous`，三者 fields 都是 `{ name }`。
 相同 digest 在算法名和 hex 归一化后去重。任意匹配条目没有 digest 都拒绝，

@@ -1,5 +1,415 @@
 [
   {
+    "name": "checksum.gnu.empty_artifact",
+    "input": {
+      "parser": {
+        "type": "gnu",
+        "algorithm": "sha256"
+      },
+      "response": {
+        "body": "abababababababababababababababababababababababababababababababab  ",
+        "headers": []
+      },
+      "artifact": ""
+    },
+    "expect": {
+      "error": {
+        "code": "parser.not_found",
+        "path": "response.body",
+        "fields": {
+          "name": ""
+        }
+      }
+    }
+  },
+  {
+    "name": "checksum.bsd.empty_artifact",
+    "input": {
+      "parser": {
+        "type": "bsd",
+        "algorithm": "sha256"
+      },
+      "response": {
+        "body": "SHA256 () = abababababababababababababababababababababababababababababababab",
+        "headers": []
+      },
+      "artifact": ""
+    },
+    "expect": {
+      "error": {
+        "code": "parser.not_found",
+        "path": "response.body",
+        "fields": {
+          "name": ""
+        }
+      }
+    }
+  },
+  {
+    "name": "checksum.github_release_assets.digest_with_comment_sibling",
+    "input": {
+      "parser": {
+        "type": "github-release-assets"
+      },
+      "response": {
+        "body": "<li><a href=\"/x/y/releases/download/v1/selected.zip\">asset</a><span class=\"Truncate-text\"><!-- unrelated text -->sha256:abababababababababababababababababababababababababababababababab</span></li>",
+        "headers": []
+      },
+      "artifact": "selected.zip"
+    },
+    "expect": {
+      "ok": "sha256:abababababababababababababababababababababababababababababababab"
+    }
+  },
+  {
+    "name": "checksum.github_release_assets.digest_with_script_sibling",
+    "input": {
+      "parser": {
+        "type": "github-release-assets"
+      },
+      "response": {
+        "body": "<li><a href=\"/x/y/releases/download/v1/selected.zip\">asset</a><span class=\"Truncate-text\"><script>unrelated text</script>sha256:abababababababababababababababababababababababababababababababab</span></li>",
+        "headers": []
+      },
+      "artifact": "selected.zip"
+    },
+    "expect": {
+      "ok": "sha256:abababababababababababababababababababababababababababababababab"
+    }
+  },
+  {
+    "name": "checksum.github_release_assets.href_legacy_amp_without_semicolon",
+    "input": {
+      "parser": {
+        "type": "github-release-assets"
+      },
+      "response": {
+        "body": "<li><a href=\"/x/y/releases/download/v1/a&amp.zip\">asset</a><span class=\"Truncate-text\">sha256:abababababababababababababababababababababababababababababababab</span></li>",
+        "headers": []
+      },
+      "artifact": "a&.zip"
+    },
+    "expect": {
+      "ok": "sha256:abababababababababababababababababababababababababababababababab"
+    }
+  },
+  {
+    "name": "checksum.github_release_assets.href_legacy_alphanumeric_stays_literal",
+    "input": {
+      "parser": {
+        "type": "github-release-assets"
+      },
+      "response": {
+        "body": "<li><a href=\"/x/y/releases/download/v1/a&ampx.zip\">asset</a><span class=\"Truncate-text\">sha256:abababababababababababababababababababababababababababababababab</span></li>",
+        "headers": []
+      },
+      "artifact": "a&ampx.zip"
+    },
+    "expect": {
+      "ok": "sha256:abababababababababababababababababababababababababababababababab"
+    }
+  },
+  {
+    "name": "checksum.github_release_assets.href_legacy_equals_stays_literal",
+    "input": {
+      "parser": {
+        "type": "github-release-assets"
+      },
+      "response": {
+        "body": "<li><a href=\"/x/y/releases/download/v1/a&amp=b.zip\">asset</a><span class=\"Truncate-text\">sha256:abababababababababababababababababababababababababababababababab</span></li>",
+        "headers": []
+      },
+      "artifact": "a&amp=b.zip"
+    },
+    "expect": {
+      "ok": "sha256:abababababababababababababababababababababababababababababababab"
+    }
+  },
+  {
+    "name": "checksum.github_release_assets.href_legacy_uppercase",
+    "input": {
+      "parser": {
+        "type": "github-release-assets"
+      },
+      "response": {
+        "body": "<li><a href=\"/x/y/releases/download/v1/a&AMP.&LT.&GT.&QUOT.zip\">asset</a><span class=\"Truncate-text\">sha256:abababababababababababababababababababababababababababababababab</span></li>",
+        "headers": []
+      },
+      "artifact": "a&.<.>.\".zip"
+    },
+    "expect": {
+      "ok": "sha256:abababababababababababababababababababababababababababababababab"
+    }
+  },
+  {
+    "name": "checksum.github_release_assets.href_legacy_end_of_attribute",
+    "input": {
+      "parser": {
+        "type": "github-release-assets"
+      },
+      "response": {
+        "body": "<li><a href=\"/x/y/releases/download/v1/a&amp\">asset</a><span class=\"Truncate-text\">sha256:abababababababababababababababababababababababababababababababab</span></li>",
+        "headers": []
+      },
+      "artifact": "a&"
+    },
+    "expect": {
+      "ok": "sha256:abababababababababababababababababababababababababababababababab"
+    }
+  },
+  {
+    "name": "checksum.github_release_assets.href_numeric_c1_replacement",
+    "input": {
+      "parser": {
+        "type": "github-release-assets"
+      },
+      "response": {
+        "body": "<li><a href=\"/x/y/releases/download/v1/a&#128;.zip\">asset</a><span class=\"Truncate-text\">sha256:abababababababababababababababababababababababababababababababab</span></li>",
+        "headers": []
+      },
+      "artifact": "a€.zip"
+    },
+    "expect": {
+      "ok": "sha256:abababababababababababababababababababababababababababababababab"
+    }
+  },
+  {
+    "name": "checksum.github_release_assets.href_numeric_c1_table",
+    "input": {
+      "parser": {
+        "type": "github-release-assets"
+      },
+      "response": {
+        "body": "<li><a href=\"/x/y/releases/download/v1/&#128;&#129;&#130;&#131;&#132;&#133;&#134;&#135;&#136;&#137;&#138;&#139;&#140;&#141;&#142;&#143;&#144;&#145;&#146;&#147;&#148;&#149;&#150;&#151;&#152;&#153;&#154;&#155;&#156;&#157;&#158;&#159;.zip\">asset</a><span class=\"Truncate-text\">sha256:abababababababababababababababababababababababababababababababab</span></li>",
+        "headers": []
+      },
+      "artifact": "€‚ƒ„…†‡ˆ‰Š‹ŒŽ‘’“”•–—˜™š›œžŸ.zip"
+    },
+    "expect": {
+      "ok": "sha256:abababababababababababababababababababababababababababababababab"
+    }
+  },
+  {
+    "name": "checksum.github_release_assets.href_numeric_without_semicolon",
+    "input": {
+      "parser": {
+        "type": "github-release-assets"
+      },
+      "response": {
+        "body": "<li><a href=\"/x/y/releases/download/v1/a&#128.&#x2B.&#X2b\">asset</a><span class=\"Truncate-text\">sha256:abababababababababababababababababababababababababababababababab</span></li>",
+        "headers": []
+      },
+      "artifact": "a€.+.+"
+    },
+    "expect": {
+      "ok": "sha256:abababababababababababababababababababababababababababababababab"
+    }
+  },
+  {
+    "name": "checksum.github_release_assets.href_numeric_invalid_codepoints",
+    "input": {
+      "parser": {
+        "type": "github-release-assets"
+      },
+      "response": {
+        "body": "<li><a href=\"/x/y/releases/download/v1/&#0;&#xD800;&#1114112;&#999999999999999999999999999999;\">asset</a><span class=\"Truncate-text\">sha256:abababababababababababababababababababababababababababababababab</span></li>",
+        "headers": []
+      },
+      "artifact": "����"
+    },
+    "expect": {
+      "ok": "sha256:abababababababababababababababababababababababababababababababab"
+    }
+  },
+  {
+    "name": "checksum.github_release_assets.href_named_slash_path_boundaries",
+    "input": {
+      "parser": {
+        "type": "github-release-assets"
+      },
+      "response": {
+        "body": "<li><a href=\"/x&sol;y&sol;releases&sol;download&sol;v1&sol;prefix&sol;selected.zip\">asset</a><span class=\"Truncate-text\">sha256:abababababababababababababababababababababababababababababababab</span></li>",
+        "headers": []
+      },
+      "artifact": "selected.zip"
+    },
+    "expect": {
+      "ok": "sha256:abababababababababababababababababababababababababababababababab"
+    }
+  },
+  {
+    "name": "checksum.github_release_assets.href_unsupported_named_stays_literal",
+    "input": {
+      "parser": {
+        "type": "github-release-assets"
+      },
+      "response": {
+        "body": "<li><a href=\"/x/y/releases/download/v1/a&copy;b.zip\">asset</a><span class=\"Truncate-text\">sha256:abababababababababababababababababababababababababababababababab</span></li>",
+        "headers": []
+      },
+      "artifact": "a&copy;b.zip"
+    },
+    "expect": {
+      "ok": "sha256:abababababababababababababababababababababababababababababababab"
+    }
+  },
+  {
+    "name": "checksum.github_release_assets.href_nonlegacy_without_semicolon_stays_literal",
+    "input": {
+      "parser": {
+        "type": "github-release-assets"
+      },
+      "response": {
+        "body": "<li><a href=\"/x/y/releases/download/v1/a&nbsp.zip\">asset</a><span class=\"Truncate-text\">sha256:abababababababababababababababababababababababababababababababab</span></li>",
+        "headers": []
+      },
+      "artifact": "a&nbsp.zip"
+    },
+    "expect": {
+      "ok": "sha256:abababababababababababababababababababababababababababababababab"
+    }
+  },
+  {
+    "name": "checksum.github_release_assets.href_ascii_punctuation_named",
+    "input": {
+      "parser": {
+        "type": "github-release-assets"
+      },
+      "response": {
+        "body": "<li><a href=\"/x/y/releases/download/v1/&colon;&equals;&period;&plus;&percnt;&excl;&commat;&lpar;&rpar;&lsqb;&rsqb;&lowbar;&Hat;&grave;&verbar;&tilde;.zip\">asset</a><span class=\"Truncate-text\">sha256:abababababababababababababababababababababababababababababababab</span></li>",
+        "headers": []
+      },
+      "artifact": ":=.+%!@()[]_^`|~.zip"
+    },
+    "expect": {
+      "ok": "sha256:abababababababababababababababababababababababababababababababab"
+    }
+  },
+  {
+    "name": "checksum.github_release_assets.href_named_question_boundary",
+    "input": {
+      "parser": {
+        "type": "github-release-assets"
+      },
+      "response": {
+        "body": "<li><a href=\"/x/y/releases/download/v1/selected.zip&quest;ignored\">asset</a><span class=\"Truncate-text\">sha256:abababababababababababababababababababababababababababababababab</span></li>",
+        "headers": []
+      },
+      "artifact": "selected.zip"
+    },
+    "expect": {
+      "ok": "sha256:abababababababababababababababababababababababababababababababab"
+    }
+  },
+  {
+    "name": "checksum.github_release_assets.href_named_number_boundary",
+    "input": {
+      "parser": {
+        "type": "github-release-assets"
+      },
+      "response": {
+        "body": "<li><a href=\"/x/y/releases/download/v1/selected.zip&num;ignored\">asset</a><span class=\"Truncate-text\">sha256:abababababababababababababababababababababababababababababababab</span></li>",
+        "headers": []
+      },
+      "artifact": "selected.zip"
+    },
+    "expect": {
+      "ok": "sha256:abababababababababababababababababababababababababababababababab"
+    }
+  },
+  {
+    "name": "checksum.github_release_assets.download_path_only_in_fragment",
+    "input": {
+      "parser": { "type": "github-release-assets" },
+      "response": {
+        "body": "<li><a href=\"/x/y#ignored/releases/download/v1/selected.zip\">asset</a><span class=\"Truncate-text\">sha256:abababababababababababababababababababababababababababababababab</span></li>",
+        "headers": []
+      },
+      "artifact": "selected.zip"
+    },
+    "expect": {
+      "error": {
+        "code": "parser.not_found",
+        "path": "response.body",
+        "fields": { "name": "selected.zip" }
+      }
+    }
+  },
+  {
+    "name": "checksum.github_release_assets.download_path_only_in_query",
+    "input": {
+      "parser": { "type": "github-release-assets" },
+      "response": {
+        "body": "<li><a href=\"/x/y?q=/releases/download/v1/selected.zip\">asset</a><span class=\"Truncate-text\">sha256:abababababababababababababababababababababababababababababababab</span></li>",
+        "headers": []
+      },
+      "artifact": "selected.zip"
+    },
+    "expect": {
+      "error": {
+        "code": "parser.not_found",
+        "path": "response.body",
+        "fields": { "name": "selected.zip" }
+      }
+    }
+  },
+  {
+    "name": "checksum.gnu.whitespace_only_mixed_suffix",
+    "input": {
+      "parser": { "type": "gnu", "algorithm": "sha256" },
+      "response": {
+        "body": "abababababababababababababababababababababababababababababababab \t  \t",
+        "headers": []
+      },
+      "artifact": "  "
+    },
+    "expect": {
+      "ok": "sha256:abababababababababababababababababababababababababababababababab"
+    }
+  },
+  {
+    "name": "checksum.gnu.whitespace_only_overlapping_name",
+    "input": {
+      "parser": { "type": "gnu", "algorithm": "sha256" },
+      "response": {
+        "body": "abababababababababababababababababababababababababababababababab *   ",
+        "headers": []
+      },
+      "artifact": "  "
+    },
+    "expect": {
+      "ok": "sha256:abababababababababababababababababababababababababababababababab"
+    }
+  },
+  {
+    "name": "checksum.gnu.leading_spaces_with_marker",
+    "input": {
+      "parser": { "type": "gnu", "algorithm": "sha256" },
+      "response": {
+        "body": "abababababababababababababababababababababababababababababababab *  selected.zip \t",
+        "headers": []
+      },
+      "artifact": "  selected.zip"
+    },
+    "expect": {
+      "ok": "sha256:abababababababababababababababababababababababababababababababab"
+    }
+  },
+  {
+    "name": "checksum.gnu.internal_star",
+    "input": {
+      "parser": { "type": "gnu", "algorithm": "sha256" },
+      "response": {
+        "body": "abababababababababababababababababababababababababababababababab  selected*file.zip",
+        "headers": []
+      },
+      "artifact": "selected*file.zip"
+    },
+    "expect": {
+      "ok": "sha256:abababababababababababababababababababababababababababababababab"
+    }
+  },
+  {
     "name": "checksum.checksum.normalized",
     "input": {
       "parser": {

@@ -252,10 +252,10 @@ fn github_digest_text(tag: &tl::HTMLTag<'_>, parser: &tl::Parser<'_>) -> Option<
 
 fn github_asset_matches(href: &str, artifact: &str) -> bool {
     let href = decode_html_attribute(href);
-    let Some((_, path)) = href.split_once("/releases/download/") else {
+    let path = href.split(['?', '#']).next().unwrap_or_default();
+    let Some((_, path)) = path.split_once("/releases/download/") else {
         return false;
     };
-    let path = path.split(['?', '#']).next().unwrap_or_default();
     let Some((_, name)) = path.rsplit_once('/') else {
         return false;
     };
@@ -266,52 +266,128 @@ fn github_asset_matches(href: &str, artifact: &str) -> bool {
 }
 
 fn decode_html_attribute(value: &str) -> String {
-    let mut parts = value.split('&');
     let mut decoded = String::with_capacity(value.len());
-    decoded.push_str(parts.next().unwrap_or_default());
-    for part in parts {
-        if let Some((reference, rest)) = part.split_once(';')
-            && let Some(character) = html_reference(reference)
-        {
+    let mut rest = value;
+    while let Some(start) = rest.find('&') {
+        decoded.push_str(&rest[..start]);
+        rest = &rest[start + 1..];
+        if let Some((character, consumed)) = html_reference(rest) {
             decoded.push(character);
-            decoded.push_str(rest);
+            rest = &rest[consumed..];
         } else {
             decoded.push('&');
-            decoded.push_str(part);
         }
     }
+    decoded.push_str(rest);
     decoded
 }
 
-fn html_reference(reference: &str) -> Option<char> {
-    match reference {
-        "amp" | "AMP" => Some('&'),
-        "quot" | "QUOT" => Some('"'),
-        "apos" => Some('\''),
-        "lt" | "LT" => Some('<'),
-        "gt" | "GT" => Some('>'),
-        "nbsp" => Some('\u{a0}'),
-        _ => {
-            let number = reference.strip_prefix('#')?;
-            let (digits, radix) = number
-                .strip_prefix(['x', 'X'])
-                .map_or((number, 10), |digits| (digits, 16));
-            if digits.is_empty()
-                || !digits.bytes().all(|byte| match radix {
-                    16 => byte.is_ascii_hexdigit(),
-                    _ => byte.is_ascii_digit(),
-                })
-            {
-                return None;
-            }
-            let character = u32::from_str_radix(digits, radix)
-                .ok()
-                .filter(|&value| value != 0)
-                .and_then(char::from_u32)
-                .unwrap_or(char::REPLACEMENT_CHARACTER);
-            Some(character)
+fn html_reference(reference: &str) -> Option<(char, usize)> {
+    if let Some(number) = reference.strip_prefix('#') {
+        let (digits, radix) = number
+            .strip_prefix(['x', 'X'])
+            .map_or((number, 10), |digits| (digits, 16));
+        let mut value = 0_u32;
+        let mut length = 0;
+        for byte in digits.bytes() {
+            let Some(digit) = char::from(byte).to_digit(radix) else {
+                break;
+            };
+            value = value.saturating_mul(radix).saturating_add(digit);
+            length += 1;
+        }
+        if length == 0 {
+            return None;
+        }
+        let consumed = reference.len() - digits.len()
+            + length
+            + usize::from(digits[length..].starts_with(';'));
+        return Some((numeric_html_character(value), consumed));
+    }
+    for (name, character) in [
+        ("amp", '&'),
+        ("AMP", '&'),
+        ("lt", '<'),
+        ("LT", '<'),
+        ("gt", '>'),
+        ("GT", '>'),
+        ("quot", '"'),
+        ("QUOT", '"'),
+        ("apos", '\''),
+        ("nbsp", '\u{a0}'),
+        ("num", '#'),
+        ("sol", '/'),
+        ("colon", ':'),
+        ("quest", '?'),
+        ("equals", '='),
+        ("period", '.'),
+        ("plus", '+'),
+        ("percnt", '%'),
+        ("excl", '!'),
+        ("commat", '@'),
+        ("lpar", '('),
+        ("rpar", ')'),
+        ("lsqb", '['),
+        ("rsqb", ']'),
+        ("lowbar", '_'),
+        ("Hat", '^'),
+        ("grave", '`'),
+        ("verbar", '|'),
+        ("tilde", '~'),
+    ] {
+        let Some(rest) = reference.strip_prefix(name) else {
+            continue;
+        };
+        if rest.starts_with(';') {
+            return Some((character, name.len() + 1));
+        }
+        if matches!(
+            name,
+            "amp" | "AMP" | "lt" | "LT" | "gt" | "GT" | "quot" | "QUOT"
+        ) && !rest
+            .as_bytes()
+            .first()
+            .is_some_and(|byte| byte.is_ascii_alphanumeric() || *byte == b'=')
+        {
+            return Some((character, name.len()));
         }
     }
+    None
+}
+
+fn numeric_html_character(value: u32) -> char {
+    let value = match value {
+        0 => return char::REPLACEMENT_CHARACTER,
+        0x80 => 0x20ac,
+        0x82 => 0x201a,
+        0x83 => 0x0192,
+        0x84 => 0x201e,
+        0x85 => 0x2026,
+        0x86 => 0x2020,
+        0x87 => 0x2021,
+        0x88 => 0x02c6,
+        0x89 => 0x2030,
+        0x8a => 0x0160,
+        0x8b => 0x2039,
+        0x8c => 0x0152,
+        0x8e => 0x017d,
+        0x91 => 0x2018,
+        0x92 => 0x2019,
+        0x93 => 0x201c,
+        0x94 => 0x201d,
+        0x95 => 0x2022,
+        0x96 => 0x2013,
+        0x97 => 0x2014,
+        0x98 => 0x02dc,
+        0x99 => 0x2122,
+        0x9a => 0x0161,
+        0x9b => 0x203a,
+        0x9c => 0x0153,
+        0x9e => 0x017e,
+        0x9f => 0x0178,
+        _ => value,
+    };
+    char::from_u32(value).unwrap_or(char::REPLACEMENT_CHARACTER)
 }
 
 fn parse_list<'a>(
@@ -320,6 +396,11 @@ fn parse_list<'a>(
     algorithm: ChecksumAlgorithm,
     digest_for_line: impl Fn(&'a str) -> Option<&'a str>,
 ) -> Result<ResourceChecksum, ParseError> {
+    if artifact.is_empty() {
+        return Err(ParseError::FindChecksum {
+            name: artifact.to_owned(),
+        });
+    }
     let mut selected = None;
     for line in body.split('\n') {
         let line = line.strip_suffix('\r').unwrap_or(line);
@@ -349,14 +430,22 @@ fn parse_list<'a>(
 
 fn gnu_digest<'a>(line: &'a str, artifact: &str) -> Option<&'a str> {
     let (digest, rest) = line.split_once([' ', '\t'])?;
-    rest.rmatch_indices(artifact)
-        .any(|(start, name)| {
-            let prefix = &rest[..start];
-            let separator = prefix.strip_suffix(['*', ' ']).unwrap_or(prefix);
-            separator.bytes().all(|byte| matches!(byte, b' ' | b'\t'))
-                && rest[start + name.len()..]
-                    .bytes()
-                    .all(|byte| matches!(byte, b' ' | b'\t'))
+    let after_separator = rest.trim_start_matches([' ', '\t']);
+    let separator_len = rest.len() - after_separator.len();
+    let leading_name_space = artifact.len() - artifact.trim_start_matches([' ', '\t']).len();
+    let name_start = if leading_name_space == artifact.len() && after_separator.is_empty() {
+        rest.find(artifact)
+    } else {
+        separator_len.checked_sub(leading_name_space)
+    };
+    let without_marker = name_start.map(|start| &rest[start..]);
+    let with_marker = after_separator.strip_prefix('*');
+    [without_marker, with_marker]
+        .into_iter()
+        .flatten()
+        .any(|name| {
+            name.strip_prefix(artifact)
+                .is_some_and(|suffix| suffix.bytes().all(|byte| matches!(byte, b' ' | b'\t')))
         })
         .then_some(digest)
 }

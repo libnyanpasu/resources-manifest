@@ -392,3 +392,27 @@ fn checksum_default_body_limit_precedes_dispatch() {
         );
     }
 }
+
+#[test]
+fn checksum_gnu_long_line() {
+    let body = format!(
+        "{} {}{}",
+        "ab".repeat(32),
+        " ".repeat(1_000_000),
+        "x".repeat(1_000_000)
+    );
+    let limits = Limits::default();
+    assert!(body.len() < limits.body_bytes());
+    let response = RemoteResponse {
+        body: &body,
+        headers: &[],
+    };
+    let error = RemoteChecksumParser::Gnu {
+        algorithm: manifest_parser::ChecksumAlgorithm::Sha256,
+    }
+    .parse(&response, "x", &limits)
+    .unwrap_err();
+    assert_eq!(error.code(), "parser.not_found");
+    assert_eq!(error.path(), "response.body");
+    assert_eq!(error.fields(), serde_json::json!({ "name": "x" }));
+}
