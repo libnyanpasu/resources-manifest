@@ -12,6 +12,9 @@ const status = execFileSync(
   { encoding: "utf8" },
 );
 if (status.length > 0) {
+  console.error(
+    "Generated files are out of date or untracked; run `pnpm generate:schema` and commit the result:",
+  );
   process.stderr.write(status);
   process.exitCode = 1;
 }
