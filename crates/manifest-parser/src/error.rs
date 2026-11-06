@@ -18,6 +18,14 @@ pub enum ParseError {
     FindVersion {},
     #[snafu(display("version does not satisfy the version label charset"))]
     ValidateVersion {},
+    #[snafu(display("checksum is invalid"))]
+    ValidateChecksum {},
+    #[snafu(display("checksum for {name:?} was not found"))]
+    FindChecksum { name: String },
+    #[snafu(display("artifact {name:?} has conflicting digests"))]
+    SelectChecksum { name: String },
+    #[snafu(display("parser {parser:?} is not implemented yet"))]
+    Unsupported { parser: String },
     #[snafu(display("unsupported parser type {parser_type:?}"))]
     ResolveParser { parser_type: String },
     #[snafu(display("header {name:?} was not found"))]
@@ -35,10 +43,13 @@ impl ParseError {
                 "parser.invalid_pattern"
             }
             Self::ValidateGroup { .. } => "parser.group_out_of_range",
-            Self::FindVersion { .. } | Self::FindHeader { .. } => "parser.not_found",
+            Self::FindVersion { .. } | Self::FindHeader { .. } | Self::FindChecksum { .. } => {
+                "parser.not_found"
+            }
             Self::ValidateVersion { .. } => "parser.invalid_version",
-            Self::ResolveParser { .. } => "resolve.unsupported_parser",
-            Self::SelectHeader { .. } => "parser.ambiguous",
+            Self::ValidateChecksum { .. } => "parser.invalid_checksum",
+            Self::ResolveParser { .. } | Self::Unsupported { .. } => "resolve.unsupported_parser",
+            Self::SelectHeader { .. } | Self::SelectChecksum { .. } => "parser.ambiguous",
         }
     }
 
@@ -61,10 +72,15 @@ impl ParseError {
             }
             Self::ValidateGroup { group, groups } => json!({ "group": group, "groups": groups }),
             Self::ResolveParser { parser_type } => json!({ "parser_type": parser_type }),
-            Self::FindHeader { name } | Self::SelectHeader { name } => json!({ "name": name }),
-            Self::CompilePattern { .. } | Self::FindVersion {} | Self::ValidateVersion {} => {
-                json!({})
-            }
+            Self::Unsupported { parser } => json!({ "parser_type": parser }),
+            Self::FindHeader { name }
+            | Self::SelectHeader { name }
+            | Self::FindChecksum { name }
+            | Self::SelectChecksum { name } => json!({ "name": name }),
+            Self::CompilePattern { .. }
+            | Self::FindVersion {}
+            | Self::ValidateVersion {}
+            | Self::ValidateChecksum {} => json!({}),
         }
     }
 }

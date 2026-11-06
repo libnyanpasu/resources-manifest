@@ -2,8 +2,8 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Deserializer, Serialize};
 use specta::Type;
 
-use crate::ChecksumAlgorithm;
 use crate::version::deserialize_parser_object;
+use crate::{ChecksumAlgorithm, Limits, ParseError, RemoteResponse, ResourceChecksum};
 
 /// How to parse a remote checksum response.
 #[derive(Debug, Clone, PartialEq, Serialize, JsonSchema, Type)]
@@ -25,6 +25,99 @@ pub enum RemoteChecksumParser {
         #[serde(rename = "type")]
         parser_type: String,
     },
+}
+
+impl RemoteChecksumParser {
+    #[must_use = "checksum parsing errors must be handled"]
+    pub fn parse(
+        &self,
+        response: &RemoteResponse<'_>,
+        artifact: &str,
+        limits: &Limits,
+    ) -> Result<ResourceChecksum, ParseError> {
+        if response.body.len() > limits.body_bytes() {
+            return Err(ParseError::ValidateBodySize {
+                limit: limits.body_bytes(),
+                actual: response.body.len(),
+            });
+        }
+        match self {
+            Self::Checksum => response
+                .body
+                .trim()
+                .parse()
+                .map_err(|_| ParseError::ValidateChecksum {}),
+            Self::Gnu { algorithm } => parse_list(response.body, artifact, *algorithm, |line| {
+                gnu_digest(line, artifact)
+            }),
+            Self::Bsd { algorithm } => parse_list(response.body, artifact, *algorithm, |line| {
+                bsd_digest(line, artifact, *algorithm)
+            }),
+            Self::GithubReleaseAssets => Err(ParseError::Unsupported {
+                parser: "github-release-assets".to_owned(),
+            }),
+            Self::Unsupported { parser_type } => Err(ParseError::ResolveParser {
+                parser_type: parser_type.clone(),
+            }),
+        }
+    }
+}
+
+fn parse_list<'a>(
+    body: &'a str,
+    artifact: &str,
+    algorithm: ChecksumAlgorithm,
+    digest_for_line: impl Fn(&'a str) -> Option<&'a str>,
+) -> Result<ResourceChecksum, ParseError> {
+    let mut selected = None;
+    for line in body.split('\n') {
+        let line = line.strip_suffix('\r').unwrap_or(line);
+        let Some(digest) = digest_for_line(line) else {
+            continue;
+        };
+        if digest.len() != algorithm.hex_len()
+            || !digest.bytes().all(|byte| byte.is_ascii_hexdigit())
+        {
+            continue;
+        }
+        let checksum = ResourceChecksum::new(format!("{}:{digest}", algorithm.as_str()))
+            .map_err(|_| ParseError::ValidateChecksum {})?;
+        if let Some(previous) = &selected
+            && previous != &checksum
+        {
+            return Err(ParseError::SelectChecksum {
+                name: artifact.to_owned(),
+            });
+        }
+        selected = Some(checksum);
+    }
+    selected.ok_or_else(|| ParseError::FindChecksum {
+        name: artifact.to_owned(),
+    })
+}
+
+fn gnu_digest<'a>(line: &'a str, artifact: &str) -> Option<&'a str> {
+    let (digest, rest) = line.split_once([' ', '\t'])?;
+    let name = rest.trim_end_matches([' ', '\t']);
+    let requested = artifact.trim_end_matches([' ', '\t']);
+    if rest.len() - name.len() < artifact.len() - requested.len() {
+        return None;
+    }
+    let prefix = name.strip_suffix(requested)?;
+    let separator = prefix.strip_suffix('*').unwrap_or(prefix);
+    separator
+        .bytes()
+        .all(|byte| matches!(byte, b' ' | b'\t'))
+        .then_some(digest)
+}
+
+fn bsd_digest<'a>(line: &'a str, artifact: &str, algorithm: ChecksumAlgorithm) -> Option<&'a str> {
+    let (label, rest) = line.split_once(" (")?;
+    if !label.eq_ignore_ascii_case(algorithm.as_str()) {
+        return None;
+    }
+    let (name, digest) = rest.rsplit_once(") = ")?;
+    (name == artifact).then_some(digest)
 }
 
 impl<'de> Deserialize<'de> for RemoteChecksumParser {

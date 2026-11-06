@@ -77,6 +77,42 @@ version parser 不支持 header，不把 header helper 当作 version parser 类
 大小写、相同值去重、冲突、缺失及 `response.headers.<小写名称>` 路径由 Rust
 集成测试验证。A5 再在 checksum corpus 中为 header parser 声明路径。
 
+### Checksum 的阶段边界与错误字段（A3）
+
+Rust 运行器读取整个 `parsers/checksum.json`，执行 `checksum`、`gnu`、`bsd`
+和未知 parser type 用例。`github-release-assets` 与 `header` 用例分别留给 A4、A5，
+当前逐项打印 `SKIP <name>: implemented in A4 / A5`，不改动这些用例的名称或期望。
+查看完整名称与跳过记录可运行 `cargo test -p manifest-parser --test conformance -- --nocapture`。
+
+`RemoteChecksumParser::parse` 在分派 parser 之前检查 body 的 UTF-8 字节数，
+超过上限时优先返回 `parser.body_too_large`。`checksum`、`gnu`、`bsd` 都只读 body，
+忽略 headers 的值、冲突和大小，不会在 body 缺失或无效时回退到 header。
+
+GNU 和 BSD 按 `\n` 分行，每行只移除一个末尾 `\r`。
+GNU 使用 `<hex>[ \t]+[* ]?<name>[ \t]*`，按完整 artifact 名称匹配，
+保留名称内部的空格、特殊字符，以及 artifact 自身的首尾空格。
+BSD 使用固定分隔符 `<LABEL> (<name>) = <hex>`，名称完全相等，
+算法标签按 ASCII 大小写不敏感比较，不符合配置算法的行直接跳过。
+两种列表都会跳过格式不符、非 hex 或 digest 长度不符的行，即使名称相同；
+这与参考实现以定长 hex 正则筛选行的行为一致。
+只有找到格式和长度都正确的候选行后才参与重复值比较；
+归一化后相同的 digest 合并，不同的 digest 报 `parser.ambiguous`。
+没有有效候选行报 `parser.not_found`。
+
+列表的 `parser.not_found` 和 `parser.ambiguous` 字段都是 `{ name }`，
+其中 `name` 为调用者请求的 artifact 原值；`checksum` 的 `parser.invalid_checksum`
+字段为 `{}`。上述错误路径统一为 `response.body`。
+GitHub parser 当前返回临时 `ParseError::Unsupported { parser }`，
+code 为 `resolve.unsupported_parser`、fields 为 `{ "parser_type": "github-release-assets" }`；
+A4 将删除该临时错误变体。未知 type 使用现有 `ResolveParser { parser_type }`，
+同样返回 `resolve.unsupported_parser` 和保留原始 tag 的 `{ parser_type }`。
+两种 unsupported 错误路径也是 `response.body`，由独立 Rust 测试固定。
+
+A3 再次直接调用只读参考函数，24 个正常路径成功结果与 corpus 相同。
+有意差异为 S0b 已记录的 GNU 同名冲突、BSD 错误算法标签；
+新增 `checksum.bsd.skips_other_algorithm` 进一步验证跳过错误标签后返回后续正确算法的 digest，
+参考实现会误取第一行。已有 18 个 checksum 用例的名称、输入和期望均保持不变。
+
 ### Validate 的阶段边界
 
 `validate.manifest.reference_fixture` 的 `input` 内嵌完整的

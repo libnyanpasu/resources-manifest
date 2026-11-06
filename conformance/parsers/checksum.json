@@ -369,5 +369,898 @@
     "expect": {
       "ok": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
     }
+  },
+  {
+    "name": "checksum.checksum.empty_body",
+    "input": {
+      "parser": {
+        "type": "checksum"
+      },
+      "response": {
+        "body": "",
+        "headers": []
+      },
+      "artifact": "selected.zip"
+    },
+    "expect": {
+      "error": {
+        "code": "parser.invalid_checksum",
+        "path": "response.body",
+        "fields": {}
+      }
+    }
+  },
+  {
+    "name": "checksum.checksum.wrong_length",
+    "input": {
+      "parser": {
+        "type": "checksum"
+      },
+      "response": {
+        "body": "sha256:abcd",
+        "headers": []
+      },
+      "artifact": "selected.zip"
+    },
+    "expect": {
+      "error": {
+        "code": "parser.invalid_checksum",
+        "path": "response.body",
+        "fields": {}
+      }
+    }
+  },
+  {
+    "name": "checksum.checksum.non_hex",
+    "input": {
+      "parser": {
+        "type": "checksum"
+      },
+      "response": {
+        "body": "sha256:g123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+        "headers": []
+      },
+      "artifact": "selected.zip"
+    },
+    "expect": {
+      "error": {
+        "code": "parser.invalid_checksum",
+        "path": "response.body",
+        "fields": {}
+      }
+    }
+  },
+  {
+    "name": "checksum.checksum.missing_algorithm",
+    "input": {
+      "parser": {
+        "type": "checksum"
+      },
+      "response": {
+        "body": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+        "headers": []
+      },
+      "artifact": "selected.zip"
+    },
+    "expect": {
+      "error": {
+        "code": "parser.invalid_checksum",
+        "path": "response.body",
+        "fields": {}
+      }
+    }
+  },
+  {
+    "name": "checksum.checksum.unsupported_algorithm",
+    "input": {
+      "parser": {
+        "type": "checksum"
+      },
+      "response": {
+        "body": "sha1:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "headers": []
+      },
+      "artifact": "selected.zip"
+    },
+    "expect": {
+      "error": {
+        "code": "parser.invalid_checksum",
+        "path": "response.body",
+        "fields": {}
+      }
+    }
+  },
+  {
+    "name": "checksum.gnu.duplicate_normalized",
+    "input": {
+      "parser": {
+        "type": "gnu",
+        "algorithm": "sha256"
+      },
+      "response": {
+        "body": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef  selected.zip\r\n0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF  selected.zip\r\n",
+        "headers": []
+      },
+      "artifact": "selected.zip"
+    },
+    "expect": {
+      "ok": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+    }
+  },
+  {
+    "name": "checksum.gnu.no_exact_name",
+    "input": {
+      "parser": {
+        "type": "gnu",
+        "algorithm": "sha256"
+      },
+      "response": {
+        "body": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef  prefix-selected.zip\n0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef  selected.zip.extra\n",
+        "headers": []
+      },
+      "artifact": "selected.zip"
+    },
+    "expect": {
+      "error": {
+        "code": "parser.not_found",
+        "path": "response.body",
+        "fields": {
+          "name": "selected.zip"
+        }
+      }
+    }
+  },
+  {
+    "name": "checksum.gnu.wrong_length",
+    "input": {
+      "parser": {
+        "type": "gnu",
+        "algorithm": "sha256"
+      },
+      "response": {
+        "body": "abcd  selected.zip\n",
+        "headers": []
+      },
+      "artifact": "selected.zip"
+    },
+    "expect": {
+      "error": {
+        "code": "parser.not_found",
+        "path": "response.body",
+        "fields": {
+          "name": "selected.zip"
+        }
+      }
+    }
+  },
+  {
+    "name": "checksum.gnu.invalid_hex",
+    "input": {
+      "parser": {
+        "type": "gnu",
+        "algorithm": "sha256"
+      },
+      "response": {
+        "body": "g123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef  selected.zip\n",
+        "headers": []
+      },
+      "artifact": "selected.zip"
+    },
+    "expect": {
+      "error": {
+        "code": "parser.not_found",
+        "path": "response.body",
+        "fields": {
+          "name": "selected.zip"
+        }
+      }
+    }
+  },
+  {
+    "name": "checksum.gnu.skips_invalid_before_valid",
+    "input": {
+      "parser": {
+        "type": "gnu",
+        "algorithm": "sha256"
+      },
+      "response": {
+        "body": "abcd  selected.zip\ng123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef  selected.zip\n0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef  selected.zip\n",
+        "headers": []
+      },
+      "artifact": "selected.zip"
+    },
+    "expect": {
+      "ok": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+    }
+  },
+  {
+    "name": "checksum.gnu.conflict_after_duplicate",
+    "input": {
+      "parser": {
+        "type": "gnu",
+        "algorithm": "sha256"
+      },
+      "response": {
+        "body": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef  selected.zip\n0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF  selected.zip\nabcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789  selected.zip\n",
+        "headers": []
+      },
+      "artifact": "selected.zip"
+    },
+    "expect": {
+      "error": {
+        "code": "parser.ambiguous",
+        "path": "response.body",
+        "fields": {
+          "name": "selected.zip"
+        }
+      }
+    }
+  },
+  {
+    "name": "checksum.gnu.literal_filename",
+    "input": {
+      "parser": {
+        "type": "gnu",
+        "algorithm": "sha256"
+      },
+      "response": {
+        "body": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef  工具 [x]+(a).zip\r\n",
+        "headers": []
+      },
+      "artifact": "工具 [x]+(a).zip"
+    },
+    "expect": {
+      "ok": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+    }
+  },
+  {
+    "name": "checksum.gnu.ignores_conflicting_headers",
+    "input": {
+      "parser": {
+        "type": "gnu",
+        "algorithm": "sha256"
+      },
+      "response": {
+        "body": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef  selected.zip",
+        "headers": [
+          ["Digest", "invalid"],
+          ["digest", "different"]
+        ]
+      },
+      "artifact": "selected.zip",
+      "limits": {
+        "header_value_bytes": 0
+      }
+    },
+    "expect": {
+      "ok": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+    }
+  },
+  {
+    "name": "checksum.gnu.no_header_fallback",
+    "input": {
+      "parser": {
+        "type": "gnu",
+        "algorithm": "sha256"
+      },
+      "response": {
+        "body": "",
+        "headers": [
+          [
+            "Digest",
+            "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+          ]
+        ]
+      },
+      "artifact": "selected.zip"
+    },
+    "expect": {
+      "error": {
+        "code": "parser.not_found",
+        "path": "response.body",
+        "fields": {
+          "name": "selected.zip"
+        }
+      }
+    }
+  },
+  {
+    "name": "checksum.gnu.body_limit_utf8",
+    "input": {
+      "parser": {
+        "type": "gnu",
+        "algorithm": "sha256"
+      },
+      "response": {
+        "body": "é\n",
+        "headers": []
+      },
+      "artifact": "selected.zip",
+      "limits": {
+        "body_bytes": 2
+      }
+    },
+    "expect": {
+      "error": {
+        "code": "parser.body_too_large",
+        "path": "response.body",
+        "fields": {
+          "limit": 2,
+          "actual": 3
+        }
+      }
+    }
+  },
+  {
+    "name": "checksum.gnu.body_limit_at_boundary",
+    "input": {
+      "parser": {
+        "type": "gnu",
+        "algorithm": "sha256"
+      },
+      "response": {
+        "body": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef  selected.zip",
+        "headers": []
+      },
+      "artifact": "selected.zip",
+      "limits": {
+        "body_bytes": 78
+      }
+    },
+    "expect": {
+      "ok": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+    }
+  },
+  {
+    "name": "checksum.gnu.md5",
+    "input": {
+      "parser": {
+        "type": "gnu",
+        "algorithm": "md5"
+      },
+      "response": {
+        "body": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa *selected.zip",
+        "headers": []
+      },
+      "artifact": "selected.zip"
+    },
+    "expect": {
+      "ok": "md5:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    }
+  },
+  {
+    "name": "checksum.gnu.sha512",
+    "input": {
+      "parser": {
+        "type": "gnu",
+        "algorithm": "sha512"
+      },
+      "response": {
+        "body": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa *selected.zip",
+        "headers": []
+      },
+      "artifact": "selected.zip"
+    },
+    "expect": {
+      "ok": "sha512:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    }
+  },
+  {
+    "name": "checksum.bsd.duplicate_normalized",
+    "input": {
+      "parser": {
+        "type": "bsd",
+        "algorithm": "sha256"
+      },
+      "response": {
+        "body": "SHA256 (selected.zip) = 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\r\nSHA256 (selected.zip) = 0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF\r\n",
+        "headers": []
+      },
+      "artifact": "selected.zip"
+    },
+    "expect": {
+      "ok": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+    }
+  },
+  {
+    "name": "checksum.bsd.no_exact_name",
+    "input": {
+      "parser": {
+        "type": "bsd",
+        "algorithm": "sha256"
+      },
+      "response": {
+        "body": "SHA256 (prefix-selected.zip) = 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\nSHA256 (selected.zip.extra) = 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\n",
+        "headers": []
+      },
+      "artifact": "selected.zip"
+    },
+    "expect": {
+      "error": {
+        "code": "parser.not_found",
+        "path": "response.body",
+        "fields": {
+          "name": "selected.zip"
+        }
+      }
+    }
+  },
+  {
+    "name": "checksum.bsd.wrong_length",
+    "input": {
+      "parser": {
+        "type": "bsd",
+        "algorithm": "sha256"
+      },
+      "response": {
+        "body": "SHA256 (selected.zip) = abcd\n",
+        "headers": []
+      },
+      "artifact": "selected.zip"
+    },
+    "expect": {
+      "error": {
+        "code": "parser.not_found",
+        "path": "response.body",
+        "fields": {
+          "name": "selected.zip"
+        }
+      }
+    }
+  },
+  {
+    "name": "checksum.bsd.invalid_hex",
+    "input": {
+      "parser": {
+        "type": "bsd",
+        "algorithm": "sha256"
+      },
+      "response": {
+        "body": "SHA256 (selected.zip) = g123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\n",
+        "headers": []
+      },
+      "artifact": "selected.zip"
+    },
+    "expect": {
+      "error": {
+        "code": "parser.not_found",
+        "path": "response.body",
+        "fields": {
+          "name": "selected.zip"
+        }
+      }
+    }
+  },
+  {
+    "name": "checksum.bsd.skips_invalid_before_valid",
+    "input": {
+      "parser": {
+        "type": "bsd",
+        "algorithm": "sha256"
+      },
+      "response": {
+        "body": "SHA256 (selected.zip) = abcd\nSHA256 (selected.zip) = g123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\nSHA256 (selected.zip) = 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\n",
+        "headers": []
+      },
+      "artifact": "selected.zip"
+    },
+    "expect": {
+      "ok": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+    }
+  },
+  {
+    "name": "checksum.bsd.conflict_after_duplicate",
+    "input": {
+      "parser": {
+        "type": "bsd",
+        "algorithm": "sha256"
+      },
+      "response": {
+        "body": "SHA256 (selected.zip) = 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\nSHA256 (selected.zip) = 0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF\nSHA256 (selected.zip) = abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789\n",
+        "headers": []
+      },
+      "artifact": "selected.zip"
+    },
+    "expect": {
+      "error": {
+        "code": "parser.ambiguous",
+        "path": "response.body",
+        "fields": {
+          "name": "selected.zip"
+        }
+      }
+    }
+  },
+  {
+    "name": "checksum.bsd.literal_filename",
+    "input": {
+      "parser": {
+        "type": "bsd",
+        "algorithm": "sha256"
+      },
+      "response": {
+        "body": "SHA256 (工具 [x]+(a).zip) = 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\r\n",
+        "headers": []
+      },
+      "artifact": "工具 [x]+(a).zip"
+    },
+    "expect": {
+      "ok": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+    }
+  },
+  {
+    "name": "checksum.bsd.ignores_conflicting_headers",
+    "input": {
+      "parser": {
+        "type": "bsd",
+        "algorithm": "sha256"
+      },
+      "response": {
+        "body": "SHA256 (selected.zip) = 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+        "headers": [
+          ["Digest", "invalid"],
+          ["digest", "different"]
+        ]
+      },
+      "artifact": "selected.zip",
+      "limits": {
+        "header_value_bytes": 0
+      }
+    },
+    "expect": {
+      "ok": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+    }
+  },
+  {
+    "name": "checksum.bsd.no_header_fallback",
+    "input": {
+      "parser": {
+        "type": "bsd",
+        "algorithm": "sha256"
+      },
+      "response": {
+        "body": "",
+        "headers": [
+          [
+            "Digest",
+            "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+          ]
+        ]
+      },
+      "artifact": "selected.zip"
+    },
+    "expect": {
+      "error": {
+        "code": "parser.not_found",
+        "path": "response.body",
+        "fields": {
+          "name": "selected.zip"
+        }
+      }
+    }
+  },
+  {
+    "name": "checksum.bsd.body_limit_utf8",
+    "input": {
+      "parser": {
+        "type": "bsd",
+        "algorithm": "sha256"
+      },
+      "response": {
+        "body": "é\n",
+        "headers": []
+      },
+      "artifact": "selected.zip",
+      "limits": {
+        "body_bytes": 2
+      }
+    },
+    "expect": {
+      "error": {
+        "code": "parser.body_too_large",
+        "path": "response.body",
+        "fields": {
+          "limit": 2,
+          "actual": 3
+        }
+      }
+    }
+  },
+  {
+    "name": "checksum.bsd.body_limit_at_boundary",
+    "input": {
+      "parser": {
+        "type": "bsd",
+        "algorithm": "sha256"
+      },
+      "response": {
+        "body": "SHA256 (selected.zip) = 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+        "headers": []
+      },
+      "artifact": "selected.zip",
+      "limits": {
+        "body_bytes": 88
+      }
+    },
+    "expect": {
+      "ok": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+    }
+  },
+  {
+    "name": "checksum.bsd.md5",
+    "input": {
+      "parser": {
+        "type": "bsd",
+        "algorithm": "md5"
+      },
+      "response": {
+        "body": "MD5 (selected.zip) = aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "headers": []
+      },
+      "artifact": "selected.zip"
+    },
+    "expect": {
+      "ok": "md5:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    }
+  },
+  {
+    "name": "checksum.bsd.sha512",
+    "input": {
+      "parser": {
+        "type": "bsd",
+        "algorithm": "sha512"
+      },
+      "response": {
+        "body": "SHA512 (selected.zip) = aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "headers": []
+      },
+      "artifact": "selected.zip"
+    },
+    "expect": {
+      "ok": "sha512:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    }
+  },
+  {
+    "name": "checksum.gnu.tab_separator_and_trailing_space",
+    "input": {
+      "parser": {
+        "type": "gnu",
+        "algorithm": "sha256"
+      },
+      "response": {
+        "body": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\t*selected.zip \t\r\n",
+        "headers": []
+      },
+      "artifact": "selected.zip"
+    },
+    "expect": {
+      "ok": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+    }
+  },
+  {
+    "name": "checksum.gnu.leading_and_trailing_filename_spaces",
+    "input": {
+      "parser": {
+        "type": "gnu",
+        "algorithm": "sha256"
+      },
+      "response": {
+        "body": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef * selected.zip  \t\r\n",
+        "headers": []
+      },
+      "artifact": " selected.zip "
+    },
+    "expect": {
+      "ok": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+    }
+  },
+  {
+    "name": "checksum.gnu.star_filename",
+    "input": {
+      "parser": {
+        "type": "gnu",
+        "algorithm": "sha256"
+      },
+      "response": {
+        "body": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef  *selected.zip\n",
+        "headers": []
+      },
+      "artifact": "*selected.zip"
+    },
+    "expect": {
+      "ok": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+    }
+  },
+  {
+    "name": "checksum.gnu.rejects_non_horizontal_separator",
+    "input": {
+      "parser": {
+        "type": "gnu",
+        "algorithm": "sha256"
+      },
+      "response": {
+        "body": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\u000bselected.zip\n",
+        "headers": []
+      },
+      "artifact": "selected.zip"
+    },
+    "expect": {
+      "error": {
+        "code": "parser.not_found",
+        "path": "response.body",
+        "fields": {
+          "name": "selected.zip"
+        }
+      }
+    }
+  },
+  {
+    "name": "checksum.bsd.case_insensitive_label",
+    "input": {
+      "parser": {
+        "type": "bsd",
+        "algorithm": "sha256"
+      },
+      "response": {
+        "body": "sHa256 (selected.zip) = 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\r\n",
+        "headers": []
+      },
+      "artifact": "selected.zip"
+    },
+    "expect": {
+      "ok": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+    }
+  },
+  {
+    "name": "checksum.bsd.skips_other_algorithm",
+    "input": {
+      "parser": {
+        "type": "bsd",
+        "algorithm": "sha256"
+      },
+      "response": {
+        "body": "SHA512 (selected.zip) = abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789\nSHA256 (selected.zip) = 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\n",
+        "headers": []
+      },
+      "artifact": "selected.zip"
+    },
+    "expect": {
+      "ok": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+    }
+  },
+  {
+    "name": "checksum.bsd.embedded_delimiter",
+    "input": {
+      "parser": {
+        "type": "bsd",
+        "algorithm": "sha256"
+      },
+      "response": {
+        "body": "SHA256 (a) = b.zip) = 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\n",
+        "headers": []
+      },
+      "artifact": "a) = b.zip"
+    },
+    "expect": {
+      "ok": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+    }
+  },
+  {
+    "name": "checksum.bsd.rejects_malformed_layout",
+    "input": {
+      "parser": {
+        "type": "bsd",
+        "algorithm": "sha256"
+      },
+      "response": {
+        "body": "SHA256(selected.zip)=0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\n",
+        "headers": []
+      },
+      "artifact": "selected.zip"
+    },
+    "expect": {
+      "error": {
+        "code": "parser.not_found",
+        "path": "response.body",
+        "fields": {
+          "name": "selected.zip"
+        }
+      }
+    }
+  },
+  {
+    "name": "checksum.checksum.no_header_fallback",
+    "input": {
+      "parser": {
+        "type": "checksum"
+      },
+      "response": {
+        "body": "",
+        "headers": [
+          [
+            "Digest",
+            "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+          ]
+        ]
+      },
+      "artifact": "selected.zip"
+    },
+    "expect": {
+      "error": {
+        "code": "parser.invalid_checksum",
+        "path": "response.body",
+        "fields": {}
+      }
+    }
+  },
+  {
+    "name": "checksum.checksum.body_limit_before_trim",
+    "input": {
+      "parser": {
+        "type": "checksum"
+      },
+      "response": {
+        "body": "    ",
+        "headers": []
+      },
+      "artifact": "selected.zip",
+      "limits": {
+        "body_bytes": 3
+      }
+    },
+    "expect": {
+      "error": {
+        "code": "parser.body_too_large",
+        "path": "response.body",
+        "fields": {
+          "limit": 3,
+          "actual": 4
+        }
+      }
+    }
+  },
+  {
+    "name": "checksum.checksum.ignores_oversized_headers",
+    "input": {
+      "parser": {
+        "type": "checksum"
+      },
+      "response": {
+        "body": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+        "headers": [
+          ["Digest", "invalid"],
+          ["digest", "different"]
+        ]
+      },
+      "artifact": "selected.zip",
+      "limits": {
+        "header_value_bytes": 0
+      }
+    },
+    "expect": {
+      "ok": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+    }
+  },
+  {
+    "name": "checksum.unsupported.unknown_type",
+    "input": {
+      "parser": {
+        "type": "future-checksum"
+      },
+      "response": {
+        "body": "",
+        "headers": []
+      },
+      "artifact": "selected.zip"
+    },
+    "expect": {
+      "error": {
+        "code": "resolve.unsupported_parser",
+        "path": "response.body",
+        "fields": {
+          "parser_type": "future-checksum"
+        }
+      }
+    }
   }
 ]
