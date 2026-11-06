@@ -30,7 +30,34 @@ const URL_COMPONENTS: &[&str] = &[
     "path_and_query",
 ];
 
+/// Collects template errors, reporting each (path, variable) pair once in O(log n).
+struct Errors<'a> {
+    errors: &'a mut Vec<ValidationError>,
+    seen: BTreeSet<(String, String)>,
+}
+
+impl Errors<'_> {
+    fn push_unique(&mut self, error: ValidationError) {
+        if let ValidationError::ResolveVariable { path, variable } = &error
+            && !self.seen.insert((path.clone(), variable.clone()))
+        {
+            return;
+        }
+        self.errors.push(error);
+    }
+}
+
 pub(super) fn check(manifest: &ResourceManifest, errors: &mut Vec<ValidationError>) {
+    check_all(
+        manifest,
+        &mut Errors {
+            errors,
+            seen: BTreeSet::new(),
+        },
+    );
+}
+
+fn check_all(manifest: &ResourceManifest, errors: &mut Errors<'_>) {
     for (resource_id, resource) in &manifest.resources {
         let resource_path = format!("resources.{resource_id}");
         for (index, variant) in resource.variants.iter().enumerate() {
@@ -165,7 +192,7 @@ fn remote<'a>(
     base: &Scope<'a>,
     path: &str,
     has_artifact: bool,
-    errors: &mut Vec<ValidationError>,
+    errors: &mut Errors<'_>,
 ) {
     let mut scope = registry_scope(manifest, &remote.registry);
     scope.extend(base.clone());
@@ -197,7 +224,7 @@ fn canonical(
     registry: &str,
     scope: &Scope<'_>,
     builtins: &BTreeSet<&str>,
-    errors: &mut Vec<ValidationError>,
+    errors: &mut Errors<'_>,
 ) {
     if let Some(definition) = manifest.registries.get(registry) {
         inspect(
@@ -227,7 +254,7 @@ fn canonical(
     }
 }
 
-fn inspect_scope(scope: &Scope<'_>, builtins: &BTreeSet<&str>, errors: &mut Vec<ValidationError>) {
+fn inspect_scope(scope: &Scope<'_>, builtins: &BTreeSet<&str>, errors: &mut Errors<'_>) {
     for (key, (value, path)) in scope {
         if !builtins.contains(key) {
             inspect(value, path, scope, builtins, errors);
@@ -240,7 +267,7 @@ fn inspect(
     path: &str,
     scope: &Scope<'_>,
     builtins: &BTreeSet<&str>,
-    errors: &mut Vec<ValidationError>,
+    errors: &mut Errors<'_>,
 ) {
     for variable in variables(template) {
         if !scope.contains_key(variable) && !builtins.contains(variable) {
@@ -248,9 +275,7 @@ fn inspect(
                 path: path.to_owned(),
                 variable: variable.to_owned(),
             };
-            if !errors.contains(&error) {
-                errors.push(error);
-            }
+            errors.push_unique(error);
         }
     }
 }
@@ -260,7 +285,7 @@ fn inspect_dependencies(
     path: &str,
     scope: &Scope<'_>,
     builtins: &BTreeSet<&str>,
-    errors: &mut Vec<ValidationError>,
+    errors: &mut Errors<'_>,
 ) {
     let mut pending = vec![(template, path)];
     let mut seen = BTreeSet::new();
