@@ -35,17 +35,12 @@ export type RegistryDefinition = {
 export type RemoteChecksumParser =
   /**  The response body itself is `<algorithm>:<hex>`. */
   | { type: "checksum" }
-  | /**  GNU checksum list: `<hex>  <artifact>`. */ {
-    type: "gnu";
-    algorithm: ChecksumAlgorithm;
-  }
-  | /**  BSD checksum list: `SHA512 (<artifact>) = <hex>`. */ {
-    type: "bsd";
-    algorithm: ChecksumAlgorithm;
-  }
-  | /**  GitHub `/releases/expanded_assets/<tag>` HTML with asset digests. */ {
-    type: "github-release-assets";
-  };
+  /**  GNU checksum list: `<hex>  <artifact>`. */
+  | { type: "gnu"; algorithm: ChecksumAlgorithm }
+  /**  BSD checksum list: `SHA512 (<artifact>) = <hex>`. */
+  | { type: "bsd"; algorithm: ChecksumAlgorithm }
+  /**  GitHub `/releases/expanded_assets/<tag>` HTML with asset digests. */
+  | { type: "github-release-assets" };
 
 export type RemoteChecksumResourceTemplate = {
   resource: RemoteResourceTemplate;
@@ -66,20 +61,21 @@ export type RemoteResourceTemplate = {
 export type RemoteVersionParser =
   /**  Use the response body, optionally trimming whitespace. */
   | {
-    type: "text";
-    /**  Defaults to true. */
-    trim?: boolean;
-  }
-  | /**  Apply a regular expression and return a capture group. */ {
-    type: "regex";
-    pattern: string;
-    /**
-     *  Capture group containing the version. Defaults to 1. Deserializing
-     *  negative or fractional values fails, matching the reference
-     *  validator's non-negative integer rule.
-     */
-    group?: number;
-  };
+      type: "text";
+      /**  Defaults to true. */
+      trim?: boolean;
+    }
+  /**  Apply a regular expression and return a capture group. */
+  | {
+      type: "regex";
+      pattern: string;
+      /**
+       *  Capture group containing the version. Defaults to 1. Deserializing
+       *  negative or fractional values fails, matching the reference
+       *  validator's non-negative integer rule.
+       */
+      group?: number;
+    };
 
 export type RemoteVersionResourceTemplate = {
   resource: RemoteResourceTemplate;
@@ -107,21 +103,22 @@ export type ResourceArtifactTemplate = {
 export type ResourceArtifactVersionTemplate =
   /**  The manifest contains a bounded, traceable release history. */
   | {
-    type: "static";
-    latest: string;
-    /**  Ordered history; the latest entry need not be first, but must exist. */
-    releases: ResourceStaticReleaseTemplate[];
-  }
-  | /**
+      type: "static";
+      latest: string;
+      /**  Ordered history; the latest entry need not be first, but must exist. */
+      releases: ResourceStaticReleaseTemplate[];
+    }
+  /**
    *  The manifest tells the backend which URLs to request and how to parse
    *  the latest version and checksum.
-   */ {
-    type: "remote";
-    /**  Snapshot generated with the manifest; consumers should still query remote. */
-    fallback?: ResourceStaticReleaseTemplate;
-    version: RemoteVersionResourceTemplate;
-    checksum?: RemoteChecksumResourceTemplate;
-  };
+   */
+  | {
+      type: "remote";
+      /**  Snapshot generated with the manifest; consumers should still query remote. */
+      fallback?: ResourceStaticReleaseTemplate;
+      version: RemoteVersionResourceTemplate;
+      checksum?: RemoteChecksumResourceTemplate;
+    };
 
 /**
  *  Serialized as `<algorithm>:<lowercase hex>`, for example `sha512:abcd...`.

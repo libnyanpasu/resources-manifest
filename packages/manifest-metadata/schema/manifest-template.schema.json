@@ -29,11 +29,7 @@
       "type": "string"
     }
   },
-  "required": [
-    "manifest_version",
-    "registries",
-    "resources"
-  ],
+  "required": ["manifest_version", "registries", "resources"],
   "$defs": {
     "ManifestVersion": {
       "type": "integer",
@@ -57,10 +53,7 @@
           }
         }
       },
-      "required": [
-        "name",
-        "url_template"
-      ]
+      "required": ["name", "url_template"]
     },
     "MirrorDefinition": {
       "description": "A mirror transforms a canonical URL into an accelerated/alternative URL.",
@@ -85,10 +78,7 @@
           "type": "number"
         }
       },
-      "required": [
-        "name",
-        "url_template"
-      ]
+      "required": ["name", "url_template"]
     },
     "ResourceTemplate": {
       "description": "A resource as authored in the template.",
@@ -146,12 +136,7 @@
           }
         }
       },
-      "required": [
-        "name",
-        "registry",
-        "tags",
-        "variants"
-      ]
+      "required": ["name", "registry", "tags", "variants"]
     },
     "ResourceTagDefinition": {
       "description": "A tag without its identifier, used by the per-resource tag catalog.",
@@ -167,9 +152,7 @@
           "type": "string"
         }
       },
-      "required": [
-        "name"
-      ]
+      "required": ["name"]
     },
     "ResourceVariantTemplate": {
       "description": "A variant as authored in the template.",
@@ -220,11 +203,7 @@
           "additionalProperties": false
         }
       },
-      "required": [
-        "name",
-        "tags",
-        "artifacts"
-      ]
+      "required": ["name", "tags", "artifacts"]
     },
     "ResourceArtifactTemplate": {
       "description": "A platform artifact. The historical string shorthand is intentionally not\nmodeled; the compiler rejects it.",
@@ -245,10 +224,7 @@
           "$ref": "#/$defs/ResourceArtifactVersionTemplate"
         }
       },
-      "required": [
-        "artifact",
-        "version"
-      ]
+      "required": ["artifact", "version"]
     },
     "ResourceArtifactVersionTemplate": {
       "description": "How an artifact's version is resolved.\n\nThe `Remote` plan is intentionally inlined: these types describe a wire\nformat, not a hot data structure.",
@@ -272,11 +248,7 @@
               "const": "static"
             }
           },
-          "required": [
-            "type",
-            "latest",
-            "releases"
-          ]
+          "required": ["type", "latest", "releases"]
         },
         {
           "description": "The manifest tells the backend which URLs to request and how to parse\nthe latest version and checksum.",
@@ -305,10 +277,7 @@
               "const": "remote"
             }
           },
-          "required": [
-            "type",
-            "version"
-          ]
+          "required": ["type", "version"]
         }
       ]
     },
@@ -337,9 +306,7 @@
           }
         }
       },
-      "required": [
-        "version"
-      ]
+      "required": ["version"]
     },
     "ResourceChecksum": {
       "type": "string",
@@ -355,10 +322,7 @@
           "$ref": "#/$defs/RemoteVersionParser"
         }
       },
-      "required": [
-        "resource",
-        "parser"
-      ]
+      "required": ["resource", "parser"]
     },
     "RemoteResourceTemplate": {
       "description": "A remote metadata request described declaratively.",
@@ -380,9 +344,7 @@
           }
         }
       },
-      "required": [
-        "registry"
-      ]
+      "required": ["registry"]
     },
     "RemoteVersionParser": {
       "description": "How to parse a remote version response.",
@@ -400,9 +362,7 @@
               "const": "text"
             }
           },
-          "required": [
-            "type"
-          ]
+          "required": ["type"]
         },
         {
           "description": "Apply a regular expression and return a capture group.",
@@ -421,10 +381,7 @@
               "const": "regex"
             }
           },
-          "required": [
-            "type",
-            "pattern"
-          ]
+          "required": ["type", "pattern"]
         }
       ]
     },
@@ -438,10 +395,7 @@
           "$ref": "#/$defs/RemoteChecksumParser"
         }
       },
-      "required": [
-        "resource",
-        "parser"
-      ]
+      "required": ["resource", "parser"]
     },
     "RemoteChecksumParser": {
       "description": "How to parse a remote checksum response.",
@@ -455,9 +409,7 @@
               "const": "checksum"
             }
           },
-          "required": [
-            "type"
-          ]
+          "required": ["type"]
         },
         {
           "description": "GNU checksum list: `<hex>  <artifact>`.",
@@ -471,10 +423,7 @@
               "const": "gnu"
             }
           },
-          "required": [
-            "type",
-            "algorithm"
-          ]
+          "required": ["type", "algorithm"]
         },
         {
           "description": "BSD checksum list: `SHA512 (<artifact>) = <hex>`.",
@@ -488,10 +437,7 @@
               "const": "bsd"
             }
           },
-          "required": [
-            "type",
-            "algorithm"
-          ]
+          "required": ["type", "algorithm"]
         },
         {
           "description": "GitHub `/releases/expanded_assets/<tag>` HTML with asset digests.",
@@ -502,20 +448,14 @@
               "const": "github-release-assets"
             }
           },
-          "required": [
-            "type"
-          ]
+          "required": ["type"]
         }
       ]
     },
     "ChecksumAlgorithm": {
       "description": "Supported checksum algorithms.",
       "type": "string",
-      "enum": [
-        "md5",
-        "sha256",
-        "sha512"
-      ]
+      "enum": ["md5", "sha256", "sha512"]
     }
   }
 }

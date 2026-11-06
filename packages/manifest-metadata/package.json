@@ -1,6 +1,8 @@
 {
   "name": "@manifest/metadata",
   "version": "0.1.0",
+  "private": true,
+  "type": "module",
   "exports": {
     ".": "./src/mod.ts",
     "./types": "./src/types.ts",

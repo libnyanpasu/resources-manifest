@@ -7,7 +7,7 @@ Resource manifest 的元数据包：TS 类型定义与 JSON Schema，均由
 **不要手工编辑** `src/types.ts` 或 `schema/`。重新生成：
 
 ```sh
-deno task generate:schema
+pnpm generate:schema
 ```
 
 ## 导出

@@ -1,0 +1,27 @@
+{
+  "name": "@manifest/workspace",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "license": "GPL-3.0-only",
+  "scripts": {
+    "generate:schema": "cargo run -p manifest-schema-generator && prettier --write packages/manifest-metadata/src/types.ts packages/manifest-metadata/schema",
+    "check:generated": "pnpm generate:schema && git diff --exit-code -- packages/manifest-metadata",
+    "check": "pnpm fmt:check && pnpm lint && pnpm typecheck",
+    "fmt": "prettier --write .",
+    "fmt:check": "prettier --check .",
+    "lint": "oxlint",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "node --test \"packages/*/*_test.ts\""
+  },
+  "devDependencies": {
+    "@types/node": "26.6.6",
+    "oxlint": "1.91.0",
+    "prettier": "3.9.10",
+    "typescript": "7.0.2"
+  },
+  "packageManager": "pnpm@12.17.0",
+  "engines": {
+    "node": ">=24.2.0"
+  }
+}
