@@ -29,9 +29,11 @@
 use std::borrow::Cow;
 use std::collections::BTreeMap;
 use std::fmt;
+use std::marker::PhantomData;
 use std::str::FromStr;
 
 use schemars::{JsonSchema, Schema};
+use serde::de::{IgnoredAny, MapAccess, Visitor, value::StringDeserializer};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use snafu::Snafu;
 use specta::datatype::DataType;
@@ -376,7 +378,7 @@ pub struct RemoteResourceTemplate {
 }
 
 /// How to parse a remote version response.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema, Type)]
+#[derive(Debug, Clone, PartialEq, Serialize, JsonSchema, Type)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum RemoteVersionParser {
     /// Use the response body, optionally trimming whitespace.
@@ -397,10 +399,43 @@ pub enum RemoteVersionParser {
         #[schemars(range(max = 4_294_967_295_u32))]
         group: Option<u32>,
     },
+    #[schemars(skip, !untagged)]
+    #[specta(skip)]
+    #[serde(untagged)]
+    Unsupported {
+        #[serde(rename = "type")]
+        parser_type: String,
+    },
+}
+
+impl<'de> Deserialize<'de> for RemoteVersionParser {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        #[derive(Deserialize)]
+        #[serde(tag = "type", rename_all = "snake_case")]
+        enum Known {
+            Text { trim: Option<bool> },
+            Regex { pattern: String, group: Option<u32> },
+        }
+
+        let value = serde_json::Value::deserialize(deserializer)?;
+        let parser_type = value
+            .get("type")
+            .and_then(serde_json::Value::as_str)
+            .ok_or_else(|| serde::de::Error::custom("parser type must be a string"))?;
+        if !matches!(parser_type, "text" | "regex") {
+            return Ok(Self::Unsupported {
+                parser_type: parser_type.to_owned(),
+            });
+        }
+        match Known::deserialize(value).map_err(serde::de::Error::custom)? {
+            Known::Text { trim } => Ok(Self::Text { trim }),
+            Known::Regex { pattern, group } => Ok(Self::Regex { pattern, group }),
+        }
+    }
 }
 
 /// How to parse a remote checksum response.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema, Type)]
+#[derive(Debug, Clone, PartialEq, Serialize, JsonSchema, Type)]
 #[serde(tag = "type", rename_all = "kebab-case")]
 pub enum RemoteChecksumParser {
     /// The response body itself is `<algorithm>:<hex>`.
@@ -411,6 +446,46 @@ pub enum RemoteChecksumParser {
     Bsd { algorithm: ChecksumAlgorithm },
     /// GitHub `/releases/expanded_assets/<tag>` HTML with asset digests.
     GithubReleaseAssets,
+    #[schemars(skip, !untagged)]
+    #[specta(skip)]
+    #[serde(untagged)]
+    Unsupported {
+        #[serde(rename = "type")]
+        parser_type: String,
+    },
+}
+
+impl<'de> Deserialize<'de> for RemoteChecksumParser {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        #[derive(Deserialize)]
+        #[serde(tag = "type", rename_all = "kebab-case")]
+        enum Known {
+            Checksum,
+            Gnu { algorithm: ChecksumAlgorithm },
+            Bsd { algorithm: ChecksumAlgorithm },
+            GithubReleaseAssets,
+        }
+
+        let value = serde_json::Value::deserialize(deserializer)?;
+        let parser_type = value
+            .get("type")
+            .and_then(serde_json::Value::as_str)
+            .ok_or_else(|| serde::de::Error::custom("parser type must be a string"))?;
+        if !matches!(
+            parser_type,
+            "checksum" | "gnu" | "bsd" | "github-release-assets"
+        ) {
+            return Ok(Self::Unsupported {
+                parser_type: parser_type.to_owned(),
+            });
+        }
+        match Known::deserialize(value).map_err(serde::de::Error::custom)? {
+            Known::Checksum => Ok(Self::Checksum),
+            Known::Gnu { algorithm } => Ok(Self::Gnu { algorithm }),
+            Known::Bsd { algorithm } => Ok(Self::Bsd { algorithm }),
+            Known::GithubReleaseAssets => Ok(Self::GithubReleaseAssets),
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema, Type)]
@@ -492,6 +567,68 @@ pub struct ResourceTag {
     pub description: Option<String>,
 }
 
+fn deserialize_known_platforms<'de, D, V>(
+    deserializer: D,
+) -> Result<BTreeMap<SupportedPlatform, V>, D::Error>
+where
+    D: Deserializer<'de>,
+    V: Deserialize<'de>,
+{
+    struct PlatformMapVisitor<V>(PhantomData<V>);
+
+    impl<'de, V: Deserialize<'de>> Visitor<'de> for PlatformMapVisitor<V> {
+        type Value = BTreeMap<SupportedPlatform, V>;
+
+        fn expecting(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+            formatter.write_str("a map of platform keys to values")
+        }
+
+        fn visit_map<A: MapAccess<'de>>(self, mut map: A) -> Result<Self::Value, A::Error> {
+            let mut platforms = BTreeMap::new();
+            while let Some(key) = map.next_key::<String>()? {
+                match SupportedPlatform::deserialize(StringDeserializer::<A::Error>::new(key)) {
+                    Ok(platform) => {
+                        platforms.insert(platform, map.next_value()?);
+                    }
+                    Err(_) => {
+                        map.next_value::<IgnoredAny>()?;
+                    }
+                }
+            }
+            Ok(platforms)
+        }
+    }
+
+    deserializer.deserialize_map(PlatformMapVisitor(PhantomData))
+}
+
+fn deserialize_template_artifacts<'de, D: Deserializer<'de>>(
+    deserializer: D,
+) -> Result<BTreeMap<SupportedPlatform, ResourceArtifactTemplate>, D::Error> {
+    let artifacts =
+        BTreeMap::<SupportedPlatform, ResourceArtifactTemplate>::deserialize(deserializer)?;
+    for artifact in artifacts.values() {
+        if let ResourceArtifactVersionTemplate::Remote {
+            version, checksum, ..
+        } = &artifact.version
+        {
+            if let RemoteVersionParser::Unsupported { parser_type } = &version.parser {
+                return Err(serde::de::Error::custom(format!(
+                    "unsupported version parser type {parser_type:?} in template"
+                )));
+            }
+            if let Some(checksum) = checksum
+                && let RemoteChecksumParser::Unsupported { parser_type } = &checksum.parser
+            {
+                return Err(serde::de::Error::custom(format!(
+                    "unsupported checksum parser type {parser_type:?} in template"
+                )));
+            }
+        }
+    }
+    Ok(artifacts)
+}
+
 /// A variant as authored in the template.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema, Type)]
 #[serde(deny_unknown_fields)]
@@ -507,6 +644,8 @@ pub struct ResourceVariantTemplate {
     #[serde(skip_serializing_if = "Option::is_none")]
     #[specta(optional)]
     pub source: Option<SourceVariables>,
+    #[serde(deserialize_with = "deserialize_template_artifacts")]
+    #[specta(type = BTreeMap<SupportedPlatform, ResourceArtifactTemplate>)]
     pub artifacts: BTreeMap<SupportedPlatform, ResourceArtifactTemplate>,
 }
 
@@ -522,6 +661,8 @@ pub struct ResourceVariant {
     #[serde(skip_serializing_if = "Option::is_none")]
     #[specta(optional)]
     pub source: Option<SourceVariables>,
+    #[serde(deserialize_with = "deserialize_known_platforms")]
+    #[specta(type = BTreeMap<SupportedPlatform, ResourceArtifactTemplate>)]
     pub artifacts: BTreeMap<SupportedPlatform, ResourceArtifactTemplate>,
 }
 
@@ -656,6 +797,8 @@ pub struct ResourceDefinition {
     pub source: Option<SourceVariables>,
     /// All tags available to this resource, useful for filters.
     pub tags: Vec<ResourceTag>,
+    #[serde(deserialize_with = "deserialize_known_platforms")]
+    #[specta(type = BTreeMap<SupportedPlatform, String>)]
     pub default_variants: BTreeMap<SupportedPlatform, String>,
     pub variants: Vec<ResourceVariant>,
 }
@@ -1169,6 +1312,285 @@ mod tests {
                     panic!("unknown shared field at {path} must be ignored: {error}")
                 });
             assert_eq!(parsed, expected, "known fields at {path} must be preserved");
+        }
+    }
+
+    #[test]
+    fn compiled_platform_maps_skip_unknown_values_and_preserve_known_data() {
+        let mut input = sample_manifest_json();
+        input["manifest_version"] = json!("2.7");
+        let expected: ResourceManifest = serde_json::from_value(input.clone()).unwrap();
+        for value in [
+            json!(null),
+            json!(42),
+            json!({"version": {"type": "future"}}),
+        ] {
+            let mut extended = input.clone();
+            extended["resources"]["mihomo"]["default_variants"]["future-os-cpu"] = value.clone();
+            extended["resources"]["mihomo"]["variants"][0]["artifacts"]["future-os-cpu"] = value;
+            let parsed: ResourceManifest = serde_json::from_value(extended)
+                .expect("unknown platform values must be skipped without decoding");
+            assert!(parsed.manifest_version.is_newer_minor());
+            assert_eq!(parsed, expected);
+        }
+        for path in [
+            "/resources/mihomo/default_variants/windows-x86_64",
+            "/resources/mihomo/variants/0/artifacts/windows-x86_64",
+        ] {
+            let mut invalid = input.clone();
+            *invalid.pointer_mut(path).unwrap() = json!(42);
+            assert!(
+                serde_json::from_value::<ResourceManifest>(invalid).is_err(),
+                "{path}"
+            );
+        }
+    }
+
+    #[test]
+    fn compiled_compatibility_cases_preserve_known_fields_and_unknown_tags() {
+        let cases: Vec<Value> =
+            serde_json::from_str(include_str!("../../../conformance/compat/manifest.json"))
+                .unwrap();
+        for case in cases
+            .iter()
+            .filter(|case| case["expect"].get("ok").is_some())
+        {
+            let parsed: ResourceManifest = serde_json::from_value(case["input"].clone())
+                .unwrap_or_else(|error| panic!("{}: {error}", case["name"]));
+            assert_eq!(
+                json!(parsed.manifest_version.is_newer_minor()),
+                case["expect"]["ok"]["newer_minor"]
+            );
+            let mut expected = case["input"].clone();
+            let resource = &mut expected["resources"]["sample"];
+            resource["default_variants"]
+                .as_object_mut()
+                .unwrap()
+                .remove("future-os-cpu");
+            let artifacts = resource["variants"][0]["artifacts"]
+                .as_object_mut()
+                .unwrap();
+            artifacts.remove("future-os-cpu");
+            for artifact in artifacts.values_mut() {
+                for path in ["/version/version/parser", "/version/checksum/parser"] {
+                    if let Some(parser) = artifact.pointer_mut(path) {
+                        let tag = parser["type"].as_str().unwrap();
+                        if tag.starts_with("future-") {
+                            *parser = json!({"type": tag});
+                        }
+                    }
+                }
+            }
+            assert_eq!(
+                serde_json::to_value(&parsed).unwrap(),
+                expected,
+                "{}",
+                case["name"]
+            );
+            assert_eq!(
+                serde_json::to_value(&parsed.resources["sample"].default_variants).unwrap(),
+                case["expect"]["ok"]["default_variants"]
+            );
+        }
+    }
+
+    #[test]
+    fn newer_minor_accepts_both_unknown_parsers_and_platforms() {
+        let cases: Vec<Value> =
+            serde_json::from_str(include_str!("../../../conformance/compat/manifest.json"))
+                .unwrap();
+        let mut input = cases
+            .iter()
+            .find(|case| case["name"] == "compat.newer_minor.unknown_platform_and_parser")
+            .unwrap()["input"]
+            .clone();
+        let parser_path =
+            "/resources/sample/variants/0/artifacts/windows-x86_64/version/checksum/parser";
+        *input.pointer_mut(parser_path).unwrap() =
+            json!({"type": "future-checksum-parser", "algorithm": 42});
+        let parsed: ResourceManifest = serde_json::from_value(input.clone()).unwrap();
+        assert_eq!(parsed.manifest_version.minor(), 7);
+        assert!(parsed.manifest_version.is_newer_minor());
+        let resource = &parsed.resources["sample"];
+        assert_eq!(resource.default_variants.len(), 2);
+        let artifacts = &resource.variants[0].artifacts;
+        assert_eq!(artifacts.len(), 2);
+        let ResourceArtifactVersionTemplate::Remote {
+            version, checksum, ..
+        } = &artifacts[&SupportedPlatform::WindowsX86_64].version
+        else {
+            panic!("remote artifact expected");
+        };
+        assert_eq!(
+            version.parser,
+            RemoteVersionParser::Unsupported {
+                parser_type: "future-version-parser".into()
+            }
+        );
+        assert_eq!(
+            checksum.as_ref().unwrap().parser,
+            RemoteChecksumParser::Unsupported {
+                parser_type: "future-checksum-parser".into()
+            }
+        );
+        let serialized = serde_json::to_value(&parsed).unwrap();
+        assert_eq!(
+            serialized["resources"]["sample"]["variants"][0]["artifacts"]["linux-amd64"],
+            input["resources"]["sample"]["variants"][0]["artifacts"]["linux-amd64"]
+        );
+        input["resources"]["sample"]["default_variants"]
+            .as_object_mut()
+            .unwrap()
+            .remove("future-os-cpu");
+        input["resources"]["sample"]["variants"][0]["artifacts"]
+            .as_object_mut()
+            .unwrap()
+            .remove("future-os-cpu");
+        for path in [
+            parser_path,
+            "/resources/sample/variants/0/artifacts/windows-x86_64/version/version/parser",
+        ] {
+            let parser = input.pointer_mut(path).unwrap();
+            *parser = json!({"type": parser["type"]});
+        }
+        assert_eq!(serialized, input);
+    }
+
+    #[test]
+    fn unknown_parser_tags_roundtrip_and_ignore_other_fields() {
+        for tag in ["future-parser", "Future.Parser", "", "unsupported"] {
+            let input =
+                json!({"type": tag, "pattern": null, "trim": [], "algorithm": {"future": true}});
+            let version: RemoteVersionParser = serde_json::from_value(input.clone()).unwrap();
+            let checksum: RemoteChecksumParser = serde_json::from_value(input).unwrap();
+            assert_eq!(
+                version,
+                RemoteVersionParser::Unsupported {
+                    parser_type: tag.into()
+                }
+            );
+            assert_eq!(
+                checksum,
+                RemoteChecksumParser::Unsupported {
+                    parser_type: tag.into()
+                }
+            );
+            let expected = json!({"type": tag});
+            assert_eq!(serde_json::to_value(&version).unwrap(), expected);
+            assert_eq!(serde_json::to_value(&checksum).unwrap(), expected);
+            assert_eq!(
+                serde_json::from_value::<RemoteVersionParser>(expected.clone()).unwrap(),
+                version
+            );
+            assert_eq!(
+                serde_json::from_value::<RemoteChecksumParser>(expected).unwrap(),
+                checksum
+            );
+        }
+    }
+
+    #[test]
+    fn parser_decoding_rejects_missing_tags_and_malformed_known_types() {
+        for input in [
+            json!({}),
+            json!({"type": null}),
+            json!({"type": 2}),
+            json!({"type": []}),
+            json!(null),
+            json!([]),
+        ] {
+            assert!(
+                serde_json::from_value::<RemoteVersionParser>(input.clone()).is_err(),
+                "{input}"
+            );
+            assert!(
+                serde_json::from_value::<RemoteChecksumParser>(input.clone()).is_err(),
+                "{input}"
+            );
+        }
+        for input in [
+            json!({"type": "text", "trim": "true"}),
+            json!({"type": "regex"}),
+            json!({"type": "regex", "pattern": 42}),
+            json!({"type": "regex", "pattern": "(.*)", "group": -1}),
+            json!({"type": "regex", "pattern": "(.*)", "group": 0.5}),
+            json!({"type": "regex", "pattern": "(.*)", "group": 4_294_967_296_u64}),
+        ] {
+            assert!(
+                serde_json::from_value::<RemoteVersionParser>(input.clone()).is_err(),
+                "{input}"
+            );
+        }
+        for input in [
+            json!({"type": "gnu"}),
+            json!({"type": "bsd"}),
+            json!({"type": "gnu", "algorithm": "sha1"}),
+            json!({"type": "bsd", "algorithm": 42}),
+        ] {
+            assert!(
+                serde_json::from_value::<RemoteChecksumParser>(input.clone()).is_err(),
+                "{input}"
+            );
+        }
+        for input in [
+            json!({"type": "text"}),
+            json!({"type": "text", "trim": false}),
+            json!({"type": "regex", "pattern": "(.*)", "group": 0}),
+        ] {
+            assert!(
+                serde_json::from_value::<RemoteVersionParser>(input.clone()).is_ok(),
+                "{input}"
+            );
+        }
+        for input in [
+            json!({"type": "checksum"}),
+            json!({"type": "github-release-assets"}),
+            json!({"type": "gnu", "algorithm": "sha256"}),
+            json!({"type": "bsd", "algorithm": "sha512"}),
+        ] {
+            let parsed: RemoteChecksumParser = serde_json::from_value(input.clone()).unwrap();
+            assert_eq!(serde_json::to_value(parsed).unwrap(), input);
+        }
+    }
+
+    #[test]
+    fn template_rejects_unknown_platforms_and_parsers() {
+        let artifact = sample_manifest_json()["resources"]["mihomo"]["variants"][0]["artifacts"]["windows-x86_64"].clone();
+        let template = json!({
+            "manifest_version": "2.7",
+            "registries": {},
+            "resources": {"sample": {
+                "name": "Sample", "registry": "example", "tags": {},
+                "default_variants": {"windows-x86_64": "stable"},
+                "variants": [{"name": "Stable", "tags": [], "artifacts": {"windows-x86_64": artifact}}]
+            }}
+        });
+        serde_json::from_value::<ResourceManifestTemplate>(template.clone()).unwrap();
+        for path in [
+            "/resources/sample/variants/0/artifacts/windows-x86_64/version/version/parser",
+            "/resources/sample/variants/0/artifacts/windows-x86_64/version/checksum/parser",
+        ] {
+            let mut invalid = template.clone();
+            *invalid.pointer_mut(path).unwrap() = json!({"type": "future-template-parser"});
+            let error = serde_json::from_value::<ResourceManifestTemplate>(invalid).unwrap_err();
+            assert!(
+                error.to_string().contains("future-template-parser"),
+                "{error}"
+            );
+        }
+        for path in [
+            "/resources/sample/default_variants",
+            "/resources/sample/variants/0/artifacts",
+        ] {
+            let mut invalid = template.clone();
+            invalid
+                .pointer_mut(path)
+                .unwrap()
+                .as_object_mut()
+                .unwrap()
+                .insert("future-os-cpu".into(), json!(null));
+            let error = serde_json::from_value::<ResourceManifestTemplate>(invalid).unwrap_err();
+            assert!(error.to_string().contains("future-os-cpu"), "{error}");
         }
     }
 
