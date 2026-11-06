@@ -8,6 +8,7 @@ license = "GPL-3.0-only"
 
 [workspace.dependencies]
 manifest-metadata = { path = "crates/manifest-metadata" }
+manifest-parser = { path = "crates/manifest-parser" }
 
 indexmap = { version = "2", features = ["serde"] }
 

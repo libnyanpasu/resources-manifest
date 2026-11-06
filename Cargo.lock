@@ -55,10 +55,21 @@ name = "manifest-metadata"
 version = "0.1.0"
 dependencies = [
  "indexmap",
+ "manifest-parser",
  "schemars",
  "serde",
  "serde_json",
  "snafu",
+ "specta",
+]
+
+[[package]]
+name = "manifest-parser"
+version = "0.1.0"
+dependencies = [
+ "schemars",
+ "serde",
+ "serde_json",
  "specta",
 ]
 

@@ -6,6 +6,7 @@ description = "Resource manifest meta types annotated with serde, schemars and s
 license.workspace = true
 
 [dependencies]
+manifest-parser.workspace = true
 indexmap.workspace = true
 schemars = { workspace = true, features = ["indexmap2"] }
 serde.workspace = true
