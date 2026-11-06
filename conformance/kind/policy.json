@@ -1,0 +1,282 @@
+[
+  {
+    "name": "kind.policy.default.authoritative",
+    "input": {
+      "operation": "policy",
+      "kind": "authoritative",
+      "policy": {}
+    },
+    "expect": {
+      "ok": true
+    }
+  },
+  {
+    "name": "kind.policy.default.parsed",
+    "input": {
+      "operation": "policy",
+      "kind": "parsed",
+      "policy": {}
+    },
+    "expect": {
+      "error": {
+        "code": "verify.kind_rejected",
+        "path": "arg.kind",
+        "fields": {
+          "kind": "parsed"
+        }
+      }
+    }
+  },
+  {
+    "name": "kind.policy.default.snapshot",
+    "input": {
+      "operation": "policy",
+      "kind": "snapshot",
+      "policy": {}
+    },
+    "expect": {
+      "error": {
+        "code": "verify.kind_rejected",
+        "path": "arg.kind",
+        "fields": {
+          "kind": "snapshot"
+        }
+      }
+    }
+  },
+  {
+    "name": "kind.policy.default.none",
+    "input": {
+      "operation": "policy",
+      "kind": "none",
+      "policy": {}
+    },
+    "expect": {
+      "error": {
+        "code": "verify.kind_rejected",
+        "path": "arg.kind",
+        "fields": {
+          "kind": "none"
+        }
+      }
+    }
+  },
+  {
+    "name": "kind.policy.allow_parsed.authoritative",
+    "input": {
+      "operation": "policy",
+      "kind": "authoritative",
+      "policy": {
+        "allow_parsed": true,
+        "allow_snapshot": false
+      }
+    },
+    "expect": {
+      "ok": true
+    }
+  },
+  {
+    "name": "kind.policy.allow_parsed.parsed",
+    "input": {
+      "operation": "policy",
+      "kind": "parsed",
+      "policy": {
+        "allow_parsed": true,
+        "allow_snapshot": false
+      }
+    },
+    "expect": {
+      "ok": true
+    }
+  },
+  {
+    "name": "kind.policy.allow_parsed.snapshot",
+    "input": {
+      "operation": "policy",
+      "kind": "snapshot",
+      "policy": {
+        "allow_parsed": true,
+        "allow_snapshot": false
+      }
+    },
+    "expect": {
+      "error": {
+        "code": "verify.kind_rejected",
+        "path": "arg.kind",
+        "fields": {
+          "kind": "snapshot"
+        }
+      }
+    }
+  },
+  {
+    "name": "kind.policy.allow_parsed.none",
+    "input": {
+      "operation": "policy",
+      "kind": "none",
+      "policy": {
+        "allow_parsed": true,
+        "allow_snapshot": false
+      }
+    },
+    "expect": {
+      "error": {
+        "code": "verify.kind_rejected",
+        "path": "arg.kind",
+        "fields": {
+          "kind": "none"
+        }
+      }
+    }
+  },
+  {
+    "name": "kind.policy.allow_snapshot.authoritative",
+    "input": {
+      "operation": "policy",
+      "kind": "authoritative",
+      "policy": {
+        "allow_parsed": false,
+        "allow_snapshot": true
+      }
+    },
+    "expect": {
+      "ok": true
+    }
+  },
+  {
+    "name": "kind.policy.allow_snapshot.parsed",
+    "input": {
+      "operation": "policy",
+      "kind": "parsed",
+      "policy": {
+        "allow_parsed": false,
+        "allow_snapshot": true
+      }
+    },
+    "expect": {
+      "error": {
+        "code": "verify.kind_rejected",
+        "path": "arg.kind",
+        "fields": {
+          "kind": "parsed"
+        }
+      }
+    }
+  },
+  {
+    "name": "kind.policy.allow_snapshot.snapshot",
+    "input": {
+      "operation": "policy",
+      "kind": "snapshot",
+      "policy": {
+        "allow_parsed": false,
+        "allow_snapshot": true
+      }
+    },
+    "expect": {
+      "ok": true
+    }
+  },
+  {
+    "name": "kind.policy.allow_snapshot.none",
+    "input": {
+      "operation": "policy",
+      "kind": "none",
+      "policy": {
+        "allow_parsed": false,
+        "allow_snapshot": true
+      }
+    },
+    "expect": {
+      "error": {
+        "code": "verify.kind_rejected",
+        "path": "arg.kind",
+        "fields": {
+          "kind": "none"
+        }
+      }
+    }
+  },
+  {
+    "name": "kind.policy.allow_both.authoritative",
+    "input": {
+      "operation": "policy",
+      "kind": "authoritative",
+      "policy": {
+        "allow_parsed": true,
+        "allow_snapshot": true
+      }
+    },
+    "expect": {
+      "ok": true
+    }
+  },
+  {
+    "name": "kind.policy.allow_both.parsed",
+    "input": {
+      "operation": "policy",
+      "kind": "parsed",
+      "policy": {
+        "allow_parsed": true,
+        "allow_snapshot": true
+      }
+    },
+    "expect": {
+      "ok": true
+    }
+  },
+  {
+    "name": "kind.policy.allow_both.snapshot",
+    "input": {
+      "operation": "policy",
+      "kind": "snapshot",
+      "policy": {
+        "allow_parsed": true,
+        "allow_snapshot": true
+      }
+    },
+    "expect": {
+      "ok": true
+    }
+  },
+  {
+    "name": "kind.policy.allow_both.none",
+    "input": {
+      "operation": "policy",
+      "kind": "none",
+      "policy": {
+        "allow_parsed": true,
+        "allow_snapshot": true
+      }
+    },
+    "expect": {
+      "error": {
+        "code": "verify.kind_rejected",
+        "path": "arg.kind",
+        "fields": {
+          "kind": "none"
+        }
+      }
+    }
+  },
+  {
+    "name": "kind.verify.digest_mismatch",
+    "input": {
+      "operation": "digest_mismatch",
+      "algorithm": "sha256",
+      "expected": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+      "actual": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+    },
+    "expect": {
+      "error": {
+        "code": "verify.digest_mismatch",
+        "path": "arg.actual",
+        "fields": {
+          "algorithm": "sha256",
+          "expected": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+          "actual": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+        }
+      }
+    }
+  }
+]

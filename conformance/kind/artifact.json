@@ -133,5 +133,87 @@
     "expect": {
       "ok": "none"
     }
+  },
+  {
+    "name": "kind.remote.unsupported_version_parser",
+    "input": {
+      "artifact": "pkg-{version}.zip",
+      "version": {
+        "type": "remote",
+        "fallback": {
+          "version": "v1",
+          "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+          "source": {
+            "release": "fallback-{version}"
+          }
+        },
+        "version": {
+          "resource": {
+            "registry": "meta",
+            "artifact": "version.txt"
+          },
+          "parser": {
+            "type": "future-version"
+          }
+        },
+        "checksum": {
+          "resource": {
+            "registry": "meta",
+            "artifact": "checksums.txt"
+          },
+          "parser": {
+            "type": "gnu",
+            "algorithm": "sha256"
+          }
+        }
+      }
+    },
+    "expect": {
+      "ok": "none"
+    }
+  },
+  {
+    "name": "kind.static.latest_not_first.authoritative",
+    "input": {
+      "artifact": "pkg-{version}.zip",
+      "version": {
+        "type": "static",
+        "latest": "v2",
+        "releases": [
+          {
+            "version": "v1"
+          },
+          {
+            "version": "v2",
+            "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+          }
+        ]
+      }
+    },
+    "expect": {
+      "ok": "authoritative"
+    }
+  },
+  {
+    "name": "kind.static.latest_not_first.none",
+    "input": {
+      "artifact": "pkg-{version}.zip",
+      "version": {
+        "type": "static",
+        "latest": "v2",
+        "releases": [
+          {
+            "version": "v1",
+            "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+          },
+          {
+            "version": "v2"
+          }
+        ]
+      }
+    },
+    "expect": {
+      "ok": "none"
+    }
   }
 ]

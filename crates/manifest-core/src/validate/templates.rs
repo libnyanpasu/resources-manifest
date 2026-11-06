@@ -207,11 +207,7 @@ fn canonical(
     let mut mirror_builtins = builtins.clone();
     mirror_builtins.extend(URL_COMPONENTS.iter().copied());
     for (id, mirror) in &manifest.mirrors {
-        if mirror
-            .registries
-            .as_ref()
-            .is_none_or(|allowed| allowed.is_empty() || allowed.iter().any(|id| id == registry))
-        {
+        if crate::scope::mirror_allows(mirror, registry) {
             inspect(
                 &mirror.url_template,
                 &format!("mirrors.{id}.url_template"),

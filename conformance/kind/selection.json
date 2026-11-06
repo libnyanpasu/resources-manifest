@@ -1,0 +1,2590 @@
+[
+  {
+    "name": "kind.select.default",
+    "input": {
+      "operation": "select",
+      "manifest": {
+        "manifest_version": "2.0",
+        "registries": {
+          "main": {
+            "name": "Main",
+            "url_template": "https://origin.test/{artifact}"
+          },
+          "meta": {
+            "name": "Metadata",
+            "url_template": "https://meta.test/{artifact}"
+          }
+        },
+        "mirrors": {},
+        "resources": {
+          "sample": {
+            "name": "Sample",
+            "registry": "main",
+            "tags": [
+              {
+                "id": "stable",
+                "name": "Stable"
+              },
+              {
+                "id": "fast",
+                "name": "Fast"
+              },
+              {
+                "id": "alpha",
+                "name": "Alpha"
+              }
+            ],
+            "default_variants": {
+              "linux-amd64": "stable",
+              "windows-x86_64": "alpha"
+            },
+            "variants": [
+              {
+                "id": "stable",
+                "name": "Stable",
+                "tag_key": "stable",
+                "tags": [
+                  {
+                    "id": "stable",
+                    "name": "Stable"
+                  }
+                ],
+                "artifacts": {
+                  "linux-amd64": {
+                    "artifact": "pkg-{version}.zip",
+                    "version": {
+                      "type": "static",
+                      "latest": "v2",
+                      "releases": [
+                        {
+                          "version": "v2",
+                          "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+                        }
+                      ]
+                    }
+                  }
+                }
+              },
+              {
+                "id": "fast",
+                "name": "Fast",
+                "tag_key": "fast+stable",
+                "tags": [
+                  {
+                    "id": "fast",
+                    "name": "Fast"
+                  },
+                  {
+                    "id": "stable",
+                    "name": "Stable"
+                  }
+                ],
+                "artifacts": {
+                  "linux-amd64": {
+                    "artifact": "pkg-{version}.zip",
+                    "version": {
+                      "type": "remote",
+                      "fallback": {
+                        "version": "v1",
+                        "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+                        "source": {
+                          "release": "fallback-{version}"
+                        }
+                      },
+                      "version": {
+                        "resource": {
+                          "registry": "meta",
+                          "artifact": "version.txt"
+                        },
+                        "parser": {
+                          "type": "text",
+                          "trim": true
+                        }
+                      },
+                      "checksum": {
+                        "resource": {
+                          "registry": "meta",
+                          "artifact": "checksums.txt"
+                        },
+                        "parser": {
+                          "type": "gnu",
+                          "algorithm": "sha256"
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              {
+                "id": "alpha",
+                "name": "Alpha",
+                "tag_key": "alpha",
+                "tags": [
+                  {
+                    "id": "alpha",
+                    "name": "Alpha"
+                  }
+                ],
+                "artifacts": {
+                  "windows-x86_64": {
+                    "artifact": "pkg-{version}.zip",
+                    "version": {
+                      "type": "static",
+                      "latest": "v2",
+                      "releases": [
+                        {
+                          "version": "v2"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "resource": "sample",
+      "platform": "linux-amd64"
+    },
+    "expect": {
+      "ok": {
+        "variant_id": "stable",
+        "kind": "authoritative"
+      }
+    }
+  },
+  {
+    "name": "kind.select.id",
+    "input": {
+      "operation": "select",
+      "manifest": {
+        "manifest_version": "2.0",
+        "registries": {
+          "main": {
+            "name": "Main",
+            "url_template": "https://origin.test/{artifact}"
+          },
+          "meta": {
+            "name": "Metadata",
+            "url_template": "https://meta.test/{artifact}"
+          }
+        },
+        "mirrors": {},
+        "resources": {
+          "sample": {
+            "name": "Sample",
+            "registry": "main",
+            "tags": [
+              {
+                "id": "stable",
+                "name": "Stable"
+              },
+              {
+                "id": "fast",
+                "name": "Fast"
+              },
+              {
+                "id": "alpha",
+                "name": "Alpha"
+              }
+            ],
+            "default_variants": {
+              "linux-amd64": "stable",
+              "windows-x86_64": "alpha"
+            },
+            "variants": [
+              {
+                "id": "stable",
+                "name": "Stable",
+                "tag_key": "stable",
+                "tags": [
+                  {
+                    "id": "stable",
+                    "name": "Stable"
+                  }
+                ],
+                "artifacts": {
+                  "linux-amd64": {
+                    "artifact": "pkg-{version}.zip",
+                    "version": {
+                      "type": "static",
+                      "latest": "v2",
+                      "releases": [
+                        {
+                          "version": "v2",
+                          "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+                        }
+                      ]
+                    }
+                  }
+                }
+              },
+              {
+                "id": "fast",
+                "name": "Fast",
+                "tag_key": "fast+stable",
+                "tags": [
+                  {
+                    "id": "fast",
+                    "name": "Fast"
+                  },
+                  {
+                    "id": "stable",
+                    "name": "Stable"
+                  }
+                ],
+                "artifacts": {
+                  "linux-amd64": {
+                    "artifact": "pkg-{version}.zip",
+                    "version": {
+                      "type": "remote",
+                      "fallback": {
+                        "version": "v1",
+                        "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+                        "source": {
+                          "release": "fallback-{version}"
+                        }
+                      },
+                      "version": {
+                        "resource": {
+                          "registry": "meta",
+                          "artifact": "version.txt"
+                        },
+                        "parser": {
+                          "type": "text",
+                          "trim": true
+                        }
+                      },
+                      "checksum": {
+                        "resource": {
+                          "registry": "meta",
+                          "artifact": "checksums.txt"
+                        },
+                        "parser": {
+                          "type": "gnu",
+                          "algorithm": "sha256"
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              {
+                "id": "alpha",
+                "name": "Alpha",
+                "tag_key": "alpha",
+                "tags": [
+                  {
+                    "id": "alpha",
+                    "name": "Alpha"
+                  }
+                ],
+                "artifacts": {
+                  "windows-x86_64": {
+                    "artifact": "pkg-{version}.zip",
+                    "version": {
+                      "type": "static",
+                      "latest": "v2",
+                      "releases": [
+                        {
+                          "version": "v2"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "resource": "sample",
+      "platform": "linux-amd64",
+      "variant_id": "fast"
+    },
+    "expect": {
+      "ok": {
+        "variant_id": "fast",
+        "kind": "parsed"
+      }
+    }
+  },
+  {
+    "name": "kind.select.exact_tags",
+    "input": {
+      "operation": "select",
+      "manifest": {
+        "manifest_version": "2.0",
+        "registries": {
+          "main": {
+            "name": "Main",
+            "url_template": "https://origin.test/{artifact}"
+          },
+          "meta": {
+            "name": "Metadata",
+            "url_template": "https://meta.test/{artifact}"
+          }
+        },
+        "mirrors": {},
+        "resources": {
+          "sample": {
+            "name": "Sample",
+            "registry": "main",
+            "tags": [
+              {
+                "id": "stable",
+                "name": "Stable"
+              },
+              {
+                "id": "fast",
+                "name": "Fast"
+              },
+              {
+                "id": "alpha",
+                "name": "Alpha"
+              }
+            ],
+            "default_variants": {
+              "linux-amd64": "stable",
+              "windows-x86_64": "alpha"
+            },
+            "variants": [
+              {
+                "id": "stable",
+                "name": "Stable",
+                "tag_key": "stable",
+                "tags": [
+                  {
+                    "id": "stable",
+                    "name": "Stable"
+                  }
+                ],
+                "artifacts": {
+                  "linux-amd64": {
+                    "artifact": "pkg-{version}.zip",
+                    "version": {
+                      "type": "static",
+                      "latest": "v2",
+                      "releases": [
+                        {
+                          "version": "v2",
+                          "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+                        }
+                      ]
+                    }
+                  }
+                }
+              },
+              {
+                "id": "fast",
+                "name": "Fast",
+                "tag_key": "fast+stable",
+                "tags": [
+                  {
+                    "id": "fast",
+                    "name": "Fast"
+                  },
+                  {
+                    "id": "stable",
+                    "name": "Stable"
+                  }
+                ],
+                "artifacts": {
+                  "linux-amd64": {
+                    "artifact": "pkg-{version}.zip",
+                    "version": {
+                      "type": "remote",
+                      "fallback": {
+                        "version": "v1",
+                        "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+                        "source": {
+                          "release": "fallback-{version}"
+                        }
+                      },
+                      "version": {
+                        "resource": {
+                          "registry": "meta",
+                          "artifact": "version.txt"
+                        },
+                        "parser": {
+                          "type": "text",
+                          "trim": true
+                        }
+                      },
+                      "checksum": {
+                        "resource": {
+                          "registry": "meta",
+                          "artifact": "checksums.txt"
+                        },
+                        "parser": {
+                          "type": "gnu",
+                          "algorithm": "sha256"
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              {
+                "id": "alpha",
+                "name": "Alpha",
+                "tag_key": "alpha",
+                "tags": [
+                  {
+                    "id": "alpha",
+                    "name": "Alpha"
+                  }
+                ],
+                "artifacts": {
+                  "windows-x86_64": {
+                    "artifact": "pkg-{version}.zip",
+                    "version": {
+                      "type": "static",
+                      "latest": "v2",
+                      "releases": [
+                        {
+                          "version": "v2"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "resource": "sample",
+      "platform": "linux-amd64",
+      "tags": ["stable", "fast"]
+    },
+    "expect": {
+      "ok": {
+        "variant_id": "fast",
+        "kind": "parsed"
+      }
+    }
+  },
+  {
+    "name": "kind.select.subset_is_exact",
+    "input": {
+      "operation": "select",
+      "manifest": {
+        "manifest_version": "2.0",
+        "registries": {
+          "main": {
+            "name": "Main",
+            "url_template": "https://origin.test/{artifact}"
+          },
+          "meta": {
+            "name": "Metadata",
+            "url_template": "https://meta.test/{artifact}"
+          }
+        },
+        "mirrors": {},
+        "resources": {
+          "sample": {
+            "name": "Sample",
+            "registry": "main",
+            "tags": [
+              {
+                "id": "stable",
+                "name": "Stable"
+              },
+              {
+                "id": "fast",
+                "name": "Fast"
+              },
+              {
+                "id": "alpha",
+                "name": "Alpha"
+              }
+            ],
+            "default_variants": {
+              "linux-amd64": "stable",
+              "windows-x86_64": "alpha"
+            },
+            "variants": [
+              {
+                "id": "stable",
+                "name": "Stable",
+                "tag_key": "stable",
+                "tags": [
+                  {
+                    "id": "stable",
+                    "name": "Stable"
+                  }
+                ],
+                "artifacts": {
+                  "linux-amd64": {
+                    "artifact": "pkg-{version}.zip",
+                    "version": {
+                      "type": "static",
+                      "latest": "v2",
+                      "releases": [
+                        {
+                          "version": "v2",
+                          "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+                        }
+                      ]
+                    }
+                  }
+                }
+              },
+              {
+                "id": "fast",
+                "name": "Fast",
+                "tag_key": "fast+stable",
+                "tags": [
+                  {
+                    "id": "fast",
+                    "name": "Fast"
+                  },
+                  {
+                    "id": "stable",
+                    "name": "Stable"
+                  }
+                ],
+                "artifacts": {
+                  "linux-amd64": {
+                    "artifact": "pkg-{version}.zip",
+                    "version": {
+                      "type": "remote",
+                      "fallback": {
+                        "version": "v1",
+                        "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+                        "source": {
+                          "release": "fallback-{version}"
+                        }
+                      },
+                      "version": {
+                        "resource": {
+                          "registry": "meta",
+                          "artifact": "version.txt"
+                        },
+                        "parser": {
+                          "type": "text",
+                          "trim": true
+                        }
+                      },
+                      "checksum": {
+                        "resource": {
+                          "registry": "meta",
+                          "artifact": "checksums.txt"
+                        },
+                        "parser": {
+                          "type": "gnu",
+                          "algorithm": "sha256"
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              {
+                "id": "alpha",
+                "name": "Alpha",
+                "tag_key": "alpha",
+                "tags": [
+                  {
+                    "id": "alpha",
+                    "name": "Alpha"
+                  }
+                ],
+                "artifacts": {
+                  "windows-x86_64": {
+                    "artifact": "pkg-{version}.zip",
+                    "version": {
+                      "type": "static",
+                      "latest": "v2",
+                      "releases": [
+                        {
+                          "version": "v2"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "resource": "sample",
+      "platform": "linux-amd64",
+      "tags": ["stable"]
+    },
+    "expect": {
+      "ok": {
+        "variant_id": "stable",
+        "kind": "authoritative"
+      }
+    }
+  },
+  {
+    "name": "kind.select.id_tags_agree",
+    "input": {
+      "operation": "select",
+      "manifest": {
+        "manifest_version": "2.0",
+        "registries": {
+          "main": {
+            "name": "Main",
+            "url_template": "https://origin.test/{artifact}"
+          },
+          "meta": {
+            "name": "Metadata",
+            "url_template": "https://meta.test/{artifact}"
+          }
+        },
+        "mirrors": {},
+        "resources": {
+          "sample": {
+            "name": "Sample",
+            "registry": "main",
+            "tags": [
+              {
+                "id": "stable",
+                "name": "Stable"
+              },
+              {
+                "id": "fast",
+                "name": "Fast"
+              },
+              {
+                "id": "alpha",
+                "name": "Alpha"
+              }
+            ],
+            "default_variants": {
+              "linux-amd64": "stable",
+              "windows-x86_64": "alpha"
+            },
+            "variants": [
+              {
+                "id": "stable",
+                "name": "Stable",
+                "tag_key": "stable",
+                "tags": [
+                  {
+                    "id": "stable",
+                    "name": "Stable"
+                  }
+                ],
+                "artifacts": {
+                  "linux-amd64": {
+                    "artifact": "pkg-{version}.zip",
+                    "version": {
+                      "type": "static",
+                      "latest": "v2",
+                      "releases": [
+                        {
+                          "version": "v2",
+                          "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+                        }
+                      ]
+                    }
+                  }
+                }
+              },
+              {
+                "id": "fast",
+                "name": "Fast",
+                "tag_key": "fast+stable",
+                "tags": [
+                  {
+                    "id": "fast",
+                    "name": "Fast"
+                  },
+                  {
+                    "id": "stable",
+                    "name": "Stable"
+                  }
+                ],
+                "artifacts": {
+                  "linux-amd64": {
+                    "artifact": "pkg-{version}.zip",
+                    "version": {
+                      "type": "remote",
+                      "fallback": {
+                        "version": "v1",
+                        "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+                        "source": {
+                          "release": "fallback-{version}"
+                        }
+                      },
+                      "version": {
+                        "resource": {
+                          "registry": "meta",
+                          "artifact": "version.txt"
+                        },
+                        "parser": {
+                          "type": "text",
+                          "trim": true
+                        }
+                      },
+                      "checksum": {
+                        "resource": {
+                          "registry": "meta",
+                          "artifact": "checksums.txt"
+                        },
+                        "parser": {
+                          "type": "gnu",
+                          "algorithm": "sha256"
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              {
+                "id": "alpha",
+                "name": "Alpha",
+                "tag_key": "alpha",
+                "tags": [
+                  {
+                    "id": "alpha",
+                    "name": "Alpha"
+                  }
+                ],
+                "artifacts": {
+                  "windows-x86_64": {
+                    "artifact": "pkg-{version}.zip",
+                    "version": {
+                      "type": "static",
+                      "latest": "v2",
+                      "releases": [
+                        {
+                          "version": "v2"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "resource": "sample",
+      "platform": "linux-amd64",
+      "variant_id": "fast",
+      "tags": ["fast", "stable"]
+    },
+    "expect": {
+      "ok": {
+        "variant_id": "fast",
+        "kind": "parsed"
+      }
+    }
+  },
+  {
+    "name": "kind.select.conflict",
+    "input": {
+      "operation": "select",
+      "manifest": {
+        "manifest_version": "2.0",
+        "registries": {
+          "main": {
+            "name": "Main",
+            "url_template": "https://origin.test/{artifact}"
+          },
+          "meta": {
+            "name": "Metadata",
+            "url_template": "https://meta.test/{artifact}"
+          }
+        },
+        "mirrors": {},
+        "resources": {
+          "sample": {
+            "name": "Sample",
+            "registry": "main",
+            "tags": [
+              {
+                "id": "stable",
+                "name": "Stable"
+              },
+              {
+                "id": "fast",
+                "name": "Fast"
+              },
+              {
+                "id": "alpha",
+                "name": "Alpha"
+              }
+            ],
+            "default_variants": {
+              "linux-amd64": "stable",
+              "windows-x86_64": "alpha"
+            },
+            "variants": [
+              {
+                "id": "stable",
+                "name": "Stable",
+                "tag_key": "stable",
+                "tags": [
+                  {
+                    "id": "stable",
+                    "name": "Stable"
+                  }
+                ],
+                "artifacts": {
+                  "linux-amd64": {
+                    "artifact": "pkg-{version}.zip",
+                    "version": {
+                      "type": "static",
+                      "latest": "v2",
+                      "releases": [
+                        {
+                          "version": "v2",
+                          "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+                        }
+                      ]
+                    }
+                  }
+                }
+              },
+              {
+                "id": "fast",
+                "name": "Fast",
+                "tag_key": "fast+stable",
+                "tags": [
+                  {
+                    "id": "fast",
+                    "name": "Fast"
+                  },
+                  {
+                    "id": "stable",
+                    "name": "Stable"
+                  }
+                ],
+                "artifacts": {
+                  "linux-amd64": {
+                    "artifact": "pkg-{version}.zip",
+                    "version": {
+                      "type": "remote",
+                      "fallback": {
+                        "version": "v1",
+                        "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+                        "source": {
+                          "release": "fallback-{version}"
+                        }
+                      },
+                      "version": {
+                        "resource": {
+                          "registry": "meta",
+                          "artifact": "version.txt"
+                        },
+                        "parser": {
+                          "type": "text",
+                          "trim": true
+                        }
+                      },
+                      "checksum": {
+                        "resource": {
+                          "registry": "meta",
+                          "artifact": "checksums.txt"
+                        },
+                        "parser": {
+                          "type": "gnu",
+                          "algorithm": "sha256"
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              {
+                "id": "alpha",
+                "name": "Alpha",
+                "tag_key": "alpha",
+                "tags": [
+                  {
+                    "id": "alpha",
+                    "name": "Alpha"
+                  }
+                ],
+                "artifacts": {
+                  "windows-x86_64": {
+                    "artifact": "pkg-{version}.zip",
+                    "version": {
+                      "type": "static",
+                      "latest": "v2",
+                      "releases": [
+                        {
+                          "version": "v2"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "resource": "sample",
+      "platform": "linux-amd64",
+      "variant_id": "stable",
+      "tags": ["fast", "stable"]
+    },
+    "expect": {
+      "error": {
+        "code": "resolve.selection_conflict",
+        "path": "arg.variant",
+        "fields": {
+          "variant": "stable",
+          "tags": ["fast", "stable"]
+        }
+      }
+    }
+  },
+  {
+    "name": "kind.select.tags_empty",
+    "input": {
+      "operation": "select",
+      "manifest": {
+        "manifest_version": "2.0",
+        "registries": {
+          "main": {
+            "name": "Main",
+            "url_template": "https://origin.test/{artifact}"
+          },
+          "meta": {
+            "name": "Metadata",
+            "url_template": "https://meta.test/{artifact}"
+          }
+        },
+        "mirrors": {},
+        "resources": {
+          "sample": {
+            "name": "Sample",
+            "registry": "main",
+            "tags": [
+              {
+                "id": "stable",
+                "name": "Stable"
+              },
+              {
+                "id": "fast",
+                "name": "Fast"
+              },
+              {
+                "id": "alpha",
+                "name": "Alpha"
+              }
+            ],
+            "default_variants": {
+              "linux-amd64": "stable",
+              "windows-x86_64": "alpha"
+            },
+            "variants": [
+              {
+                "id": "stable",
+                "name": "Stable",
+                "tag_key": "stable",
+                "tags": [
+                  {
+                    "id": "stable",
+                    "name": "Stable"
+                  }
+                ],
+                "artifacts": {
+                  "linux-amd64": {
+                    "artifact": "pkg-{version}.zip",
+                    "version": {
+                      "type": "static",
+                      "latest": "v2",
+                      "releases": [
+                        {
+                          "version": "v2",
+                          "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+                        }
+                      ]
+                    }
+                  }
+                }
+              },
+              {
+                "id": "fast",
+                "name": "Fast",
+                "tag_key": "fast+stable",
+                "tags": [
+                  {
+                    "id": "fast",
+                    "name": "Fast"
+                  },
+                  {
+                    "id": "stable",
+                    "name": "Stable"
+                  }
+                ],
+                "artifacts": {
+                  "linux-amd64": {
+                    "artifact": "pkg-{version}.zip",
+                    "version": {
+                      "type": "remote",
+                      "fallback": {
+                        "version": "v1",
+                        "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+                        "source": {
+                          "release": "fallback-{version}"
+                        }
+                      },
+                      "version": {
+                        "resource": {
+                          "registry": "meta",
+                          "artifact": "version.txt"
+                        },
+                        "parser": {
+                          "type": "text",
+                          "trim": true
+                        }
+                      },
+                      "checksum": {
+                        "resource": {
+                          "registry": "meta",
+                          "artifact": "checksums.txt"
+                        },
+                        "parser": {
+                          "type": "gnu",
+                          "algorithm": "sha256"
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              {
+                "id": "alpha",
+                "name": "Alpha",
+                "tag_key": "alpha",
+                "tags": [
+                  {
+                    "id": "alpha",
+                    "name": "Alpha"
+                  }
+                ],
+                "artifacts": {
+                  "windows-x86_64": {
+                    "artifact": "pkg-{version}.zip",
+                    "version": {
+                      "type": "static",
+                      "latest": "v2",
+                      "releases": [
+                        {
+                          "version": "v2"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "resource": "sample",
+      "platform": "linux-amd64",
+      "tags": []
+    },
+    "expect": {
+      "error": {
+        "code": "resolve.tags_rejected",
+        "path": "arg.tags",
+        "fields": {
+          "tags": [],
+          "reason": "empty"
+        }
+      }
+    }
+  },
+  {
+    "name": "kind.select.tags_duplicate",
+    "input": {
+      "operation": "select",
+      "manifest": {
+        "manifest_version": "2.0",
+        "registries": {
+          "main": {
+            "name": "Main",
+            "url_template": "https://origin.test/{artifact}"
+          },
+          "meta": {
+            "name": "Metadata",
+            "url_template": "https://meta.test/{artifact}"
+          }
+        },
+        "mirrors": {},
+        "resources": {
+          "sample": {
+            "name": "Sample",
+            "registry": "main",
+            "tags": [
+              {
+                "id": "stable",
+                "name": "Stable"
+              },
+              {
+                "id": "fast",
+                "name": "Fast"
+              },
+              {
+                "id": "alpha",
+                "name": "Alpha"
+              }
+            ],
+            "default_variants": {
+              "linux-amd64": "stable",
+              "windows-x86_64": "alpha"
+            },
+            "variants": [
+              {
+                "id": "stable",
+                "name": "Stable",
+                "tag_key": "stable",
+                "tags": [
+                  {
+                    "id": "stable",
+                    "name": "Stable"
+                  }
+                ],
+                "artifacts": {
+                  "linux-amd64": {
+                    "artifact": "pkg-{version}.zip",
+                    "version": {
+                      "type": "static",
+                      "latest": "v2",
+                      "releases": [
+                        {
+                          "version": "v2",
+                          "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+                        }
+                      ]
+                    }
+                  }
+                }
+              },
+              {
+                "id": "fast",
+                "name": "Fast",
+                "tag_key": "fast+stable",
+                "tags": [
+                  {
+                    "id": "fast",
+                    "name": "Fast"
+                  },
+                  {
+                    "id": "stable",
+                    "name": "Stable"
+                  }
+                ],
+                "artifacts": {
+                  "linux-amd64": {
+                    "artifact": "pkg-{version}.zip",
+                    "version": {
+                      "type": "remote",
+                      "fallback": {
+                        "version": "v1",
+                        "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+                        "source": {
+                          "release": "fallback-{version}"
+                        }
+                      },
+                      "version": {
+                        "resource": {
+                          "registry": "meta",
+                          "artifact": "version.txt"
+                        },
+                        "parser": {
+                          "type": "text",
+                          "trim": true
+                        }
+                      },
+                      "checksum": {
+                        "resource": {
+                          "registry": "meta",
+                          "artifact": "checksums.txt"
+                        },
+                        "parser": {
+                          "type": "gnu",
+                          "algorithm": "sha256"
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              {
+                "id": "alpha",
+                "name": "Alpha",
+                "tag_key": "alpha",
+                "tags": [
+                  {
+                    "id": "alpha",
+                    "name": "Alpha"
+                  }
+                ],
+                "artifacts": {
+                  "windows-x86_64": {
+                    "artifact": "pkg-{version}.zip",
+                    "version": {
+                      "type": "static",
+                      "latest": "v2",
+                      "releases": [
+                        {
+                          "version": "v2"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "resource": "sample",
+      "platform": "linux-amd64",
+      "tags": ["stable", "stable"]
+    },
+    "expect": {
+      "error": {
+        "code": "resolve.tags_rejected",
+        "path": "arg.tags",
+        "fields": {
+          "tags": ["stable", "stable"],
+          "reason": "duplicate"
+        }
+      }
+    }
+  },
+  {
+    "name": "kind.select.tags_unmatched",
+    "input": {
+      "operation": "select",
+      "manifest": {
+        "manifest_version": "2.0",
+        "registries": {
+          "main": {
+            "name": "Main",
+            "url_template": "https://origin.test/{artifact}"
+          },
+          "meta": {
+            "name": "Metadata",
+            "url_template": "https://meta.test/{artifact}"
+          }
+        },
+        "mirrors": {},
+        "resources": {
+          "sample": {
+            "name": "Sample",
+            "registry": "main",
+            "tags": [
+              {
+                "id": "stable",
+                "name": "Stable"
+              },
+              {
+                "id": "fast",
+                "name": "Fast"
+              },
+              {
+                "id": "alpha",
+                "name": "Alpha"
+              }
+            ],
+            "default_variants": {
+              "linux-amd64": "stable",
+              "windows-x86_64": "alpha"
+            },
+            "variants": [
+              {
+                "id": "stable",
+                "name": "Stable",
+                "tag_key": "stable",
+                "tags": [
+                  {
+                    "id": "stable",
+                    "name": "Stable"
+                  }
+                ],
+                "artifacts": {
+                  "linux-amd64": {
+                    "artifact": "pkg-{version}.zip",
+                    "version": {
+                      "type": "static",
+                      "latest": "v2",
+                      "releases": [
+                        {
+                          "version": "v2",
+                          "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+                        }
+                      ]
+                    }
+                  }
+                }
+              },
+              {
+                "id": "fast",
+                "name": "Fast",
+                "tag_key": "fast+stable",
+                "tags": [
+                  {
+                    "id": "fast",
+                    "name": "Fast"
+                  },
+                  {
+                    "id": "stable",
+                    "name": "Stable"
+                  }
+                ],
+                "artifacts": {
+                  "linux-amd64": {
+                    "artifact": "pkg-{version}.zip",
+                    "version": {
+                      "type": "remote",
+                      "fallback": {
+                        "version": "v1",
+                        "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+                        "source": {
+                          "release": "fallback-{version}"
+                        }
+                      },
+                      "version": {
+                        "resource": {
+                          "registry": "meta",
+                          "artifact": "version.txt"
+                        },
+                        "parser": {
+                          "type": "text",
+                          "trim": true
+                        }
+                      },
+                      "checksum": {
+                        "resource": {
+                          "registry": "meta",
+                          "artifact": "checksums.txt"
+                        },
+                        "parser": {
+                          "type": "gnu",
+                          "algorithm": "sha256"
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              {
+                "id": "alpha",
+                "name": "Alpha",
+                "tag_key": "alpha",
+                "tags": [
+                  {
+                    "id": "alpha",
+                    "name": "Alpha"
+                  }
+                ],
+                "artifacts": {
+                  "windows-x86_64": {
+                    "artifact": "pkg-{version}.zip",
+                    "version": {
+                      "type": "static",
+                      "latest": "v2",
+                      "releases": [
+                        {
+                          "version": "v2"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "resource": "sample",
+      "platform": "linux-amd64",
+      "tags": ["fast"]
+    },
+    "expect": {
+      "error": {
+        "code": "resolve.tags_rejected",
+        "path": "arg.tags",
+        "fields": {
+          "tags": ["fast"],
+          "reason": "not_found"
+        }
+      }
+    }
+  },
+  {
+    "name": "kind.select.unknown",
+    "input": {
+      "operation": "select",
+      "manifest": {
+        "manifest_version": "2.0",
+        "registries": {
+          "main": {
+            "name": "Main",
+            "url_template": "https://origin.test/{artifact}"
+          },
+          "meta": {
+            "name": "Metadata",
+            "url_template": "https://meta.test/{artifact}"
+          }
+        },
+        "mirrors": {},
+        "resources": {
+          "sample": {
+            "name": "Sample",
+            "registry": "main",
+            "tags": [
+              {
+                "id": "stable",
+                "name": "Stable"
+              },
+              {
+                "id": "fast",
+                "name": "Fast"
+              },
+              {
+                "id": "alpha",
+                "name": "Alpha"
+              }
+            ],
+            "default_variants": {
+              "linux-amd64": "stable",
+              "windows-x86_64": "alpha"
+            },
+            "variants": [
+              {
+                "id": "stable",
+                "name": "Stable",
+                "tag_key": "stable",
+                "tags": [
+                  {
+                    "id": "stable",
+                    "name": "Stable"
+                  }
+                ],
+                "artifacts": {
+                  "linux-amd64": {
+                    "artifact": "pkg-{version}.zip",
+                    "version": {
+                      "type": "static",
+                      "latest": "v2",
+                      "releases": [
+                        {
+                          "version": "v2",
+                          "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+                        }
+                      ]
+                    }
+                  }
+                }
+              },
+              {
+                "id": "fast",
+                "name": "Fast",
+                "tag_key": "fast+stable",
+                "tags": [
+                  {
+                    "id": "fast",
+                    "name": "Fast"
+                  },
+                  {
+                    "id": "stable",
+                    "name": "Stable"
+                  }
+                ],
+                "artifacts": {
+                  "linux-amd64": {
+                    "artifact": "pkg-{version}.zip",
+                    "version": {
+                      "type": "remote",
+                      "fallback": {
+                        "version": "v1",
+                        "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+                        "source": {
+                          "release": "fallback-{version}"
+                        }
+                      },
+                      "version": {
+                        "resource": {
+                          "registry": "meta",
+                          "artifact": "version.txt"
+                        },
+                        "parser": {
+                          "type": "text",
+                          "trim": true
+                        }
+                      },
+                      "checksum": {
+                        "resource": {
+                          "registry": "meta",
+                          "artifact": "checksums.txt"
+                        },
+                        "parser": {
+                          "type": "gnu",
+                          "algorithm": "sha256"
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              {
+                "id": "alpha",
+                "name": "Alpha",
+                "tag_key": "alpha",
+                "tags": [
+                  {
+                    "id": "alpha",
+                    "name": "Alpha"
+                  }
+                ],
+                "artifacts": {
+                  "windows-x86_64": {
+                    "artifact": "pkg-{version}.zip",
+                    "version": {
+                      "type": "static",
+                      "latest": "v2",
+                      "releases": [
+                        {
+                          "version": "v2"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "resource": "sample",
+      "platform": "linux-amd64",
+      "variant_id": "missing"
+    },
+    "expect": {
+      "error": {
+        "code": "resolve.variant_not_found",
+        "path": "arg.variant_id",
+        "fields": {
+          "variant": "missing",
+          "platform": "linux-amd64"
+        }
+      }
+    }
+  },
+  {
+    "name": "kind.select.wrong_platform",
+    "input": {
+      "operation": "select",
+      "manifest": {
+        "manifest_version": "2.0",
+        "registries": {
+          "main": {
+            "name": "Main",
+            "url_template": "https://origin.test/{artifact}"
+          },
+          "meta": {
+            "name": "Metadata",
+            "url_template": "https://meta.test/{artifact}"
+          }
+        },
+        "mirrors": {},
+        "resources": {
+          "sample": {
+            "name": "Sample",
+            "registry": "main",
+            "tags": [
+              {
+                "id": "stable",
+                "name": "Stable"
+              },
+              {
+                "id": "fast",
+                "name": "Fast"
+              },
+              {
+                "id": "alpha",
+                "name": "Alpha"
+              }
+            ],
+            "default_variants": {
+              "linux-amd64": "stable",
+              "windows-x86_64": "alpha"
+            },
+            "variants": [
+              {
+                "id": "stable",
+                "name": "Stable",
+                "tag_key": "stable",
+                "tags": [
+                  {
+                    "id": "stable",
+                    "name": "Stable"
+                  }
+                ],
+                "artifacts": {
+                  "linux-amd64": {
+                    "artifact": "pkg-{version}.zip",
+                    "version": {
+                      "type": "static",
+                      "latest": "v2",
+                      "releases": [
+                        {
+                          "version": "v2",
+                          "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+                        }
+                      ]
+                    }
+                  }
+                }
+              },
+              {
+                "id": "fast",
+                "name": "Fast",
+                "tag_key": "fast+stable",
+                "tags": [
+                  {
+                    "id": "fast",
+                    "name": "Fast"
+                  },
+                  {
+                    "id": "stable",
+                    "name": "Stable"
+                  }
+                ],
+                "artifacts": {
+                  "linux-amd64": {
+                    "artifact": "pkg-{version}.zip",
+                    "version": {
+                      "type": "remote",
+                      "fallback": {
+                        "version": "v1",
+                        "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+                        "source": {
+                          "release": "fallback-{version}"
+                        }
+                      },
+                      "version": {
+                        "resource": {
+                          "registry": "meta",
+                          "artifact": "version.txt"
+                        },
+                        "parser": {
+                          "type": "text",
+                          "trim": true
+                        }
+                      },
+                      "checksum": {
+                        "resource": {
+                          "registry": "meta",
+                          "artifact": "checksums.txt"
+                        },
+                        "parser": {
+                          "type": "gnu",
+                          "algorithm": "sha256"
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              {
+                "id": "alpha",
+                "name": "Alpha",
+                "tag_key": "alpha",
+                "tags": [
+                  {
+                    "id": "alpha",
+                    "name": "Alpha"
+                  }
+                ],
+                "artifacts": {
+                  "windows-x86_64": {
+                    "artifact": "pkg-{version}.zip",
+                    "version": {
+                      "type": "static",
+                      "latest": "v2",
+                      "releases": [
+                        {
+                          "version": "v2"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "resource": "sample",
+      "platform": "linux-amd64",
+      "variant_id": "alpha"
+    },
+    "expect": {
+      "error": {
+        "code": "resolve.variant_not_found",
+        "path": "arg.variant_id",
+        "fields": {
+          "variant": "alpha",
+          "platform": "linux-amd64"
+        }
+      }
+    }
+  },
+  {
+    "name": "kind.select.no_platform",
+    "input": {
+      "operation": "select",
+      "manifest": {
+        "manifest_version": "2.0",
+        "registries": {
+          "main": {
+            "name": "Main",
+            "url_template": "https://origin.test/{artifact}"
+          },
+          "meta": {
+            "name": "Metadata",
+            "url_template": "https://meta.test/{artifact}"
+          }
+        },
+        "mirrors": {},
+        "resources": {
+          "sample": {
+            "name": "Sample",
+            "registry": "main",
+            "tags": [
+              {
+                "id": "stable",
+                "name": "Stable"
+              },
+              {
+                "id": "fast",
+                "name": "Fast"
+              },
+              {
+                "id": "alpha",
+                "name": "Alpha"
+              }
+            ],
+            "default_variants": {
+              "linux-amd64": "stable",
+              "windows-x86_64": "alpha"
+            },
+            "variants": [
+              {
+                "id": "stable",
+                "name": "Stable",
+                "tag_key": "stable",
+                "tags": [
+                  {
+                    "id": "stable",
+                    "name": "Stable"
+                  }
+                ],
+                "artifacts": {
+                  "linux-amd64": {
+                    "artifact": "pkg-{version}.zip",
+                    "version": {
+                      "type": "static",
+                      "latest": "v2",
+                      "releases": [
+                        {
+                          "version": "v2",
+                          "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+                        }
+                      ]
+                    }
+                  }
+                }
+              },
+              {
+                "id": "fast",
+                "name": "Fast",
+                "tag_key": "fast+stable",
+                "tags": [
+                  {
+                    "id": "fast",
+                    "name": "Fast"
+                  },
+                  {
+                    "id": "stable",
+                    "name": "Stable"
+                  }
+                ],
+                "artifacts": {
+                  "linux-amd64": {
+                    "artifact": "pkg-{version}.zip",
+                    "version": {
+                      "type": "remote",
+                      "fallback": {
+                        "version": "v1",
+                        "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+                        "source": {
+                          "release": "fallback-{version}"
+                        }
+                      },
+                      "version": {
+                        "resource": {
+                          "registry": "meta",
+                          "artifact": "version.txt"
+                        },
+                        "parser": {
+                          "type": "text",
+                          "trim": true
+                        }
+                      },
+                      "checksum": {
+                        "resource": {
+                          "registry": "meta",
+                          "artifact": "checksums.txt"
+                        },
+                        "parser": {
+                          "type": "gnu",
+                          "algorithm": "sha256"
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              {
+                "id": "alpha",
+                "name": "Alpha",
+                "tag_key": "alpha",
+                "tags": [
+                  {
+                    "id": "alpha",
+                    "name": "Alpha"
+                  }
+                ],
+                "artifacts": {
+                  "windows-x86_64": {
+                    "artifact": "pkg-{version}.zip",
+                    "version": {
+                      "type": "static",
+                      "latest": "v2",
+                      "releases": [
+                        {
+                          "version": "v2"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "resource": "sample",
+      "platform": "darwin-arm64"
+    },
+    "expect": {
+      "error": {
+        "code": "resolve.unsupported_platform",
+        "path": "arg.platform",
+        "fields": {
+          "resource": "sample",
+          "platform": "darwin-arm64"
+        }
+      }
+    }
+  },
+  {
+    "name": "kind.select.unknown_resource",
+    "input": {
+      "operation": "select",
+      "manifest": {
+        "manifest_version": "2.0",
+        "registries": {
+          "main": {
+            "name": "Main",
+            "url_template": "https://origin.test/{artifact}"
+          },
+          "meta": {
+            "name": "Metadata",
+            "url_template": "https://meta.test/{artifact}"
+          }
+        },
+        "mirrors": {},
+        "resources": {
+          "sample": {
+            "name": "Sample",
+            "registry": "main",
+            "tags": [
+              {
+                "id": "stable",
+                "name": "Stable"
+              },
+              {
+                "id": "fast",
+                "name": "Fast"
+              },
+              {
+                "id": "alpha",
+                "name": "Alpha"
+              }
+            ],
+            "default_variants": {
+              "linux-amd64": "stable",
+              "windows-x86_64": "alpha"
+            },
+            "variants": [
+              {
+                "id": "stable",
+                "name": "Stable",
+                "tag_key": "stable",
+                "tags": [
+                  {
+                    "id": "stable",
+                    "name": "Stable"
+                  }
+                ],
+                "artifacts": {
+                  "linux-amd64": {
+                    "artifact": "pkg-{version}.zip",
+                    "version": {
+                      "type": "static",
+                      "latest": "v2",
+                      "releases": [
+                        {
+                          "version": "v2",
+                          "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+                        }
+                      ]
+                    }
+                  }
+                }
+              },
+              {
+                "id": "fast",
+                "name": "Fast",
+                "tag_key": "fast+stable",
+                "tags": [
+                  {
+                    "id": "fast",
+                    "name": "Fast"
+                  },
+                  {
+                    "id": "stable",
+                    "name": "Stable"
+                  }
+                ],
+                "artifacts": {
+                  "linux-amd64": {
+                    "artifact": "pkg-{version}.zip",
+                    "version": {
+                      "type": "remote",
+                      "fallback": {
+                        "version": "v1",
+                        "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+                        "source": {
+                          "release": "fallback-{version}"
+                        }
+                      },
+                      "version": {
+                        "resource": {
+                          "registry": "meta",
+                          "artifact": "version.txt"
+                        },
+                        "parser": {
+                          "type": "text",
+                          "trim": true
+                        }
+                      },
+                      "checksum": {
+                        "resource": {
+                          "registry": "meta",
+                          "artifact": "checksums.txt"
+                        },
+                        "parser": {
+                          "type": "gnu",
+                          "algorithm": "sha256"
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              {
+                "id": "alpha",
+                "name": "Alpha",
+                "tag_key": "alpha",
+                "tags": [
+                  {
+                    "id": "alpha",
+                    "name": "Alpha"
+                  }
+                ],
+                "artifacts": {
+                  "windows-x86_64": {
+                    "artifact": "pkg-{version}.zip",
+                    "version": {
+                      "type": "static",
+                      "latest": "v2",
+                      "releases": [
+                        {
+                          "version": "v2"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "resource": "missing",
+      "platform": "linux-amd64"
+    },
+    "expect": {
+      "error": {
+        "code": "resolve.unknown_resource",
+        "path": "arg.resource",
+        "fields": {
+          "resource": "missing"
+        }
+      }
+    }
+  },
+  {
+    "name": "kind.list.platform_filtered",
+    "input": {
+      "operation": "list",
+      "manifest": {
+        "manifest_version": "2.0",
+        "registries": {
+          "main": {
+            "name": "Main",
+            "url_template": "https://origin.test/{artifact}"
+          },
+          "meta": {
+            "name": "Metadata",
+            "url_template": "https://meta.test/{artifact}"
+          }
+        },
+        "mirrors": {},
+        "resources": {
+          "sample": {
+            "name": "Sample",
+            "registry": "main",
+            "tags": [
+              {
+                "id": "stable",
+                "name": "Stable"
+              },
+              {
+                "id": "fast",
+                "name": "Fast"
+              },
+              {
+                "id": "alpha",
+                "name": "Alpha"
+              }
+            ],
+            "default_variants": {
+              "linux-amd64": "stable",
+              "windows-x86_64": "alpha"
+            },
+            "variants": [
+              {
+                "id": "stable",
+                "name": "Stable",
+                "tag_key": "stable",
+                "tags": [
+                  {
+                    "id": "stable",
+                    "name": "Stable"
+                  }
+                ],
+                "artifacts": {
+                  "linux-amd64": {
+                    "artifact": "pkg-{version}.zip",
+                    "version": {
+                      "type": "static",
+                      "latest": "v2",
+                      "releases": [
+                        {
+                          "version": "v2",
+                          "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+                        }
+                      ]
+                    }
+                  }
+                }
+              },
+              {
+                "id": "fast",
+                "name": "Fast",
+                "tag_key": "fast+stable",
+                "tags": [
+                  {
+                    "id": "fast",
+                    "name": "Fast"
+                  },
+                  {
+                    "id": "stable",
+                    "name": "Stable"
+                  }
+                ],
+                "artifacts": {
+                  "linux-amd64": {
+                    "artifact": "pkg-{version}.zip",
+                    "version": {
+                      "type": "remote",
+                      "fallback": {
+                        "version": "v1",
+                        "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+                        "source": {
+                          "release": "fallback-{version}"
+                        }
+                      },
+                      "version": {
+                        "resource": {
+                          "registry": "meta",
+                          "artifact": "version.txt"
+                        },
+                        "parser": {
+                          "type": "text",
+                          "trim": true
+                        }
+                      },
+                      "checksum": {
+                        "resource": {
+                          "registry": "meta",
+                          "artifact": "checksums.txt"
+                        },
+                        "parser": {
+                          "type": "gnu",
+                          "algorithm": "sha256"
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              {
+                "id": "alpha",
+                "name": "Alpha",
+                "tag_key": "alpha",
+                "tags": [
+                  {
+                    "id": "alpha",
+                    "name": "Alpha"
+                  }
+                ],
+                "artifacts": {
+                  "windows-x86_64": {
+                    "artifact": "pkg-{version}.zip",
+                    "version": {
+                      "type": "static",
+                      "latest": "v2",
+                      "releases": [
+                        {
+                          "version": "v2"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "resource": "sample",
+      "platform": "linux-amd64"
+    },
+    "expect": {
+      "ok": [
+        {
+          "variant_id": "stable",
+          "kind": "authoritative"
+        },
+        {
+          "variant_id": "fast",
+          "kind": "parsed"
+        }
+      ]
+    }
+  },
+  {
+    "name": "kind.list.no_platform",
+    "input": {
+      "operation": "list",
+      "manifest": {
+        "manifest_version": "2.0",
+        "registries": {
+          "main": {
+            "name": "Main",
+            "url_template": "https://origin.test/{artifact}"
+          },
+          "meta": {
+            "name": "Metadata",
+            "url_template": "https://meta.test/{artifact}"
+          }
+        },
+        "mirrors": {},
+        "resources": {
+          "sample": {
+            "name": "Sample",
+            "registry": "main",
+            "tags": [
+              {
+                "id": "stable",
+                "name": "Stable"
+              },
+              {
+                "id": "fast",
+                "name": "Fast"
+              },
+              {
+                "id": "alpha",
+                "name": "Alpha"
+              }
+            ],
+            "default_variants": {
+              "linux-amd64": "stable",
+              "windows-x86_64": "alpha"
+            },
+            "variants": [
+              {
+                "id": "stable",
+                "name": "Stable",
+                "tag_key": "stable",
+                "tags": [
+                  {
+                    "id": "stable",
+                    "name": "Stable"
+                  }
+                ],
+                "artifacts": {
+                  "linux-amd64": {
+                    "artifact": "pkg-{version}.zip",
+                    "version": {
+                      "type": "static",
+                      "latest": "v2",
+                      "releases": [
+                        {
+                          "version": "v2",
+                          "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+                        }
+                      ]
+                    }
+                  }
+                }
+              },
+              {
+                "id": "fast",
+                "name": "Fast",
+                "tag_key": "fast+stable",
+                "tags": [
+                  {
+                    "id": "fast",
+                    "name": "Fast"
+                  },
+                  {
+                    "id": "stable",
+                    "name": "Stable"
+                  }
+                ],
+                "artifacts": {
+                  "linux-amd64": {
+                    "artifact": "pkg-{version}.zip",
+                    "version": {
+                      "type": "remote",
+                      "fallback": {
+                        "version": "v1",
+                        "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+                        "source": {
+                          "release": "fallback-{version}"
+                        }
+                      },
+                      "version": {
+                        "resource": {
+                          "registry": "meta",
+                          "artifact": "version.txt"
+                        },
+                        "parser": {
+                          "type": "text",
+                          "trim": true
+                        }
+                      },
+                      "checksum": {
+                        "resource": {
+                          "registry": "meta",
+                          "artifact": "checksums.txt"
+                        },
+                        "parser": {
+                          "type": "gnu",
+                          "algorithm": "sha256"
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              {
+                "id": "alpha",
+                "name": "Alpha",
+                "tag_key": "alpha",
+                "tags": [
+                  {
+                    "id": "alpha",
+                    "name": "Alpha"
+                  }
+                ],
+                "artifacts": {
+                  "windows-x86_64": {
+                    "artifact": "pkg-{version}.zip",
+                    "version": {
+                      "type": "static",
+                      "latest": "v2",
+                      "releases": [
+                        {
+                          "version": "v2"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "resource": "sample",
+      "platform": "darwin-arm64"
+    },
+    "expect": {
+      "ok": []
+    }
+  },
+  {
+    "name": "kind.list.unknown_resource",
+    "input": {
+      "operation": "list",
+      "manifest": {
+        "manifest_version": "2.0",
+        "registries": {
+          "main": {
+            "name": "Main",
+            "url_template": "https://origin.test/{artifact}"
+          },
+          "meta": {
+            "name": "Metadata",
+            "url_template": "https://meta.test/{artifact}"
+          }
+        },
+        "mirrors": {},
+        "resources": {
+          "sample": {
+            "name": "Sample",
+            "registry": "main",
+            "tags": [
+              {
+                "id": "stable",
+                "name": "Stable"
+              },
+              {
+                "id": "fast",
+                "name": "Fast"
+              },
+              {
+                "id": "alpha",
+                "name": "Alpha"
+              }
+            ],
+            "default_variants": {
+              "linux-amd64": "stable",
+              "windows-x86_64": "alpha"
+            },
+            "variants": [
+              {
+                "id": "stable",
+                "name": "Stable",
+                "tag_key": "stable",
+                "tags": [
+                  {
+                    "id": "stable",
+                    "name": "Stable"
+                  }
+                ],
+                "artifacts": {
+                  "linux-amd64": {
+                    "artifact": "pkg-{version}.zip",
+                    "version": {
+                      "type": "static",
+                      "latest": "v2",
+                      "releases": [
+                        {
+                          "version": "v2",
+                          "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+                        }
+                      ]
+                    }
+                  }
+                }
+              },
+              {
+                "id": "fast",
+                "name": "Fast",
+                "tag_key": "fast+stable",
+                "tags": [
+                  {
+                    "id": "fast",
+                    "name": "Fast"
+                  },
+                  {
+                    "id": "stable",
+                    "name": "Stable"
+                  }
+                ],
+                "artifacts": {
+                  "linux-amd64": {
+                    "artifact": "pkg-{version}.zip",
+                    "version": {
+                      "type": "remote",
+                      "fallback": {
+                        "version": "v1",
+                        "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+                        "source": {
+                          "release": "fallback-{version}"
+                        }
+                      },
+                      "version": {
+                        "resource": {
+                          "registry": "meta",
+                          "artifact": "version.txt"
+                        },
+                        "parser": {
+                          "type": "text",
+                          "trim": true
+                        }
+                      },
+                      "checksum": {
+                        "resource": {
+                          "registry": "meta",
+                          "artifact": "checksums.txt"
+                        },
+                        "parser": {
+                          "type": "gnu",
+                          "algorithm": "sha256"
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              {
+                "id": "alpha",
+                "name": "Alpha",
+                "tag_key": "alpha",
+                "tags": [
+                  {
+                    "id": "alpha",
+                    "name": "Alpha"
+                  }
+                ],
+                "artifacts": {
+                  "windows-x86_64": {
+                    "artifact": "pkg-{version}.zip",
+                    "version": {
+                      "type": "static",
+                      "latest": "v2",
+                      "releases": [
+                        {
+                          "version": "v2"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "resource": "missing",
+      "platform": "linux-amd64"
+    },
+    "expect": {
+      "error": {
+        "code": "resolve.unknown_resource",
+        "path": "arg.resource",
+        "fields": {
+          "resource": "missing"
+        }
+      }
+    }
+  },
+  {
+    "name": "kind.select.single_inferred",
+    "input": {
+      "operation": "select",
+      "manifest": {
+        "manifest_version": "2.0",
+        "registries": {
+          "main": {
+            "name": "Main",
+            "url_template": "https://origin.test/{artifact}"
+          },
+          "meta": {
+            "name": "Metadata",
+            "url_template": "https://meta.test/{artifact}"
+          }
+        },
+        "mirrors": {},
+        "resources": {
+          "sample": {
+            "name": "Sample",
+            "registry": "main",
+            "tags": [],
+            "default_variants": {},
+            "variants": [
+              {
+                "id": "stable",
+                "name": "Stable",
+                "tag_key": "",
+                "tags": [],
+                "artifacts": {
+                  "linux-amd64": {
+                    "artifact": "pkg-{version}.zip",
+                    "version": {
+                      "type": "static",
+                      "latest": "v2",
+                      "releases": [
+                        {
+                          "version": "v2",
+                          "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "resource": "sample",
+      "platform": "linux-amd64"
+    },
+    "expect": {
+      "ok": {
+        "variant_id": "stable",
+        "kind": "authoritative"
+      }
+    }
+  }
+]

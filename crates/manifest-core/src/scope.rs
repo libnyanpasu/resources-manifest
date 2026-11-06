@@ -1,6 +1,14 @@
 use std::collections::BTreeMap;
 
-use manifest_metadata::{ResourceManifest, SourceVariables};
+use manifest_metadata::{MirrorDefinition, ResourceManifest, SourceVariables};
+
+#[must_use]
+pub(crate) fn mirror_allows(mirror: &MirrorDefinition, registry: &str) -> bool {
+    mirror
+        .registries
+        .as_ref()
+        .is_none_or(|allowed| allowed.is_empty() || allowed.iter().any(|id| id == registry))
+}
 
 pub(crate) type Scope<'a, V = &'a str> = BTreeMap<&'a str, (V, String)>;
 

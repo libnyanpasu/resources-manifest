@@ -322,12 +322,45 @@ minor 不允许前导零；`compat.version.leading_zero` 断言 `"2.07"` 报 `ma
 `#[serde(rename_all = "snake_case")]`，并非仅限本测试集的命名约定。
 现有 checksum parser 的 `github-release-assets` 仍按其 kebab-case wire 名称书写。
 
-四条用例分别断言：static release 内嵌 checksum → `authoritative`；static 无 checksum →
+`kind/artifact.json` 的八条用例断言：static release 内嵌 checksum → `authoritative`；static 无 checksum →
 `none`；remote 声明 checksum 规则 → `parsed`；remote 无规则 → `none`。
-static 用例只有一个 release，且等于 `latest`，不引入历史版本选择歧义。
+static 还覆盖 latest 不在首位、历史 checksum 与 latest 不同的情形，静态展示始终取 latest。
 两个 remote 用例都带有含 checksum 的 `fallback`，仍按规则是否存在分别得出 `parsed` / `none`。
 `snapshot` 是显式离线 fallback 且解析版本等于 `fallback.version` 时的执行结果，
-不是 §5.1 规则 3 的静态推导输出，因此这里没有期望为 `snapshot` 的用例。
+不是 §5.1 规则 3 的静态推导输出，因此 artifact 静态用例没有期望为 `snapshot` 的条目。
+未知 version 或 checksum parser 均为 `none`。
+
+### Kind、选择与计划用例（B3）
+
+`crates/manifest-core/tests/conformance.rs` 递归执行 `kind/` 的全部 JSON，当前共 86 条，
+其中 B3 新增 81 条。compat 投影也改为直接调用 core 的静态 kind 与 version 计划，
+同时断言逐产物支持性；未知 parser 产物还检查全部策略组合都拒绝 none。
+
+| 文件                  | input / 操作                                                                                                | expect.ok                              |
+| --------------------- | ----------------------------------------------------------------------------------------------------------- | -------------------------------------- |
+| `kind/artifact.json`  | artifact wire object，无 operation；静态推导                                                                | kind 字符串                            |
+| `kind/policy.json`    | `{ operation: "policy", kind, policy }`，或 `digest_mismatch` 加 algorithm/expected/actual                  | true，或标准错误                       |
+| `kind/selection.json` | `{ operation: "select" 或 "list", manifest, resource, platform, variant_id?, tags? }`                       | `{ variant_id, kind }` 或其数组        |
+| `kind/plans.json`     | 同上公共字段，operation 为 `version` / `download`，可加 version/source/mirror/checksum_mode/limits/response | 完整序列化计划，或 `{ plan, version }` |
+| `kind/finish.json`    | operation 为 `finish_checksum`，先计划下载，再用 response 完成 checksum                                     | `{ checksum, kind: "parsed" }`         |
+
+manifest 必须完整内嵌，不合并字段；先解码和 validate，再选择。所有名称继续由 parser
+运行器检查全局唯一。`tags` 为精确组合，顺序无关，空数组和重复 tag 拒绝；多条件选择必须一致。
+列表保持 variant 原顺序，只包含目标平台可用的产物；没有候选时列表为空，选择则报错。
+
+计划字段结构与 [design §7.3](../docs/spec/2026-11-06-manifest-core-parsers/design.md#73-b3-选择计划与校验策略)
+一致，optional 请求 / checksum 序列化为 null，native compiled parser 和 Limits 不导出。
+`version` 操作给出 response 时实际运行计划中的 compiled parser，并比较 `{ plan, version }`。
+`finish_checksum` 保持 parser 规则的显式来源，不从其他 header 推断；列表 parser 匹配真实下载
+产物名，计划中的虚拟 checksums.txt 不作为匹配名。response.headers 保持二元组数组格式。
+limits 可调低 body_bytes/header_value_bytes/render_output_bytes/regex_pattern_bytes，缺省为默认。
+
+`checksum_mode` 缺省或 `remote` 为在线策略；`snapshot` 是显式离线请求，版本必须匹配
+fallback 且存在内嵌 checksum。fallback checksum 不影响静态 kind；在线计划也不会自动使用它。
+static 下载按实际选择的 release 取 kind。未知 parser 在 snapshot 模式同样拒绝。
+mirror 用例覆盖缺省、空、匹配、不匹配的 registries，以及 version / checksum 使用独立 registry
+时的限制，确认 B1 只检查 mirror 允许的 registry 作用域。组件替换、url_encoded、URL 安全校验
+与内置变量优先级也精确比较。策略用例穷举四个 kind × 两个 bool 开关的全部 16 种组合。
 
 ## 来源与参考校验
 

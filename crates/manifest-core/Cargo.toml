@@ -9,8 +9,7 @@ description = "Pure semantic validation for compiled resource manifests"
 manifest-parser.workspace = true
 manifest-metadata.workspace = true
 serde_json.workspace = true
-snafu.workspace = true
-url.workspace = true
-
-[dev-dependencies]
 serde.workspace = true
+snafu.workspace = true
+specta.workspace = true
+url.workspace = true

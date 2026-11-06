@@ -2,9 +2,22 @@ use manifest_metadata::ResourceManifest;
 use serde_json::{Value, json};
 use snafu::Snafu;
 
+mod kind;
+mod plan;
 mod render;
 mod scope;
 mod validate;
+mod verify;
+
+pub use kind::{
+    ChecksumKind, VariantChecksumKind, artifact_checksum_kind, list_variant_checksum_kinds,
+};
+pub use plan::{
+    ChecksumMode, ChecksumPlan, DownloadOptions, DownloadPlan, RemoteVersionPlan, RequestPlan,
+    ResolveError, ResolvedChecksum, VariantSelection, VersionOptions, VersionPlan, finish_checksum,
+    plan_download, plan_version, select_variant,
+};
+pub use verify::{VerifyError, VerifyPolicy, check_policy};
 
 pub use render::{
     ArtifactRenderOptions, RenderError, RenderedArtifact, SelectedArtifact, TemplateValue,

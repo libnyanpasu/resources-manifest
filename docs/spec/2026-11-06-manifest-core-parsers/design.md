@@ -195,7 +195,7 @@ S0a 卡把本节内容写进 `D/`。本节是规范性的。
 
    宿主必须在 kind 旁同时暴露有效策略决定：用宿主的 `VerifyPolicy` 调用 `check_policy` 得到接受，或拒绝及原因。kind 本身不能决定最终结果。
 
-3. **kind 静态可推。** `artifact_checksum_kind(&ResourceArtifactTemplate) -> ChecksumKind` 只看 manifest：static 且该 release 有 checksum 时为 `authoritative`；static 但没有 checksum 时为 `none`；remote 且声明了 `checksum` 规则时为 `parsed`；remote 且没有规则时为 `none`。未知 version 或 checksum parser 的产物为 `none`。前端（经 clash-nyanpasu 后端）在用户选择、更新 alpha 这类内核**之前**就能拿到 kind 并提示；提供按 resource 与平台批量列出每个 variant kind 的 helper（§7.3）。静态推导用于选择前展示；下载计划和最终结果携带执行时适用的 kind（包括显式离线 fallback 适用的 `snapshot`），宿主同时暴露该 kind 的有效策略决定。
+3. **kind 静态可推。** `artifact_checksum_kind(&ResourceArtifactTemplate) -> ChecksumKind` 只看 manifest：static 的 latest release 有 checksum 时为 `authoritative`；latest 没有 checksum 时为 `none`；remote 且声明了 `checksum` 规则时为 `parsed`；remote 且没有规则时为 `none`。未知 version 或 checksum parser 的产物为 `none`。前端（经 clash-nyanpasu 后端）在用户选择、更新 alpha 这类内核**之前**就能拿到 kind 并提示；提供按 resource 与平台批量列出每个 variant kind 的 helper（§7.3）。静态推导用于选择前展示；下载计划和最终结果携带执行时适用的 kind（包括显式离线 fallback 适用的 `snapshot`），宿主同时暴露该 kind 的有效策略决定。
 4. **只有 parser 规则能产生 `parsed`。** 宿主不得自行从响应头（`Digest`、`Repr-Digest`、`ETag`、`x-*-checksum` 等）或任何未声明的来源推断 checksum。要用 header，必须在 manifest 里写 `header` parser 规则（§5.3）。
 5. **mirror 只负责传输**，不影响 kind。下载计划同时给出 `canonical_url` 和可选的 `mirror_url`，宿主把实际使用的通道交回 core，只用于诊断和日志。
 6. **宿主策略**（胶水脚本的默认值）：只接受 `authoritative`。`--allow-parsed`、`--allow-snapshot` 分别放开对应 kind，并输出警告。`none` 不被任何校验策略接受。不论哪种 kind，校验失败都在解压或替换之前终止。
@@ -371,6 +371,30 @@ URL 标点；宿主输入必须通过 artifact 渲染入口校验，不能直接
 宿主传入的 static 历史选择或 remote parser 结果都定位到 `arg.version`。
 remote 缺版本与 static 不在历史中分别使用上表两个 resolve 码，供 B3 复用。
 
+#### B3 选择、计划与 VerifyError
+
+下表补全 B3 的稳定结构字段；计划转发 B2 `RenderError` 或 parser `ParseError` 时，
+保留原 code/path/fields。`resolve.unsupported_parser` 的 path 保持 `parser.type`，字段保留原未知 tag。
+`unknown_registry` 留给接受自定义 registry 的后续 API；B3 只消费已验证 manifest 中的命名引用。
+
+| code                              | fields                            | path                                         |
+| --------------------------------- | --------------------------------- | -------------------------------------------- |
+| `resolve.unknown_resource`        | `{ resource }`                    | `arg.resource`                               |
+| `resolve.unsupported_platform`    | `{ resource, platform }`          | `arg.platform`                               |
+| `resolve.variant_not_found`       | `{ variant, platform }`           | `arg.variant_id`                             |
+| `resolve.tags_rejected`           | `{ tags, reason }`                | `arg.tags`                                   |
+| `resolve.selection_conflict`      | `{ variant, tags }`               | `arg.variant`                                |
+| `resolve.default_variant_missing` | `{ resource, platform }`          | `resources.<id>.default_variants.<platform>` |
+| `resolve.unknown_mirror`          | `{ mirror }`                      | `arg.mirror`                                 |
+| `resolve.mirror_not_allowed`      | `{ mirror, registry }`            | `arg.mirror`                                 |
+| `resolve.snapshot_unavailable`    | `{ version, fallback_version }`   | `arg.version`                                |
+| `verify.kind_rejected`            | `{ kind }`                        | `arg.kind`                                   |
+| `verify.digest_mismatch`          | `{ algorithm, expected, actual }` | `arg.actual`                                 |
+
+`SelectTags.reason` 固定为 `empty`、`duplicate`、`not_found`，tags 保留宿主原顺序与重复项。
+`SelectFallback.fallback_version` 缺少 fallback 时为 null，否则为 manifest 中的原版本。
+`VerifyError::CheckKind` 对应 kind_rejected；`VerifyError::CompareDigest` 对应 digest_mismatch。
+
 ### 5.7 消费者边界
 
 | 消费者                                       | 接入方式                                                                              |
@@ -485,13 +509,51 @@ URL 校验、环 / 深度 / 大小检查，也不要求未知 parser 可执行�
 
 ### 7.3 B3 选择、计划与校验策略
 
-- `select_variant`：按 id、精确 tag 或平台默认值选择，语义与 `R/resource-template.ts:887-943` 一致。
-- `artifact_checksum_kind(&ResourceArtifactTemplate) -> ChecksumKind`（§5.1 第 3 条），并为 UI 提供"列出某 resource 在某平台下每个 variant 的 kind"的便捷函数。
-- `plan_version` 与 `plan_download` 返回请求计划：`canonical_url`、可选的 `mirror_url`、已编译的 parser、`ChecksumKind`。
-- `finish_checksum(plan, &RemoteResponse) -> Result<ResolvedChecksum, _>`：返回 checksum 和 `kind: "parsed"`。
-- `VerifyPolicy { allow_parsed, allow_snapshot }`（实现 `Default`，默认全为 `false`）与 `check_policy(kind, &VerifyPolicy) -> Result<(), VerifyError>`。digest 比对由宿主完成，因为哈希计算属于 IO 侧；比对失败统一报 `verify.digest_mismatch`。
-- 宿主同时暴露 kind 和在其 `VerifyPolicy` 下的 `check_policy` 决定（接受，或拒绝及原因）；静态 kind 用于选择前展示，计划与结果携带执行时适用的 kind。
-- `ChecksumKind`、计划与错误类型 derive `specta::Type`，经 clash-nyanpasu 的 bindings 暴露给前端。
+B3 API 均从 `manifest_core` 根导出，输入使用 B2 的 `SelectedArtifact` 借用句柄。
+计划及解析结果的字段私有，只经计划函数构造，提供同名只读访问器；可序列化但不反序列化，
+防止宿主伪造 kind 或请求与 parser 的绑定。`ChecksumKind`、计划、结果、策略与新增错误
+均 derive `specta::Type`；编译后的 parser 和 Limits 属于 native 执行状态，不参与 wire 导出。
+`ResolveError` 的 native source 不参与类型导出，宿主按 §5.6 的 code/path/fields 投影错误。
+
+| API                                                                           | 返回值                                           |
+| ----------------------------------------------------------------------------- | ------------------------------------------------ |
+| `artifact_checksum_kind(&ResourceArtifactTemplate)`                           | `ChecksumKind`                                   |
+| `list_variant_checksum_kinds(&ValidatedManifest, resource_id, platform)`      | `Result<Vec<VariantChecksumKind>, ResolveError>` |
+| `select_variant(&ValidatedManifest, resource_id, platform, VariantSelection)` | `Result<SelectedArtifact, ResolveError>`         |
+| `plan_version(&SelectedArtifact, VersionOptions, &Limits)`                    | `Result<VersionPlan, ResolveError>`              |
+| `plan_download(&SelectedArtifact, DownloadOptions, &Limits)`                  | `Result<DownloadPlan, ResolveError>`             |
+| `finish_checksum(&ChecksumPlan, &RemoteResponse)`                             | `Result<ResolvedChecksum, ParseError>`           |
+| `check_policy(ChecksumKind, &VerifyPolicy)`                                   | `Result<(), VerifyError>`                        |
+
+`VariantSelection { id, tags }` 同时给出两个条件时必须选中同一 variant。
+`VersionOptions { source, mirror }` 配置版本请求；
+`DownloadOptions { version, source, mirror, checksum_mode }` 配置下载计划。
+kind 列表按 manifest 中 variant 顺序，仅列出支持目标平台的 `{ variant_id, kind }`。
+`finish_checksum` 使用计划绑定的 parser、原下载产物名与 Limits，结果 kind 始终为 parsed。
+`check_policy` 成功即接受，失败通过 verify.kind_rejected 和 `{ kind }` 解释。
+
+- 选择先过滤支持平台的 variant，再按 ID / 精确 tags / 平台默认值选择；tags 空或重复都拒绝，
+  不接受子集匹配。未配置默认值且仅有一个候选时直接选择它，与 B1 的有效 manifest 规则一致（V-13）。
+- `VersionPlan` 有 `kind/latest/releases/remote` 访问器；remote 的 `request()` 返回
+  `RequestPlan`，`parser()` 返回 `CompiledVersionParser`，宿主调用其 `parse` 解析版本。
+  `DownloadPlan` 有 `artifact/version/request/kind/checksum/checksum_request` 访问器。
+  `RequestPlan` 始终携带 `canonical_url`、可选 `mirror_url`、`kind`；static version 计划没有请求。
+- static 下载 kind 取实际选择的 release；remote 默认 `ChecksumMode::Remote`，有规则为
+  `parsed`，无规则为 `none`，即使版本匹配 fallback 也不自动降级。显式 `ChecksumMode::Snapshot`
+  必须给出恰好等于 fallback.version 的版本且存在 fallback checksum，才输出 `snapshot`，
+  此时不生成远端 checksum 请求。未知 version / checksum parser 在所有模式下都先被拒绝。
+- mirror 限制与 `R/resource-template.ts:1037-1045` 完全相同：缺省或空 `registries` 接受全部，
+  非空必须包含当前请求的 registry。download 用 resource.registry，version / checksum 请求各用
+  声明的 remote.resource.registry；不只检查二进制下载。B1 的 canonical() 与计划共用此判断。
+  URL 组件以 Literal 进入 mirror 作用域，`url_encoded` 使用 JS encodeURIComponent 的字节规则；
+  mirror URL 与 canonical URL 都执行 B2 的 http(s)、userinfo、fragment 检查，mirror 不改变 kind。
+- remote source 覆盖一般 source，内置变量最后恢复最高优先级（V-11）；version 请求不合并
+  fallback source，checksum 请求基于 B2 已选择 release 与宿主作用域，远端虚拟 artifact 不改变
+  GNU / BSD / GitHub parser 要匹配的真实下载产物名。
+- `VerifyPolicy { allow_parsed, allow_snapshot }` 实现 `Default`，默认全为 `false`；
+  authoritative 始终通过，两个开关分别只接受 parsed / snapshot，none 永不通过。
+  宿主同时暴露 kind 与其有效策略决定。digest 计算与比对由宿主完成；不一致时构造
+  `VerifyError::CompareDigest { algorithm, expected, actual }`，expected / actual 为不含算法前缀的 hex。
 
 ### 7.4 B4 参考差分
 
@@ -571,6 +633,7 @@ URL 校验、环 / 深度 / 大小检查，也不要求未知 parser 可执行�
 | V-10 | parser 只读 body                                                                     | 输入是 `RemoteResponse`（body 加 headers）；新增 `header` checksum parser；禁止隐式从响应头取 checksum                          | O-1                                                                                         |
 | V-11 | remote source 可覆盖内置变量                                                         | 内置变量始终拥有最高优先级                                                                                                      | 防止 manifest 覆盖 version、platform 与 resource / variant 身份                             |
 | V-12 | download 的 release source 覆盖宿主 source                                           | 宿主 source 优先于 release source                                                                                               | §7.2 的显式合并顺序；宿主值仍必须先通过 VersionLabel                                        |
+| V-13 | 缺少平台 default_variants 时，即使唯一候选也失败                                     | 唯一候选可直接选中；多个候选仍必须配置默认                                                                                      | B1 已允许单候选省略默认，选择层保持同一有效性规则                                           |
 
 ### 11.2 决策
 

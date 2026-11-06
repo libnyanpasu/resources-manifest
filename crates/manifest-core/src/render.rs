@@ -158,7 +158,8 @@ fn append(
     Ok(())
 }
 
-fn render<'a>(
+#[must_use = "template rendering errors must be handled"]
+pub(crate) fn render<'a>(
     template: &str,
     scope: &Scope<'a, TemplateValue<'a>>,
     path: &str,
@@ -211,13 +212,13 @@ fn render<'a>(
 /// A borrowed artifact from a validated manifest, with its document location.
 #[derive(Debug, Clone, Copy)]
 pub struct SelectedArtifact<'a> {
-    manifest: &'a ValidatedManifest,
-    resource_id: &'a str,
-    resource: &'a ResourceDefinition,
-    variant: &'a ResourceVariant,
-    variant_index: usize,
-    platform: SupportedPlatform,
-    artifact: &'a ResourceArtifactTemplate,
+    pub(crate) manifest: &'a ValidatedManifest,
+    pub(crate) resource_id: &'a str,
+    pub(crate) resource: &'a ResourceDefinition,
+    pub(crate) variant: &'a ResourceVariant,
+    pub(crate) variant_index: usize,
+    pub(crate) platform: SupportedPlatform,
+    pub(crate) artifact: &'a ResourceArtifactTemplate,
 }
 
 impl ValidatedManifest {
@@ -262,7 +263,8 @@ pub struct RenderedArtifact {
     pub canonical_url: String,
 }
 
-fn validate_literal(value: &str, path: &str) -> Result<(), RenderError> {
+#[must_use = "literal validation errors must be handled"]
+pub(crate) fn validate_literal(value: &str, path: &str) -> Result<(), RenderError> {
     value
         .parse::<VersionLabel>()
         .map(|_| ())
@@ -272,6 +274,16 @@ fn validate_literal(value: &str, path: &str) -> Result<(), RenderError> {
 }
 
 impl SelectedArtifact<'_> {
+    #[must_use]
+    pub fn variant(&self) -> &ResourceVariant {
+        self.variant
+    }
+
+    #[must_use]
+    pub fn template(&self) -> &ResourceArtifactTemplate {
+        self.artifact
+    }
+
     /// Render a download identity only; no mirror, parser, checksum policy, or IO.
     /// Matching static history or remote fallback supplies release source overrides.
     #[must_use = "artifact rendering errors must be handled"]
@@ -280,6 +292,92 @@ impl SelectedArtifact<'_> {
         options: ArtifactRenderOptions<'_>,
         limits: &Limits,
     ) -> Result<RenderedArtifact, RenderError> {
+        let values = self.values(options)?;
+        let artifact_path = self.path();
+        let artifact = render(
+            &self.artifact.artifact,
+            &values,
+            &format!("{artifact_path}.artifact"),
+            limits,
+            &mut Vec::new(),
+        )?;
+        let mut canonical = registry_scope(self.manifest.manifest(), &self.resource.registry);
+        canonical.extend(values);
+        canonical.insert(
+            "artifact",
+            (
+                TemplateValue::Literal(&artifact),
+                format!("{artifact_path}.artifact"),
+            ),
+        );
+        let registry = &self.manifest.manifest().registries[&self.resource.registry];
+        let path = format!("registries.{}.url_template", self.resource.registry);
+        let text = render(
+            &registry.url_template,
+            &canonical,
+            &path,
+            limits,
+            &mut Vec::new(),
+        )?;
+        let url = validate_url(&text, &path)?;
+        Ok(RenderedArtifact {
+            artifact,
+            canonical_url: url.into(),
+        })
+    }
+}
+
+#[must_use = "URL validation errors must be handled"]
+pub(crate) fn validate_url(text: &str, path: &str) -> Result<Url, RenderError> {
+    let has_userinfo = Cell::new(false);
+    let url = Url::options()
+        .syntax_violation_callback(Some(&|violation| {
+            if violation == SyntaxViolation::EmbeddedCredentials {
+                has_userinfo.set(true);
+            }
+        }))
+        .parse(text)
+        .map_err(|source| RenderError::ParseUrl {
+            path: path.to_owned(),
+            source,
+        })?;
+    if !matches!(url.scheme(), "http" | "https") {
+        return Err(RenderError::ValidateScheme {
+            path: path.to_owned(),
+            scheme: url.scheme().to_owned(),
+        });
+    }
+    if has_userinfo.get() || !url.username().is_empty() || url.password().is_some() {
+        return Err(RenderError::ValidateComponent {
+            path: path.to_owned(),
+            component: "userinfo",
+        });
+    }
+    if url.fragment().is_some() {
+        return Err(RenderError::ValidateComponent {
+            path: path.to_owned(),
+            component: "fragment",
+        });
+    }
+    Ok(url)
+}
+
+impl SelectedArtifact<'_> {
+    #[must_use]
+    pub(crate) fn path(&self) -> String {
+        format!(
+            "resources.{}.variants[{}].artifacts.{}",
+            self.resource_id,
+            self.variant_index,
+            self.platform.as_str()
+        )
+    }
+
+    #[must_use = "artifact scope errors must be handled"]
+    pub(crate) fn values<'a>(
+        &'a self,
+        options: ArtifactRenderOptions<'a>,
+    ) -> Result<Scope<'a, TemplateValue<'a>>, RenderError> {
         if let Some(version) = options.version {
             validate_literal(version, "arg.version")?;
         }
@@ -363,64 +461,6 @@ impl SelectedArtifact<'_> {
         ] {
             values.insert(key, (TemplateValue::Literal(value), format!("arg.{key}")));
         }
-        let artifact = render(
-            &self.artifact.artifact,
-            &values,
-            &format!("{artifact_path}.artifact"),
-            limits,
-            &mut Vec::new(),
-        )?;
-        let mut canonical = registry_scope(self.manifest.manifest(), &self.resource.registry);
-        canonical.extend(values);
-        canonical.insert(
-            "artifact",
-            (
-                TemplateValue::Literal(&artifact),
-                format!("{artifact_path}.artifact"),
-            ),
-        );
-        let registry = &self.manifest.manifest().registries[&self.resource.registry];
-        let path = format!("registries.{}.url_template", self.resource.registry);
-        let text = render(
-            &registry.url_template,
-            &canonical,
-            &path,
-            limits,
-            &mut Vec::new(),
-        )?;
-        let has_userinfo = Cell::new(false);
-        let url = Url::options()
-            .syntax_violation_callback(Some(&|violation| {
-                if violation == SyntaxViolation::EmbeddedCredentials {
-                    has_userinfo.set(true);
-                }
-            }))
-            .parse(&text)
-            .map_err(|source| RenderError::ParseUrl {
-                path: path.clone(),
-                source,
-            })?;
-        if !matches!(url.scheme(), "http" | "https") {
-            return Err(RenderError::ValidateScheme {
-                path,
-                scheme: url.scheme().to_owned(),
-            });
-        }
-        if has_userinfo.get() || !url.username().is_empty() || url.password().is_some() {
-            return Err(RenderError::ValidateComponent {
-                path,
-                component: "userinfo",
-            });
-        }
-        if url.fragment().is_some() {
-            return Err(RenderError::ValidateComponent {
-                path,
-                component: "fragment",
-            });
-        }
-        Ok(RenderedArtifact {
-            artifact,
-            canonical_url: url.into(),
-        })
+        Ok(values)
     }
 }
