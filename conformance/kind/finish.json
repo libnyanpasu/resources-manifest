@@ -1,0 +1,548 @@
+[
+  {
+    "name": "kind.finish.gnu",
+    "input": {
+      "operation": "finish_checksum",
+      "manifest": {
+        "manifest_version": "2.0",
+        "registries": {
+          "main": {
+            "name": "Main",
+            "url_template": "https://origin.test/{artifact}"
+          },
+          "meta": {
+            "name": "Metadata",
+            "url_template": "https://meta.test/{artifact}"
+          }
+        },
+        "mirrors": {},
+        "resources": {
+          "sample": {
+            "name": "Sample",
+            "registry": "main",
+            "tags": [],
+            "default_variants": {
+              "linux-amd64": "stable"
+            },
+            "variants": [
+              {
+                "id": "stable",
+                "name": "Stable",
+                "tag_key": "",
+                "tags": [],
+                "artifacts": {
+                  "linux-amd64": {
+                    "artifact": "pkg-{version}.zip",
+                    "version": {
+                      "type": "remote",
+                      "fallback": {
+                        "version": "v1",
+                        "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+                        "source": {
+                          "release": "fallback-{version}"
+                        }
+                      },
+                      "version": {
+                        "resource": {
+                          "registry": "meta",
+                          "artifact": "version.txt"
+                        },
+                        "parser": {
+                          "type": "text",
+                          "trim": true
+                        }
+                      },
+                      "checksum": {
+                        "resource": {
+                          "registry": "meta",
+                          "artifact": "checksums.txt"
+                        },
+                        "parser": {
+                          "type": "gnu",
+                          "algorithm": "sha256"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "resource": "sample",
+      "platform": "linux-amd64",
+      "version": "v1",
+      "response": {
+        "body": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef  pkg-v1.zip\n",
+        "headers": []
+      }
+    },
+    "expect": {
+      "ok": {
+        "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+        "kind": "parsed"
+      }
+    }
+  },
+  {
+    "name": "kind.finish.body_ignores_headers",
+    "input": {
+      "operation": "finish_checksum",
+      "manifest": {
+        "manifest_version": "2.0",
+        "registries": {
+          "main": {
+            "name": "Main",
+            "url_template": "https://origin.test/{artifact}"
+          },
+          "meta": {
+            "name": "Metadata",
+            "url_template": "https://meta.test/{artifact}"
+          }
+        },
+        "mirrors": {},
+        "resources": {
+          "sample": {
+            "name": "Sample",
+            "registry": "main",
+            "tags": [],
+            "default_variants": {
+              "linux-amd64": "stable"
+            },
+            "variants": [
+              {
+                "id": "stable",
+                "name": "Stable",
+                "tag_key": "",
+                "tags": [],
+                "artifacts": {
+                  "linux-amd64": {
+                    "artifact": "pkg-{version}.zip",
+                    "version": {
+                      "type": "remote",
+                      "fallback": {
+                        "version": "v1",
+                        "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+                        "source": {
+                          "release": "fallback-{version}"
+                        }
+                      },
+                      "version": {
+                        "resource": {
+                          "registry": "meta",
+                          "artifact": "version.txt"
+                        },
+                        "parser": {
+                          "type": "text",
+                          "trim": true
+                        }
+                      },
+                      "checksum": {
+                        "resource": {
+                          "registry": "meta",
+                          "artifact": "checksums.txt"
+                        },
+                        "parser": {
+                          "type": "checksum"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "resource": "sample",
+      "platform": "linux-amd64",
+      "version": "v1",
+      "response": {
+        "body": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+        "headers": [
+          [
+            "Digest",
+            "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+          ]
+        ]
+      }
+    },
+    "expect": {
+      "ok": {
+        "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+        "kind": "parsed"
+      }
+    }
+  },
+  {
+    "name": "kind.finish.header",
+    "input": {
+      "operation": "finish_checksum",
+      "manifest": {
+        "manifest_version": "2.0",
+        "registries": {
+          "main": {
+            "name": "Main",
+            "url_template": "https://origin.test/{artifact}"
+          },
+          "meta": {
+            "name": "Metadata",
+            "url_template": "https://meta.test/{artifact}"
+          }
+        },
+        "mirrors": {},
+        "resources": {
+          "sample": {
+            "name": "Sample",
+            "registry": "main",
+            "tags": [],
+            "default_variants": {
+              "linux-amd64": "stable"
+            },
+            "variants": [
+              {
+                "id": "stable",
+                "name": "Stable",
+                "tag_key": "",
+                "tags": [],
+                "artifacts": {
+                  "linux-amd64": {
+                    "artifact": "pkg-{version}.zip",
+                    "version": {
+                      "type": "remote",
+                      "fallback": {
+                        "version": "v1",
+                        "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+                        "source": {
+                          "release": "fallback-{version}"
+                        }
+                      },
+                      "version": {
+                        "resource": {
+                          "registry": "meta",
+                          "artifact": "version.txt"
+                        },
+                        "parser": {
+                          "type": "text",
+                          "trim": true
+                        }
+                      },
+                      "checksum": {
+                        "resource": {
+                          "registry": "meta",
+                          "artifact": "checksums.txt"
+                        },
+                        "parser": {
+                          "type": "header",
+                          "name": "X-Sha",
+                          "algorithm": "sha256",
+                          "encoding": "hex"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "resource": "sample",
+      "platform": "linux-amd64",
+      "version": "v1",
+      "response": {
+        "body": "ignored",
+        "headers": [
+          [
+            "x-sha",
+            "0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF"
+          ]
+        ]
+      }
+    },
+    "expect": {
+      "ok": {
+        "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+        "kind": "parsed"
+      }
+    }
+  },
+  {
+    "name": "kind.finish.no_matching_artifact",
+    "input": {
+      "operation": "finish_checksum",
+      "manifest": {
+        "manifest_version": "2.0",
+        "registries": {
+          "main": {
+            "name": "Main",
+            "url_template": "https://origin.test/{artifact}"
+          },
+          "meta": {
+            "name": "Metadata",
+            "url_template": "https://meta.test/{artifact}"
+          }
+        },
+        "mirrors": {},
+        "resources": {
+          "sample": {
+            "name": "Sample",
+            "registry": "main",
+            "tags": [],
+            "default_variants": {
+              "linux-amd64": "stable"
+            },
+            "variants": [
+              {
+                "id": "stable",
+                "name": "Stable",
+                "tag_key": "",
+                "tags": [],
+                "artifacts": {
+                  "linux-amd64": {
+                    "artifact": "pkg-{version}.zip",
+                    "version": {
+                      "type": "remote",
+                      "fallback": {
+                        "version": "v1",
+                        "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+                        "source": {
+                          "release": "fallback-{version}"
+                        }
+                      },
+                      "version": {
+                        "resource": {
+                          "registry": "meta",
+                          "artifact": "version.txt"
+                        },
+                        "parser": {
+                          "type": "text",
+                          "trim": true
+                        }
+                      },
+                      "checksum": {
+                        "resource": {
+                          "registry": "meta",
+                          "artifact": "checksums.txt"
+                        },
+                        "parser": {
+                          "type": "gnu",
+                          "algorithm": "sha256"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "resource": "sample",
+      "platform": "linux-amd64",
+      "version": "v1",
+      "response": {
+        "body": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef  wrong.zip",
+        "headers": []
+      }
+    },
+    "expect": {
+      "error": {
+        "code": "parser.not_found",
+        "path": "response.body",
+        "fields": {
+          "name": "pkg-v1.zip"
+        }
+      }
+    }
+  },
+  {
+    "name": "kind.finish.body_limit",
+    "input": {
+      "operation": "finish_checksum",
+      "manifest": {
+        "manifest_version": "2.0",
+        "registries": {
+          "main": {
+            "name": "Main",
+            "url_template": "https://origin.test/{artifact}"
+          },
+          "meta": {
+            "name": "Metadata",
+            "url_template": "https://meta.test/{artifact}"
+          }
+        },
+        "mirrors": {},
+        "resources": {
+          "sample": {
+            "name": "Sample",
+            "registry": "main",
+            "tags": [],
+            "default_variants": {
+              "linux-amd64": "stable"
+            },
+            "variants": [
+              {
+                "id": "stable",
+                "name": "Stable",
+                "tag_key": "",
+                "tags": [],
+                "artifacts": {
+                  "linux-amd64": {
+                    "artifact": "pkg-{version}.zip",
+                    "version": {
+                      "type": "remote",
+                      "fallback": {
+                        "version": "v1",
+                        "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+                        "source": {
+                          "release": "fallback-{version}"
+                        }
+                      },
+                      "version": {
+                        "resource": {
+                          "registry": "meta",
+                          "artifact": "version.txt"
+                        },
+                        "parser": {
+                          "type": "text",
+                          "trim": true
+                        }
+                      },
+                      "checksum": {
+                        "resource": {
+                          "registry": "meta",
+                          "artifact": "checksums.txt"
+                        },
+                        "parser": {
+                          "type": "gnu",
+                          "algorithm": "sha256"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "resource": "sample",
+      "platform": "linux-amd64",
+      "version": "v1",
+      "limits": {
+        "body_bytes": 3
+      },
+      "response": {
+        "body": "long",
+        "headers": []
+      }
+    },
+    "expect": {
+      "error": {
+        "code": "parser.body_too_large",
+        "path": "response.body",
+        "fields": {
+          "limit": 3,
+          "actual": 4
+        }
+      }
+    }
+  },
+  {
+    "name": "kind.finish.header_limit",
+    "input": {
+      "operation": "finish_checksum",
+      "manifest": {
+        "manifest_version": "2.0",
+        "registries": {
+          "main": {
+            "name": "Main",
+            "url_template": "https://origin.test/{artifact}"
+          },
+          "meta": {
+            "name": "Metadata",
+            "url_template": "https://meta.test/{artifact}"
+          }
+        },
+        "mirrors": {},
+        "resources": {
+          "sample": {
+            "name": "Sample",
+            "registry": "main",
+            "tags": [],
+            "default_variants": {
+              "linux-amd64": "stable"
+            },
+            "variants": [
+              {
+                "id": "stable",
+                "name": "Stable",
+                "tag_key": "",
+                "tags": [],
+                "artifacts": {
+                  "linux-amd64": {
+                    "artifact": "pkg-{version}.zip",
+                    "version": {
+                      "type": "remote",
+                      "fallback": {
+                        "version": "v1",
+                        "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+                        "source": {
+                          "release": "fallback-{version}"
+                        }
+                      },
+                      "version": {
+                        "resource": {
+                          "registry": "meta",
+                          "artifact": "version.txt"
+                        },
+                        "parser": {
+                          "type": "text",
+                          "trim": true
+                        }
+                      },
+                      "checksum": {
+                        "resource": {
+                          "registry": "meta",
+                          "artifact": "checksums.txt"
+                        },
+                        "parser": {
+                          "type": "header",
+                          "name": "X-Sha",
+                          "algorithm": "sha256",
+                          "encoding": "hex"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "resource": "sample",
+      "platform": "linux-amd64",
+      "version": "v1",
+      "limits": {
+        "header_value_bytes": 3
+      },
+      "response": {
+        "body": "",
+        "headers": [["X-Sha", "abcd"]]
+      }
+    },
+    "expect": {
+      "error": {
+        "code": "parser.body_too_large",
+        "path": "response.headers.x-sha",
+        "fields": {
+          "limit": 3,
+          "actual": 4
+        }
+      }
+    }
+  }
+]

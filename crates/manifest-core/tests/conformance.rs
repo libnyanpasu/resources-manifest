@@ -1,8 +1,13 @@
 use std::path::Path;
 
-use manifest_core::{ValidationError, validate_manifest};
-use manifest_metadata::{ResourceArtifactVersionTemplate, ResourceManifest};
-use manifest_parser::{Limits, RemoteChecksumParser, RemoteVersionParser};
+use manifest_core::{
+    ChecksumKind, ChecksumMode, DownloadOptions, ResolveError, ValidationError, VariantSelection,
+    VerifyError, VerifyPolicy, VersionOptions, artifact_checksum_kind, check_policy,
+    finish_checksum, list_variant_checksum_kinds, plan_download, plan_version, select_variant,
+    validate_manifest,
+};
+use manifest_metadata::{ResourceManifest, SourceVariables, SupportedPlatform};
+use manifest_parser::{Limits, ParseError, RemoteResponse};
 use serde::Deserialize;
 use serde_json::{Value, json};
 
@@ -134,32 +139,21 @@ fn compat_projection(manifest: &manifest_core::ValidatedManifest) -> Value {
     let resource = &manifest.manifest().resources["sample"];
     let variant = &resource.variants[0];
     let artifacts: serde_json::Map<_, _> = variant.artifacts.iter().map(|(platform, artifact)| {
-        let platform = serde_json::to_value(platform).unwrap().as_str().unwrap().to_owned();
-        let (unsupported, kind) = match &artifact.version {
-            ResourceArtifactVersionTemplate::Static { latest, releases } => {
-                let latest = releases.iter().find(|release| release.version == *latest).unwrap();
-                (None, if latest.checksum.is_some() { "authoritative" } else { "none" })
-            }
-            ResourceArtifactVersionTemplate::Remote { version, checksum, .. } => {
-                let unsupported = if let RemoteVersionParser::Unsupported { parser_type } = &version.parser {
-                    Some(parser_type)
-                } else {
-                    version.parser.compile(&Limits::default()).unwrap();
-                    checksum.as_ref().and_then(|checksum| {
-                        if let RemoteChecksumParser::Unsupported { parser_type } = &checksum.parser {
-                            Some(parser_type)
-                        } else { None }
-                    })
-                };
-                (unsupported, if checksum.is_some() { "parsed" } else { "none" })
+        let kind = artifact_checksum_kind(artifact);
+        let selected = manifest.artifact("sample", &variant.id, *platform).unwrap();
+        let projection = match plan_version(&selected, VersionOptions::default(), &Limits::default()) {
+            Ok(_) => json!({ "ok": true, "kind": kind }),
+            Err(error) => {
+                assert_eq!(kind, ChecksumKind::None);
+                for allow_parsed in [false, true] {
+                    for allow_snapshot in [false, true] {
+                        assert!(check_policy(kind, &VerifyPolicy { allow_parsed, allow_snapshot }).is_err());
+                    }
+                }
+                json!({ "error": { "code": error.code(), "fields": error.fields() }, "kind": kind })
             }
         };
-        let projection = if let Some(parser_type) = unsupported {
-            json!({ "error": { "code": "resolve.unsupported_parser", "fields": { "parser_type": parser_type } }, "kind": "none" })
-        } else {
-            json!({ "ok": true, "kind": kind })
-        };
-        (platform, projection)
+        (platform.as_str().to_owned(), projection)
     }).collect();
     json!({ "newer_minor": manifest.newer_minor(), "default_variants": resource.default_variants, "artifacts": artifacts })
 }
@@ -229,4 +223,164 @@ fn compat() {
         println!("PASS {}", case.name);
     }
     println!("compat: {count} cases");
+}
+
+fn resolve_result(result: Result<Value, ResolveError>) -> Value {
+    match result {
+        Ok(value) => json!({ "ok": value }),
+        Err(error) => {
+            json!({ "error": { "code": error.code(), "path": error.path(), "fields": error.fields() } })
+        }
+    }
+}
+
+fn parse_result(result: Result<Value, ParseError>) -> Value {
+    match result {
+        Ok(value) => json!({ "ok": value }),
+        Err(error) => {
+            json!({ "error": { "code": error.code(), "path": error.path(), "fields": error.fields() } })
+        }
+    }
+}
+
+fn verify_result(result: Result<(), VerifyError>) -> Value {
+    match result {
+        Ok(()) => json!({ "ok": true }),
+        Err(error) => {
+            json!({ "error": { "code": error.code(), "path": error.path(), "fields": error.fields() } })
+        }
+    }
+}
+
+fn kind_case(input: Value) -> Value {
+    let Some(operation) = input["operation"].as_str() else {
+        let artifact = serde_json::from_value(input).unwrap();
+        let kind = artifact_checksum_kind(&artifact);
+        assert_eq!(serde_json::to_value(kind).unwrap(), json!(kind.as_str()));
+        return json!({ "ok": kind });
+    };
+    if operation == "policy" {
+        let policy: VerifyPolicy = serde_json::from_value(input["policy"].clone()).unwrap();
+        let kind = serde_json::from_value(input["kind"].clone()).unwrap();
+        return verify_result(check_policy(kind, &policy));
+    }
+    if operation == "digest_mismatch" {
+        return verify_result(Err(VerifyError::CompareDigest {
+            algorithm: serde_json::from_value(input["algorithm"].clone()).unwrap(),
+            expected: input["expected"].as_str().unwrap().to_owned(),
+            actual: input["actual"].as_str().unwrap().to_owned(),
+        }));
+    }
+    let manifest =
+        validate_manifest(serde_json::from_value(input["manifest"].clone()).unwrap()).unwrap();
+    let resource = input["resource"].as_str().unwrap();
+    let platform: SupportedPlatform = serde_json::from_value(input["platform"].clone()).unwrap();
+    if operation == "list" {
+        return resolve_result(
+            list_variant_checksum_kinds(&manifest, resource, platform)
+                .map(|kinds| serde_json::to_value(kinds).unwrap()),
+        );
+    }
+    let tags: Option<Vec<String>> = input
+        .get("tags")
+        .map(|tags| serde_json::from_value(tags.clone()).unwrap());
+    let selected = match select_variant(
+        &manifest,
+        resource,
+        platform,
+        VariantSelection {
+            id: input["variant_id"].as_str(),
+            tags: tags.as_deref(),
+        },
+    ) {
+        Ok(selected) => selected,
+        Err(error) => return resolve_result(Err(error)),
+    };
+    if operation == "select" {
+        return json!({ "ok": { "variant_id": selected.variant().id, "kind": artifact_checksum_kind(selected.template()) } });
+    }
+    let source: Option<SourceVariables> = input
+        .get("source")
+        .map(|source| serde_json::from_value(source.clone()).unwrap());
+    let mut limits = Limits::default();
+    if let Some(value) = input["limits"]["body_bytes"].as_u64() {
+        limits = limits.with_body_bytes(usize::try_from(value).unwrap());
+    }
+    if let Some(value) = input["limits"]["header_value_bytes"].as_u64() {
+        limits = limits.with_header_value_bytes(usize::try_from(value).unwrap());
+    }
+    if let Some(value) = input["limits"]["render_output_bytes"].as_u64() {
+        limits = limits.with_render_output_bytes(usize::try_from(value).unwrap());
+    }
+    if let Some(value) = input["limits"]["regex_pattern_bytes"].as_u64() {
+        limits = limits.with_regex_pattern_bytes(usize::try_from(value).unwrap());
+    }
+    let mirror = input["mirror"].as_str();
+    let response = input.get("response");
+    let body = response
+        .map(|response| response["body"].as_str().unwrap())
+        .unwrap_or_default();
+    let headers: Vec<(String, String)> = response
+        .map(|response| serde_json::from_value(response["headers"].clone()).unwrap())
+        .unwrap_or_default();
+    let response = RemoteResponse {
+        body,
+        headers: &headers,
+    };
+    if operation == "version" {
+        let plan = plan_version(
+            &selected,
+            VersionOptions {
+                source: source.as_ref(),
+                mirror,
+            },
+            &limits,
+        );
+        return match plan {
+            Ok(plan) if input.get("response").is_some() => parse_result(
+                plan.remote()
+                    .unwrap()
+                    .parser()
+                    .parse(&response)
+                    .map(|version| json!({ "plan": plan, "version": version.as_ref() })),
+            ),
+            result => resolve_result(result.map(|plan| serde_json::to_value(plan).unwrap())),
+        };
+    }
+    assert!(matches!(operation, "download" | "finish_checksum"));
+    let plan = plan_download(
+        &selected,
+        DownloadOptions {
+            version: input["version"].as_str(),
+            source: source.as_ref(),
+            mirror,
+            checksum_mode: match input["checksum_mode"].as_str() {
+                None | Some("remote") => ChecksumMode::Remote,
+                Some("snapshot") => ChecksumMode::Snapshot,
+                other => panic!("unknown checksum_mode {other:?}"),
+            },
+        },
+        &limits,
+    );
+    match plan {
+        Ok(plan) if operation == "finish_checksum" => parse_result(
+            finish_checksum(plan.checksum_request().unwrap(), &response).map(|checksum| {
+                assert_eq!(checksum.kind(), plan.kind());
+                serde_json::to_value(checksum).unwrap()
+            }),
+        ),
+        result => resolve_result(result.map(|plan| serde_json::to_value(plan).unwrap())),
+    }
+}
+
+#[test]
+fn kind() {
+    let cases = cases("kind");
+    let count = cases.len();
+    for case in cases {
+        let actual = kind_case(case.input);
+        assert_eq!(actual, case.expect, "{}", case.name);
+        println!("PASS {}", case.name);
+    }
+    println!("kind: {count} cases");
 }

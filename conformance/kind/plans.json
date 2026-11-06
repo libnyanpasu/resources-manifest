@@ -1,0 +1,3176 @@
+[
+  {
+    "name": "kind.plan.static_latest",
+    "input": {
+      "operation": "download",
+      "manifest": {
+        "manifest_version": "2.0",
+        "registries": {
+          "main": {
+            "name": "Main",
+            "url_template": "https://origin.test/{artifact}"
+          },
+          "meta": {
+            "name": "Metadata",
+            "url_template": "https://meta.test/{artifact}"
+          }
+        },
+        "mirrors": {},
+        "resources": {
+          "sample": {
+            "name": "Sample",
+            "registry": "main",
+            "tags": [],
+            "default_variants": {
+              "linux-amd64": "stable"
+            },
+            "variants": [
+              {
+                "id": "stable",
+                "name": "Stable",
+                "tag_key": "",
+                "tags": [],
+                "artifacts": {
+                  "linux-amd64": {
+                    "artifact": "pkg-{version}.zip",
+                    "version": {
+                      "type": "static",
+                      "latest": "v2",
+                      "releases": [
+                        {
+                          "version": "v2",
+                          "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "resource": "sample",
+      "platform": "linux-amd64"
+    },
+    "expect": {
+      "ok": {
+        "artifact": "pkg-v2.zip",
+        "version": "v2",
+        "request": {
+          "canonical_url": "https://origin.test/pkg-v2.zip",
+          "mirror_url": null,
+          "kind": "authoritative"
+        },
+        "checksum": {
+          "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+          "kind": "authoritative"
+        },
+        "checksum_request": null
+      }
+    }
+  },
+  {
+    "name": "kind.plan.static_history_no_checksum",
+    "input": {
+      "operation": "download",
+      "manifest": {
+        "manifest_version": "2.0",
+        "registries": {
+          "main": {
+            "name": "Main",
+            "url_template": "https://origin.test/{artifact}"
+          },
+          "meta": {
+            "name": "Metadata",
+            "url_template": "https://meta.test/{artifact}"
+          }
+        },
+        "mirrors": {},
+        "resources": {
+          "sample": {
+            "name": "Sample",
+            "registry": "main",
+            "tags": [],
+            "default_variants": {
+              "linux-amd64": "stable"
+            },
+            "variants": [
+              {
+                "id": "stable",
+                "name": "Stable",
+                "tag_key": "",
+                "tags": [],
+                "artifacts": {
+                  "linux-amd64": {
+                    "artifact": "pkg-{version}.zip",
+                    "version": {
+                      "type": "static",
+                      "latest": "v2",
+                      "releases": [
+                        {
+                          "version": "v2",
+                          "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+                        },
+                        {
+                          "version": "v1"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "resource": "sample",
+      "platform": "linux-amd64",
+      "version": "v1"
+    },
+    "expect": {
+      "ok": {
+        "artifact": "pkg-v1.zip",
+        "version": "v1",
+        "request": {
+          "canonical_url": "https://origin.test/pkg-v1.zip",
+          "mirror_url": null,
+          "kind": "none"
+        },
+        "checksum": null,
+        "checksum_request": null
+      }
+    }
+  },
+  {
+    "name": "kind.plan.static_history_authoritative",
+    "input": {
+      "operation": "download",
+      "manifest": {
+        "manifest_version": "2.0",
+        "registries": {
+          "main": {
+            "name": "Main",
+            "url_template": "https://origin.test/{artifact}"
+          },
+          "meta": {
+            "name": "Metadata",
+            "url_template": "https://meta.test/{artifact}"
+          }
+        },
+        "mirrors": {},
+        "resources": {
+          "sample": {
+            "name": "Sample",
+            "registry": "main",
+            "tags": [],
+            "default_variants": {
+              "linux-amd64": "stable"
+            },
+            "variants": [
+              {
+                "id": "stable",
+                "name": "Stable",
+                "tag_key": "",
+                "tags": [],
+                "artifacts": {
+                  "linux-amd64": {
+                    "artifact": "pkg-{version}.zip",
+                    "version": {
+                      "type": "static",
+                      "latest": "v2",
+                      "releases": [
+                        {
+                          "version": "v2"
+                        },
+                        {
+                          "version": "v1",
+                          "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "resource": "sample",
+      "platform": "linux-amd64",
+      "version": "v1"
+    },
+    "expect": {
+      "ok": {
+        "artifact": "pkg-v1.zip",
+        "version": "v1",
+        "request": {
+          "canonical_url": "https://origin.test/pkg-v1.zip",
+          "mirror_url": null,
+          "kind": "authoritative"
+        },
+        "checksum": {
+          "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+          "kind": "authoritative"
+        },
+        "checksum_request": null
+      }
+    }
+  },
+  {
+    "name": "kind.plan.static_missing_history",
+    "input": {
+      "operation": "download",
+      "manifest": {
+        "manifest_version": "2.0",
+        "registries": {
+          "main": {
+            "name": "Main",
+            "url_template": "https://origin.test/{artifact}"
+          },
+          "meta": {
+            "name": "Metadata",
+            "url_template": "https://meta.test/{artifact}"
+          }
+        },
+        "mirrors": {},
+        "resources": {
+          "sample": {
+            "name": "Sample",
+            "registry": "main",
+            "tags": [],
+            "default_variants": {
+              "linux-amd64": "stable"
+            },
+            "variants": [
+              {
+                "id": "stable",
+                "name": "Stable",
+                "tag_key": "",
+                "tags": [],
+                "artifacts": {
+                  "linux-amd64": {
+                    "artifact": "pkg-{version}.zip",
+                    "version": {
+                      "type": "static",
+                      "latest": "v2",
+                      "releases": [
+                        {
+                          "version": "v2",
+                          "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "resource": "sample",
+      "platform": "linux-amd64",
+      "version": "v0"
+    },
+    "expect": {
+      "error": {
+        "code": "resolve.version_not_in_history",
+        "path": "arg.version",
+        "fields": {
+          "version": "v0"
+        }
+      }
+    }
+  },
+  {
+    "name": "kind.plan.static_versions",
+    "input": {
+      "operation": "version",
+      "manifest": {
+        "manifest_version": "2.0",
+        "registries": {
+          "main": {
+            "name": "Main",
+            "url_template": "https://origin.test/{artifact}"
+          },
+          "meta": {
+            "name": "Metadata",
+            "url_template": "https://meta.test/{artifact}"
+          }
+        },
+        "mirrors": {},
+        "resources": {
+          "sample": {
+            "name": "Sample",
+            "registry": "main",
+            "tags": [],
+            "default_variants": {
+              "linux-amd64": "stable"
+            },
+            "variants": [
+              {
+                "id": "stable",
+                "name": "Stable",
+                "tag_key": "",
+                "tags": [],
+                "artifacts": {
+                  "linux-amd64": {
+                    "artifact": "pkg-{version}.zip",
+                    "version": {
+                      "type": "static",
+                      "latest": "v2",
+                      "releases": [
+                        {
+                          "version": "v2",
+                          "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "resource": "sample",
+      "platform": "linux-amd64"
+    },
+    "expect": {
+      "ok": {
+        "kind": "authoritative",
+        "latest": "v2",
+        "releases": [
+          {
+            "version": "v2",
+            "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+          }
+        ],
+        "remote": null
+      }
+    }
+  },
+  {
+    "name": "kind.plan.remote_version",
+    "input": {
+      "operation": "version",
+      "manifest": {
+        "manifest_version": "2.0",
+        "registries": {
+          "main": {
+            "name": "Main",
+            "url_template": "https://origin.test/{artifact}"
+          },
+          "meta": {
+            "name": "Metadata",
+            "url_template": "https://meta.test/{artifact}"
+          }
+        },
+        "mirrors": {},
+        "resources": {
+          "sample": {
+            "name": "Sample",
+            "registry": "main",
+            "tags": [],
+            "default_variants": {
+              "linux-amd64": "stable"
+            },
+            "variants": [
+              {
+                "id": "stable",
+                "name": "Stable",
+                "tag_key": "",
+                "tags": [],
+                "artifacts": {
+                  "linux-amd64": {
+                    "artifact": "pkg-{version}.zip",
+                    "version": {
+                      "type": "remote",
+                      "fallback": {
+                        "version": "v1",
+                        "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+                        "source": {
+                          "release": "fallback-{version}"
+                        }
+                      },
+                      "version": {
+                        "resource": {
+                          "registry": "meta",
+                          "artifact": "version.txt"
+                        },
+                        "parser": {
+                          "type": "text",
+                          "trim": true
+                        }
+                      },
+                      "checksum": {
+                        "resource": {
+                          "registry": "meta",
+                          "artifact": "checksums.txt"
+                        },
+                        "parser": {
+                          "type": "gnu",
+                          "algorithm": "sha256"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "resource": "sample",
+      "platform": "linux-amd64",
+      "response": {
+        "body": " v3\n",
+        "headers": []
+      }
+    },
+    "expect": {
+      "ok": {
+        "plan": {
+          "kind": "parsed",
+          "latest": null,
+          "releases": [],
+          "remote": {
+            "request": {
+              "canonical_url": "https://meta.test/version.txt",
+              "mirror_url": null,
+              "kind": "parsed"
+            },
+            "parser": {
+              "type": "text",
+              "trim": true
+            }
+          }
+        },
+        "version": "v3"
+      }
+    }
+  },
+  {
+    "name": "kind.plan.remote_download",
+    "input": {
+      "operation": "download",
+      "manifest": {
+        "manifest_version": "2.0",
+        "registries": {
+          "main": {
+            "name": "Main",
+            "url_template": "https://origin.test/{artifact}"
+          },
+          "meta": {
+            "name": "Metadata",
+            "url_template": "https://meta.test/{artifact}"
+          }
+        },
+        "mirrors": {},
+        "resources": {
+          "sample": {
+            "name": "Sample",
+            "registry": "main",
+            "tags": [],
+            "default_variants": {
+              "linux-amd64": "stable"
+            },
+            "variants": [
+              {
+                "id": "stable",
+                "name": "Stable",
+                "tag_key": "",
+                "tags": [],
+                "artifacts": {
+                  "linux-amd64": {
+                    "artifact": "pkg-{version}.zip",
+                    "version": {
+                      "type": "remote",
+                      "fallback": {
+                        "version": "v1",
+                        "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+                        "source": {
+                          "release": "fallback-{version}"
+                        }
+                      },
+                      "version": {
+                        "resource": {
+                          "registry": "meta",
+                          "artifact": "version.txt"
+                        },
+                        "parser": {
+                          "type": "text",
+                          "trim": true
+                        }
+                      },
+                      "checksum": {
+                        "resource": {
+                          "registry": "meta",
+                          "artifact": "checksums.txt"
+                        },
+                        "parser": {
+                          "type": "gnu",
+                          "algorithm": "sha256"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "resource": "sample",
+      "platform": "linux-amd64",
+      "version": "v1"
+    },
+    "expect": {
+      "ok": {
+        "artifact": "pkg-v1.zip",
+        "version": "v1",
+        "request": {
+          "canonical_url": "https://origin.test/pkg-v1.zip",
+          "mirror_url": null,
+          "kind": "parsed"
+        },
+        "checksum": null,
+        "checksum_request": {
+          "request": {
+            "canonical_url": "https://meta.test/checksums.txt",
+            "mirror_url": null,
+            "kind": "parsed"
+          },
+          "parser": {
+            "type": "gnu",
+            "algorithm": "sha256"
+          },
+          "artifact": "pkg-v1.zip"
+        }
+      }
+    }
+  },
+  {
+    "name": "kind.plan.remote_no_rule",
+    "input": {
+      "operation": "download",
+      "manifest": {
+        "manifest_version": "2.0",
+        "registries": {
+          "main": {
+            "name": "Main",
+            "url_template": "https://origin.test/{artifact}"
+          },
+          "meta": {
+            "name": "Metadata",
+            "url_template": "https://meta.test/{artifact}"
+          }
+        },
+        "mirrors": {},
+        "resources": {
+          "sample": {
+            "name": "Sample",
+            "registry": "main",
+            "tags": [],
+            "default_variants": {
+              "linux-amd64": "stable"
+            },
+            "variants": [
+              {
+                "id": "stable",
+                "name": "Stable",
+                "tag_key": "",
+                "tags": [],
+                "artifacts": {
+                  "linux-amd64": {
+                    "artifact": "pkg-{version}.zip",
+                    "version": {
+                      "type": "remote",
+                      "fallback": {
+                        "version": "v1",
+                        "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+                        "source": {
+                          "release": "fallback-{version}"
+                        }
+                      },
+                      "version": {
+                        "resource": {
+                          "registry": "meta",
+                          "artifact": "version.txt"
+                        },
+                        "parser": {
+                          "type": "text",
+                          "trim": true
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "resource": "sample",
+      "platform": "linux-amd64",
+      "version": "v1"
+    },
+    "expect": {
+      "ok": {
+        "artifact": "pkg-v1.zip",
+        "version": "v1",
+        "request": {
+          "canonical_url": "https://origin.test/pkg-v1.zip",
+          "mirror_url": null,
+          "kind": "none"
+        },
+        "checksum": null,
+        "checksum_request": null
+      }
+    }
+  },
+  {
+    "name": "kind.plan.remote_missing_version",
+    "input": {
+      "operation": "download",
+      "manifest": {
+        "manifest_version": "2.0",
+        "registries": {
+          "main": {
+            "name": "Main",
+            "url_template": "https://origin.test/{artifact}"
+          },
+          "meta": {
+            "name": "Metadata",
+            "url_template": "https://meta.test/{artifact}"
+          }
+        },
+        "mirrors": {},
+        "resources": {
+          "sample": {
+            "name": "Sample",
+            "registry": "main",
+            "tags": [],
+            "default_variants": {
+              "linux-amd64": "stable"
+            },
+            "variants": [
+              {
+                "id": "stable",
+                "name": "Stable",
+                "tag_key": "",
+                "tags": [],
+                "artifacts": {
+                  "linux-amd64": {
+                    "artifact": "pkg-{version}.zip",
+                    "version": {
+                      "type": "remote",
+                      "fallback": {
+                        "version": "v1",
+                        "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+                        "source": {
+                          "release": "fallback-{version}"
+                        }
+                      },
+                      "version": {
+                        "resource": {
+                          "registry": "meta",
+                          "artifact": "version.txt"
+                        },
+                        "parser": {
+                          "type": "text",
+                          "trim": true
+                        }
+                      },
+                      "checksum": {
+                        "resource": {
+                          "registry": "meta",
+                          "artifact": "checksums.txt"
+                        },
+                        "parser": {
+                          "type": "gnu",
+                          "algorithm": "sha256"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "resource": "sample",
+      "platform": "linux-amd64"
+    },
+    "expect": {
+      "error": {
+        "code": "resolve.version_required",
+        "path": "arg.version",
+        "fields": {}
+      }
+    }
+  },
+  {
+    "name": "kind.plan.remote_invalid_version",
+    "input": {
+      "operation": "download",
+      "manifest": {
+        "manifest_version": "2.0",
+        "registries": {
+          "main": {
+            "name": "Main",
+            "url_template": "https://origin.test/{artifact}"
+          },
+          "meta": {
+            "name": "Metadata",
+            "url_template": "https://meta.test/{artifact}"
+          }
+        },
+        "mirrors": {},
+        "resources": {
+          "sample": {
+            "name": "Sample",
+            "registry": "main",
+            "tags": [],
+            "default_variants": {
+              "linux-amd64": "stable"
+            },
+            "variants": [
+              {
+                "id": "stable",
+                "name": "Stable",
+                "tag_key": "",
+                "tags": [],
+                "artifacts": {
+                  "linux-amd64": {
+                    "artifact": "pkg-{version}.zip",
+                    "version": {
+                      "type": "remote",
+                      "fallback": {
+                        "version": "v1",
+                        "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+                        "source": {
+                          "release": "fallback-{version}"
+                        }
+                      },
+                      "version": {
+                        "resource": {
+                          "registry": "meta",
+                          "artifact": "version.txt"
+                        },
+                        "parser": {
+                          "type": "text",
+                          "trim": true
+                        }
+                      },
+                      "checksum": {
+                        "resource": {
+                          "registry": "meta",
+                          "artifact": "checksums.txt"
+                        },
+                        "parser": {
+                          "type": "gnu",
+                          "algorithm": "sha256"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "resource": "sample",
+      "platform": "linux-amd64",
+      "version": "alpha?x=1#f"
+    },
+    "expect": {
+      "error": {
+        "code": "template.invalid_literal",
+        "path": "arg.version",
+        "fields": {}
+      }
+    }
+  },
+  {
+    "name": "kind.plan.snapshot.with_rule",
+    "input": {
+      "operation": "download",
+      "manifest": {
+        "manifest_version": "2.0",
+        "registries": {
+          "main": {
+            "name": "Main",
+            "url_template": "https://origin.test/{artifact}"
+          },
+          "meta": {
+            "name": "Metadata",
+            "url_template": "https://meta.test/{artifact}"
+          }
+        },
+        "mirrors": {},
+        "resources": {
+          "sample": {
+            "name": "Sample",
+            "registry": "main",
+            "tags": [],
+            "default_variants": {
+              "linux-amd64": "stable"
+            },
+            "variants": [
+              {
+                "id": "stable",
+                "name": "Stable",
+                "tag_key": "",
+                "tags": [],
+                "artifacts": {
+                  "linux-amd64": {
+                    "artifact": "pkg-{version}.zip",
+                    "version": {
+                      "type": "remote",
+                      "fallback": {
+                        "version": "v1",
+                        "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+                        "source": {
+                          "release": "fallback-{version}"
+                        }
+                      },
+                      "version": {
+                        "resource": {
+                          "registry": "meta",
+                          "artifact": "version.txt"
+                        },
+                        "parser": {
+                          "type": "text",
+                          "trim": true
+                        }
+                      },
+                      "checksum": {
+                        "resource": {
+                          "registry": "meta",
+                          "artifact": "checksums.txt"
+                        },
+                        "parser": {
+                          "type": "gnu",
+                          "algorithm": "sha256"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "resource": "sample",
+      "platform": "linux-amd64",
+      "version": "v1",
+      "checksum_mode": "snapshot"
+    },
+    "expect": {
+      "ok": {
+        "artifact": "pkg-v1.zip",
+        "version": "v1",
+        "request": {
+          "canonical_url": "https://origin.test/pkg-v1.zip",
+          "mirror_url": null,
+          "kind": "snapshot"
+        },
+        "checksum": {
+          "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+          "kind": "snapshot"
+        },
+        "checksum_request": null
+      }
+    }
+  },
+  {
+    "name": "kind.plan.snapshot.without_rule",
+    "input": {
+      "operation": "download",
+      "manifest": {
+        "manifest_version": "2.0",
+        "registries": {
+          "main": {
+            "name": "Main",
+            "url_template": "https://origin.test/{artifact}"
+          },
+          "meta": {
+            "name": "Metadata",
+            "url_template": "https://meta.test/{artifact}"
+          }
+        },
+        "mirrors": {},
+        "resources": {
+          "sample": {
+            "name": "Sample",
+            "registry": "main",
+            "tags": [],
+            "default_variants": {
+              "linux-amd64": "stable"
+            },
+            "variants": [
+              {
+                "id": "stable",
+                "name": "Stable",
+                "tag_key": "",
+                "tags": [],
+                "artifacts": {
+                  "linux-amd64": {
+                    "artifact": "pkg-{version}.zip",
+                    "version": {
+                      "type": "remote",
+                      "fallback": {
+                        "version": "v1",
+                        "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+                        "source": {
+                          "release": "fallback-{version}"
+                        }
+                      },
+                      "version": {
+                        "resource": {
+                          "registry": "meta",
+                          "artifact": "version.txt"
+                        },
+                        "parser": {
+                          "type": "text",
+                          "trim": true
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "resource": "sample",
+      "platform": "linux-amd64",
+      "version": "v1",
+      "checksum_mode": "snapshot"
+    },
+    "expect": {
+      "ok": {
+        "artifact": "pkg-v1.zip",
+        "version": "v1",
+        "request": {
+          "canonical_url": "https://origin.test/pkg-v1.zip",
+          "mirror_url": null,
+          "kind": "snapshot"
+        },
+        "checksum": {
+          "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+          "kind": "snapshot"
+        },
+        "checksum_request": null
+      }
+    }
+  },
+  {
+    "name": "kind.plan.snapshot_version_mismatch",
+    "input": {
+      "operation": "download",
+      "manifest": {
+        "manifest_version": "2.0",
+        "registries": {
+          "main": {
+            "name": "Main",
+            "url_template": "https://origin.test/{artifact}"
+          },
+          "meta": {
+            "name": "Metadata",
+            "url_template": "https://meta.test/{artifact}"
+          }
+        },
+        "mirrors": {},
+        "resources": {
+          "sample": {
+            "name": "Sample",
+            "registry": "main",
+            "tags": [],
+            "default_variants": {
+              "linux-amd64": "stable"
+            },
+            "variants": [
+              {
+                "id": "stable",
+                "name": "Stable",
+                "tag_key": "",
+                "tags": [],
+                "artifacts": {
+                  "linux-amd64": {
+                    "artifact": "pkg-{version}.zip",
+                    "version": {
+                      "type": "remote",
+                      "fallback": {
+                        "version": "v1",
+                        "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+                        "source": {
+                          "release": "fallback-{version}"
+                        }
+                      },
+                      "version": {
+                        "resource": {
+                          "registry": "meta",
+                          "artifact": "version.txt"
+                        },
+                        "parser": {
+                          "type": "text",
+                          "trim": true
+                        }
+                      },
+                      "checksum": {
+                        "resource": {
+                          "registry": "meta",
+                          "artifact": "checksums.txt"
+                        },
+                        "parser": {
+                          "type": "gnu",
+                          "algorithm": "sha256"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "resource": "sample",
+      "platform": "linux-amd64",
+      "version": "v9",
+      "checksum_mode": "snapshot"
+    },
+    "expect": {
+      "error": {
+        "code": "resolve.snapshot_unavailable",
+        "path": "arg.version",
+        "fields": {
+          "version": "v9",
+          "fallback_version": "v1"
+        }
+      }
+    }
+  },
+  {
+    "name": "kind.plan.snapshot_missing",
+    "input": {
+      "operation": "download",
+      "manifest": {
+        "manifest_version": "2.0",
+        "registries": {
+          "main": {
+            "name": "Main",
+            "url_template": "https://origin.test/{artifact}"
+          },
+          "meta": {
+            "name": "Metadata",
+            "url_template": "https://meta.test/{artifact}"
+          }
+        },
+        "mirrors": {},
+        "resources": {
+          "sample": {
+            "name": "Sample",
+            "registry": "main",
+            "tags": [],
+            "default_variants": {
+              "linux-amd64": "stable"
+            },
+            "variants": [
+              {
+                "id": "stable",
+                "name": "Stable",
+                "tag_key": "",
+                "tags": [],
+                "artifacts": {
+                  "linux-amd64": {
+                    "artifact": "pkg-{version}.zip",
+                    "version": {
+                      "type": "remote",
+                      "version": {
+                        "resource": {
+                          "registry": "meta",
+                          "artifact": "version.txt"
+                        },
+                        "parser": {
+                          "type": "text",
+                          "trim": true
+                        }
+                      },
+                      "checksum": {
+                        "resource": {
+                          "registry": "meta",
+                          "artifact": "checksums.txt"
+                        },
+                        "parser": {
+                          "type": "gnu",
+                          "algorithm": "sha256"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "resource": "sample",
+      "platform": "linux-amd64",
+      "version": "v1",
+      "checksum_mode": "snapshot"
+    },
+    "expect": {
+      "error": {
+        "code": "resolve.snapshot_unavailable",
+        "path": "arg.version",
+        "fields": {
+          "version": "v1",
+          "fallback_version": null
+        }
+      }
+    }
+  },
+  {
+    "name": "kind.plan.snapshot_missing_checksum",
+    "input": {
+      "operation": "download",
+      "manifest": {
+        "manifest_version": "2.0",
+        "registries": {
+          "main": {
+            "name": "Main",
+            "url_template": "https://origin.test/{artifact}"
+          },
+          "meta": {
+            "name": "Metadata",
+            "url_template": "https://meta.test/{artifact}"
+          }
+        },
+        "mirrors": {},
+        "resources": {
+          "sample": {
+            "name": "Sample",
+            "registry": "main",
+            "tags": [],
+            "default_variants": {
+              "linux-amd64": "stable"
+            },
+            "variants": [
+              {
+                "id": "stable",
+                "name": "Stable",
+                "tag_key": "",
+                "tags": [],
+                "artifacts": {
+                  "linux-amd64": {
+                    "artifact": "pkg-{version}.zip",
+                    "version": {
+                      "type": "remote",
+                      "fallback": {
+                        "version": "v1",
+                        "source": {
+                          "release": "fallback-{version}"
+                        }
+                      },
+                      "version": {
+                        "resource": {
+                          "registry": "meta",
+                          "artifact": "version.txt"
+                        },
+                        "parser": {
+                          "type": "text",
+                          "trim": true
+                        }
+                      },
+                      "checksum": {
+                        "resource": {
+                          "registry": "meta",
+                          "artifact": "checksums.txt"
+                        },
+                        "parser": {
+                          "type": "gnu",
+                          "algorithm": "sha256"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "resource": "sample",
+      "platform": "linux-amd64",
+      "version": "v1",
+      "checksum_mode": "snapshot"
+    },
+    "expect": {
+      "error": {
+        "code": "resolve.snapshot_unavailable",
+        "path": "arg.version",
+        "fields": {
+          "version": "v1",
+          "fallback_version": "v1"
+        }
+      }
+    }
+  },
+  {
+    "name": "kind.plan.unsupported.version.version",
+    "input": {
+      "operation": "version",
+      "manifest": {
+        "manifest_version": "2.7",
+        "registries": {
+          "main": {
+            "name": "Main",
+            "url_template": "https://origin.test/{artifact}"
+          },
+          "meta": {
+            "name": "Metadata",
+            "url_template": "https://meta.test/{artifact}"
+          }
+        },
+        "mirrors": {},
+        "resources": {
+          "sample": {
+            "name": "Sample",
+            "registry": "main",
+            "tags": [],
+            "default_variants": {
+              "linux-amd64": "stable"
+            },
+            "variants": [
+              {
+                "id": "stable",
+                "name": "Stable",
+                "tag_key": "",
+                "tags": [],
+                "artifacts": {
+                  "linux-amd64": {
+                    "artifact": "pkg-{version}.zip",
+                    "version": {
+                      "type": "remote",
+                      "fallback": {
+                        "version": "v1",
+                        "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+                        "source": {
+                          "release": "fallback-{version}"
+                        }
+                      },
+                      "version": {
+                        "resource": {
+                          "registry": "meta",
+                          "artifact": "version.txt"
+                        },
+                        "parser": {
+                          "type": "future-version"
+                        }
+                      },
+                      "checksum": {
+                        "resource": {
+                          "registry": "meta",
+                          "artifact": "checksums.txt"
+                        },
+                        "parser": {
+                          "type": "gnu",
+                          "algorithm": "sha256"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "resource": "sample",
+      "platform": "linux-amd64"
+    },
+    "expect": {
+      "error": {
+        "code": "resolve.unsupported_parser",
+        "path": "parser.type",
+        "fields": {
+          "parser_type": "future-version"
+        }
+      }
+    }
+  },
+  {
+    "name": "kind.plan.unsupported.version.download",
+    "input": {
+      "operation": "download",
+      "manifest": {
+        "manifest_version": "2.7",
+        "registries": {
+          "main": {
+            "name": "Main",
+            "url_template": "https://origin.test/{artifact}"
+          },
+          "meta": {
+            "name": "Metadata",
+            "url_template": "https://meta.test/{artifact}"
+          }
+        },
+        "mirrors": {},
+        "resources": {
+          "sample": {
+            "name": "Sample",
+            "registry": "main",
+            "tags": [],
+            "default_variants": {
+              "linux-amd64": "stable"
+            },
+            "variants": [
+              {
+                "id": "stable",
+                "name": "Stable",
+                "tag_key": "",
+                "tags": [],
+                "artifacts": {
+                  "linux-amd64": {
+                    "artifact": "pkg-{version}.zip",
+                    "version": {
+                      "type": "remote",
+                      "fallback": {
+                        "version": "v1",
+                        "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+                        "source": {
+                          "release": "fallback-{version}"
+                        }
+                      },
+                      "version": {
+                        "resource": {
+                          "registry": "meta",
+                          "artifact": "version.txt"
+                        },
+                        "parser": {
+                          "type": "future-version"
+                        }
+                      },
+                      "checksum": {
+                        "resource": {
+                          "registry": "meta",
+                          "artifact": "checksums.txt"
+                        },
+                        "parser": {
+                          "type": "gnu",
+                          "algorithm": "sha256"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "resource": "sample",
+      "platform": "linux-amd64",
+      "version": "v1"
+    },
+    "expect": {
+      "error": {
+        "code": "resolve.unsupported_parser",
+        "path": "parser.type",
+        "fields": {
+          "parser_type": "future-version"
+        }
+      }
+    }
+  },
+  {
+    "name": "kind.plan.unsupported.version.download.snapshot",
+    "input": {
+      "operation": "download",
+      "manifest": {
+        "manifest_version": "2.7",
+        "registries": {
+          "main": {
+            "name": "Main",
+            "url_template": "https://origin.test/{artifact}"
+          },
+          "meta": {
+            "name": "Metadata",
+            "url_template": "https://meta.test/{artifact}"
+          }
+        },
+        "mirrors": {},
+        "resources": {
+          "sample": {
+            "name": "Sample",
+            "registry": "main",
+            "tags": [],
+            "default_variants": {
+              "linux-amd64": "stable"
+            },
+            "variants": [
+              {
+                "id": "stable",
+                "name": "Stable",
+                "tag_key": "",
+                "tags": [],
+                "artifacts": {
+                  "linux-amd64": {
+                    "artifact": "pkg-{version}.zip",
+                    "version": {
+                      "type": "remote",
+                      "fallback": {
+                        "version": "v1",
+                        "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+                        "source": {
+                          "release": "fallback-{version}"
+                        }
+                      },
+                      "version": {
+                        "resource": {
+                          "registry": "meta",
+                          "artifact": "version.txt"
+                        },
+                        "parser": {
+                          "type": "future-version"
+                        }
+                      },
+                      "checksum": {
+                        "resource": {
+                          "registry": "meta",
+                          "artifact": "checksums.txt"
+                        },
+                        "parser": {
+                          "type": "gnu",
+                          "algorithm": "sha256"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "resource": "sample",
+      "platform": "linux-amd64",
+      "version": "v1",
+      "checksum_mode": "snapshot"
+    },
+    "expect": {
+      "error": {
+        "code": "resolve.unsupported_parser",
+        "path": "parser.type",
+        "fields": {
+          "parser_type": "future-version"
+        }
+      }
+    }
+  },
+  {
+    "name": "kind.plan.unsupported.checksum.version",
+    "input": {
+      "operation": "version",
+      "manifest": {
+        "manifest_version": "2.7",
+        "registries": {
+          "main": {
+            "name": "Main",
+            "url_template": "https://origin.test/{artifact}"
+          },
+          "meta": {
+            "name": "Metadata",
+            "url_template": "https://meta.test/{artifact}"
+          }
+        },
+        "mirrors": {},
+        "resources": {
+          "sample": {
+            "name": "Sample",
+            "registry": "main",
+            "tags": [],
+            "default_variants": {
+              "linux-amd64": "stable"
+            },
+            "variants": [
+              {
+                "id": "stable",
+                "name": "Stable",
+                "tag_key": "",
+                "tags": [],
+                "artifacts": {
+                  "linux-amd64": {
+                    "artifact": "pkg-{version}.zip",
+                    "version": {
+                      "type": "remote",
+                      "fallback": {
+                        "version": "v1",
+                        "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+                        "source": {
+                          "release": "fallback-{version}"
+                        }
+                      },
+                      "version": {
+                        "resource": {
+                          "registry": "meta",
+                          "artifact": "version.txt"
+                        },
+                        "parser": {
+                          "type": "text",
+                          "trim": true
+                        }
+                      },
+                      "checksum": {
+                        "resource": {
+                          "registry": "meta",
+                          "artifact": "checksums.txt"
+                        },
+                        "parser": {
+                          "type": "future-checksum"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "resource": "sample",
+      "platform": "linux-amd64"
+    },
+    "expect": {
+      "error": {
+        "code": "resolve.unsupported_parser",
+        "path": "parser.type",
+        "fields": {
+          "parser_type": "future-checksum"
+        }
+      }
+    }
+  },
+  {
+    "name": "kind.plan.unsupported.checksum.download",
+    "input": {
+      "operation": "download",
+      "manifest": {
+        "manifest_version": "2.7",
+        "registries": {
+          "main": {
+            "name": "Main",
+            "url_template": "https://origin.test/{artifact}"
+          },
+          "meta": {
+            "name": "Metadata",
+            "url_template": "https://meta.test/{artifact}"
+          }
+        },
+        "mirrors": {},
+        "resources": {
+          "sample": {
+            "name": "Sample",
+            "registry": "main",
+            "tags": [],
+            "default_variants": {
+              "linux-amd64": "stable"
+            },
+            "variants": [
+              {
+                "id": "stable",
+                "name": "Stable",
+                "tag_key": "",
+                "tags": [],
+                "artifacts": {
+                  "linux-amd64": {
+                    "artifact": "pkg-{version}.zip",
+                    "version": {
+                      "type": "remote",
+                      "fallback": {
+                        "version": "v1",
+                        "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+                        "source": {
+                          "release": "fallback-{version}"
+                        }
+                      },
+                      "version": {
+                        "resource": {
+                          "registry": "meta",
+                          "artifact": "version.txt"
+                        },
+                        "parser": {
+                          "type": "text",
+                          "trim": true
+                        }
+                      },
+                      "checksum": {
+                        "resource": {
+                          "registry": "meta",
+                          "artifact": "checksums.txt"
+                        },
+                        "parser": {
+                          "type": "future-checksum"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "resource": "sample",
+      "platform": "linux-amd64",
+      "version": "v1"
+    },
+    "expect": {
+      "error": {
+        "code": "resolve.unsupported_parser",
+        "path": "parser.type",
+        "fields": {
+          "parser_type": "future-checksum"
+        }
+      }
+    }
+  },
+  {
+    "name": "kind.plan.unsupported.checksum.download.snapshot",
+    "input": {
+      "operation": "download",
+      "manifest": {
+        "manifest_version": "2.7",
+        "registries": {
+          "main": {
+            "name": "Main",
+            "url_template": "https://origin.test/{artifact}"
+          },
+          "meta": {
+            "name": "Metadata",
+            "url_template": "https://meta.test/{artifact}"
+          }
+        },
+        "mirrors": {},
+        "resources": {
+          "sample": {
+            "name": "Sample",
+            "registry": "main",
+            "tags": [],
+            "default_variants": {
+              "linux-amd64": "stable"
+            },
+            "variants": [
+              {
+                "id": "stable",
+                "name": "Stable",
+                "tag_key": "",
+                "tags": [],
+                "artifacts": {
+                  "linux-amd64": {
+                    "artifact": "pkg-{version}.zip",
+                    "version": {
+                      "type": "remote",
+                      "fallback": {
+                        "version": "v1",
+                        "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+                        "source": {
+                          "release": "fallback-{version}"
+                        }
+                      },
+                      "version": {
+                        "resource": {
+                          "registry": "meta",
+                          "artifact": "version.txt"
+                        },
+                        "parser": {
+                          "type": "text",
+                          "trim": true
+                        }
+                      },
+                      "checksum": {
+                        "resource": {
+                          "registry": "meta",
+                          "artifact": "checksums.txt"
+                        },
+                        "parser": {
+                          "type": "future-checksum"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "resource": "sample",
+      "platform": "linux-amd64",
+      "version": "v1",
+      "checksum_mode": "snapshot"
+    },
+    "expect": {
+      "error": {
+        "code": "resolve.unsupported_parser",
+        "path": "parser.type",
+        "fields": {
+          "parser_type": "future-checksum"
+        }
+      }
+    }
+  },
+  {
+    "name": "kind.mirror.registries_absent",
+    "input": {
+      "operation": "download",
+      "manifest": {
+        "manifest_version": "2.0",
+        "registries": {
+          "main": {
+            "name": "Main",
+            "url_template": "https://origin.test/{artifact}"
+          },
+          "meta": {
+            "name": "Metadata",
+            "url_template": "https://meta.test/{artifact}"
+          }
+        },
+        "mirrors": {
+          "edge": {
+            "name": "Edge",
+            "url_template": "https://edge.test/{url}"
+          }
+        },
+        "resources": {
+          "sample": {
+            "name": "Sample",
+            "registry": "main",
+            "tags": [],
+            "default_variants": {
+              "linux-amd64": "stable"
+            },
+            "variants": [
+              {
+                "id": "stable",
+                "name": "Stable",
+                "tag_key": "",
+                "tags": [],
+                "artifacts": {
+                  "linux-amd64": {
+                    "artifact": "pkg-{version}.zip",
+                    "version": {
+                      "type": "static",
+                      "latest": "v2",
+                      "releases": [
+                        {
+                          "version": "v2",
+                          "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "resource": "sample",
+      "platform": "linux-amd64",
+      "mirror": "edge"
+    },
+    "expect": {
+      "ok": {
+        "artifact": "pkg-v2.zip",
+        "version": "v2",
+        "request": {
+          "canonical_url": "https://origin.test/pkg-v2.zip",
+          "mirror_url": "https://edge.test/https://origin.test/pkg-v2.zip",
+          "kind": "authoritative"
+        },
+        "checksum": {
+          "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+          "kind": "authoritative"
+        },
+        "checksum_request": null
+      }
+    }
+  },
+  {
+    "name": "kind.mirror.registries_empty",
+    "input": {
+      "operation": "download",
+      "manifest": {
+        "manifest_version": "2.0",
+        "registries": {
+          "main": {
+            "name": "Main",
+            "url_template": "https://origin.test/{artifact}"
+          },
+          "meta": {
+            "name": "Metadata",
+            "url_template": "https://meta.test/{artifact}"
+          }
+        },
+        "mirrors": {
+          "edge": {
+            "name": "Edge",
+            "url_template": "https://edge.test/{url}",
+            "registries": []
+          }
+        },
+        "resources": {
+          "sample": {
+            "name": "Sample",
+            "registry": "main",
+            "tags": [],
+            "default_variants": {
+              "linux-amd64": "stable"
+            },
+            "variants": [
+              {
+                "id": "stable",
+                "name": "Stable",
+                "tag_key": "",
+                "tags": [],
+                "artifacts": {
+                  "linux-amd64": {
+                    "artifact": "pkg-{version}.zip",
+                    "version": {
+                      "type": "static",
+                      "latest": "v2",
+                      "releases": [
+                        {
+                          "version": "v2",
+                          "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "resource": "sample",
+      "platform": "linux-amd64",
+      "mirror": "edge"
+    },
+    "expect": {
+      "ok": {
+        "artifact": "pkg-v2.zip",
+        "version": "v2",
+        "request": {
+          "canonical_url": "https://origin.test/pkg-v2.zip",
+          "mirror_url": "https://edge.test/https://origin.test/pkg-v2.zip",
+          "kind": "authoritative"
+        },
+        "checksum": {
+          "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+          "kind": "authoritative"
+        },
+        "checksum_request": null
+      }
+    }
+  },
+  {
+    "name": "kind.mirror.registries_matching",
+    "input": {
+      "operation": "download",
+      "manifest": {
+        "manifest_version": "2.0",
+        "registries": {
+          "main": {
+            "name": "Main",
+            "url_template": "https://origin.test/{artifact}"
+          },
+          "meta": {
+            "name": "Metadata",
+            "url_template": "https://meta.test/{artifact}"
+          }
+        },
+        "mirrors": {
+          "edge": {
+            "name": "Edge",
+            "url_template": "https://edge.test/{url}",
+            "registries": ["main", "meta"]
+          }
+        },
+        "resources": {
+          "sample": {
+            "name": "Sample",
+            "registry": "main",
+            "tags": [],
+            "default_variants": {
+              "linux-amd64": "stable"
+            },
+            "variants": [
+              {
+                "id": "stable",
+                "name": "Stable",
+                "tag_key": "",
+                "tags": [],
+                "artifacts": {
+                  "linux-amd64": {
+                    "artifact": "pkg-{version}.zip",
+                    "version": {
+                      "type": "static",
+                      "latest": "v2",
+                      "releases": [
+                        {
+                          "version": "v2",
+                          "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "resource": "sample",
+      "platform": "linux-amd64",
+      "mirror": "edge"
+    },
+    "expect": {
+      "ok": {
+        "artifact": "pkg-v2.zip",
+        "version": "v2",
+        "request": {
+          "canonical_url": "https://origin.test/pkg-v2.zip",
+          "mirror_url": "https://edge.test/https://origin.test/pkg-v2.zip",
+          "kind": "authoritative"
+        },
+        "checksum": {
+          "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+          "kind": "authoritative"
+        },
+        "checksum_request": null
+      }
+    }
+  },
+  {
+    "name": "kind.mirror.registries_excluded",
+    "input": {
+      "operation": "download",
+      "manifest": {
+        "manifest_version": "2.0",
+        "registries": {
+          "main": {
+            "name": "Main",
+            "url_template": "https://origin.test/{artifact}"
+          },
+          "meta": {
+            "name": "Metadata",
+            "url_template": "https://meta.test/{artifact}"
+          }
+        },
+        "mirrors": {
+          "edge": {
+            "name": "Edge",
+            "url_template": "https://edge.test/{url}",
+            "registries": ["meta"]
+          }
+        },
+        "resources": {
+          "sample": {
+            "name": "Sample",
+            "registry": "main",
+            "tags": [],
+            "default_variants": {
+              "linux-amd64": "stable"
+            },
+            "variants": [
+              {
+                "id": "stable",
+                "name": "Stable",
+                "tag_key": "",
+                "tags": [],
+                "artifacts": {
+                  "linux-amd64": {
+                    "artifact": "pkg-{version}.zip",
+                    "version": {
+                      "type": "static",
+                      "latest": "v2",
+                      "releases": [
+                        {
+                          "version": "v2",
+                          "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "resource": "sample",
+      "platform": "linux-amd64",
+      "mirror": "edge"
+    },
+    "expect": {
+      "error": {
+        "code": "resolve.mirror_not_allowed",
+        "path": "arg.mirror",
+        "fields": {
+          "mirror": "edge",
+          "registry": "main"
+        }
+      }
+    }
+  },
+  {
+    "name": "kind.mirror.unknown",
+    "input": {
+      "operation": "download",
+      "manifest": {
+        "manifest_version": "2.0",
+        "registries": {
+          "main": {
+            "name": "Main",
+            "url_template": "https://origin.test/{artifact}"
+          },
+          "meta": {
+            "name": "Metadata",
+            "url_template": "https://meta.test/{artifact}"
+          }
+        },
+        "mirrors": {},
+        "resources": {
+          "sample": {
+            "name": "Sample",
+            "registry": "main",
+            "tags": [],
+            "default_variants": {
+              "linux-amd64": "stable"
+            },
+            "variants": [
+              {
+                "id": "stable",
+                "name": "Stable",
+                "tag_key": "",
+                "tags": [],
+                "artifacts": {
+                  "linux-amd64": {
+                    "artifact": "pkg-{version}.zip",
+                    "version": {
+                      "type": "static",
+                      "latest": "v2",
+                      "releases": [
+                        {
+                          "version": "v2",
+                          "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "resource": "sample",
+      "platform": "linux-amd64",
+      "mirror": "missing"
+    },
+    "expect": {
+      "error": {
+        "code": "resolve.unknown_mirror",
+        "path": "arg.mirror",
+        "fields": {
+          "mirror": "missing"
+        }
+      }
+    }
+  },
+  {
+    "name": "kind.mirror.version_excluded",
+    "input": {
+      "operation": "version",
+      "manifest": {
+        "manifest_version": "2.0",
+        "registries": {
+          "main": {
+            "name": "Main",
+            "url_template": "https://origin.test/{artifact}"
+          },
+          "meta": {
+            "name": "Metadata",
+            "url_template": "https://meta.test/{artifact}"
+          }
+        },
+        "mirrors": {
+          "edge": {
+            "name": "Edge",
+            "url_template": "https://edge.test/{url}",
+            "registries": ["main"]
+          }
+        },
+        "resources": {
+          "sample": {
+            "name": "Sample",
+            "registry": "main",
+            "tags": [],
+            "default_variants": {
+              "linux-amd64": "stable"
+            },
+            "variants": [
+              {
+                "id": "stable",
+                "name": "Stable",
+                "tag_key": "",
+                "tags": [],
+                "artifacts": {
+                  "linux-amd64": {
+                    "artifact": "pkg-{version}.zip",
+                    "version": {
+                      "type": "remote",
+                      "fallback": {
+                        "version": "v1",
+                        "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+                        "source": {
+                          "release": "fallback-{version}"
+                        }
+                      },
+                      "version": {
+                        "resource": {
+                          "registry": "meta",
+                          "artifact": "version.txt"
+                        },
+                        "parser": {
+                          "type": "text",
+                          "trim": true
+                        }
+                      },
+                      "checksum": {
+                        "resource": {
+                          "registry": "meta",
+                          "artifact": "checksums.txt"
+                        },
+                        "parser": {
+                          "type": "gnu",
+                          "algorithm": "sha256"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "resource": "sample",
+      "platform": "linux-amd64",
+      "mirror": "edge"
+    },
+    "expect": {
+      "error": {
+        "code": "resolve.mirror_not_allowed",
+        "path": "arg.mirror",
+        "fields": {
+          "mirror": "edge",
+          "registry": "meta"
+        }
+      }
+    }
+  },
+  {
+    "name": "kind.mirror.checksum_excluded",
+    "input": {
+      "operation": "download",
+      "manifest": {
+        "manifest_version": "2.0",
+        "registries": {
+          "main": {
+            "name": "Main",
+            "url_template": "https://origin.test/{artifact}"
+          },
+          "meta": {
+            "name": "Metadata",
+            "url_template": "https://meta.test/{artifact}"
+          }
+        },
+        "mirrors": {
+          "edge": {
+            "name": "Edge",
+            "url_template": "https://edge.test/{url}",
+            "registries": ["main"]
+          }
+        },
+        "resources": {
+          "sample": {
+            "name": "Sample",
+            "registry": "main",
+            "tags": [],
+            "default_variants": {
+              "linux-amd64": "stable"
+            },
+            "variants": [
+              {
+                "id": "stable",
+                "name": "Stable",
+                "tag_key": "",
+                "tags": [],
+                "artifacts": {
+                  "linux-amd64": {
+                    "artifact": "pkg-{version}.zip",
+                    "version": {
+                      "type": "remote",
+                      "fallback": {
+                        "version": "v1",
+                        "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+                        "source": {
+                          "release": "fallback-{version}"
+                        }
+                      },
+                      "version": {
+                        "resource": {
+                          "registry": "meta",
+                          "artifact": "version.txt"
+                        },
+                        "parser": {
+                          "type": "text",
+                          "trim": true
+                        }
+                      },
+                      "checksum": {
+                        "resource": {
+                          "registry": "meta",
+                          "artifact": "checksums.txt"
+                        },
+                        "parser": {
+                          "type": "gnu",
+                          "algorithm": "sha256"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "resource": "sample",
+      "platform": "linux-amd64",
+      "mirror": "edge",
+      "version": "v1"
+    },
+    "expect": {
+      "error": {
+        "code": "resolve.mirror_not_allowed",
+        "path": "arg.mirror",
+        "fields": {
+          "mirror": "edge",
+          "registry": "meta"
+        }
+      }
+    }
+  },
+  {
+    "name": "kind.mirror.remote_all_requests",
+    "input": {
+      "operation": "download",
+      "manifest": {
+        "manifest_version": "2.0",
+        "registries": {
+          "main": {
+            "name": "Main",
+            "url_template": "https://origin.test/{artifact}"
+          },
+          "meta": {
+            "name": "Metadata",
+            "url_template": "https://meta.test/{artifact}"
+          }
+        },
+        "mirrors": {
+          "edge": {
+            "name": "Edge",
+            "url_template": "https://edge.test/{url}",
+            "registries": []
+          }
+        },
+        "resources": {
+          "sample": {
+            "name": "Sample",
+            "registry": "main",
+            "tags": [],
+            "default_variants": {
+              "linux-amd64": "stable"
+            },
+            "variants": [
+              {
+                "id": "stable",
+                "name": "Stable",
+                "tag_key": "",
+                "tags": [],
+                "artifacts": {
+                  "linux-amd64": {
+                    "artifact": "pkg-{version}.zip",
+                    "version": {
+                      "type": "remote",
+                      "fallback": {
+                        "version": "v1",
+                        "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+                        "source": {
+                          "release": "fallback-{version}"
+                        }
+                      },
+                      "version": {
+                        "resource": {
+                          "registry": "meta",
+                          "artifact": "version.txt"
+                        },
+                        "parser": {
+                          "type": "text",
+                          "trim": true
+                        }
+                      },
+                      "checksum": {
+                        "resource": {
+                          "registry": "meta",
+                          "artifact": "checksums.txt"
+                        },
+                        "parser": {
+                          "type": "gnu",
+                          "algorithm": "sha256"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "resource": "sample",
+      "platform": "linux-amd64",
+      "version": "v1",
+      "mirror": "edge"
+    },
+    "expect": {
+      "ok": {
+        "artifact": "pkg-v1.zip",
+        "version": "v1",
+        "request": {
+          "canonical_url": "https://origin.test/pkg-v1.zip",
+          "mirror_url": "https://edge.test/https://origin.test/pkg-v1.zip",
+          "kind": "parsed"
+        },
+        "checksum": null,
+        "checksum_request": {
+          "request": {
+            "canonical_url": "https://meta.test/checksums.txt",
+            "mirror_url": "https://edge.test/https://meta.test/checksums.txt",
+            "kind": "parsed"
+          },
+          "parser": {
+            "type": "gnu",
+            "algorithm": "sha256"
+          },
+          "artifact": "pkg-v1.zip"
+        }
+      }
+    }
+  },
+  {
+    "name": "kind.mirror.remote_version",
+    "input": {
+      "operation": "version",
+      "manifest": {
+        "manifest_version": "2.0",
+        "registries": {
+          "main": {
+            "name": "Main",
+            "url_template": "https://origin.test/{artifact}"
+          },
+          "meta": {
+            "name": "Metadata",
+            "url_template": "https://meta.test/{artifact}"
+          }
+        },
+        "mirrors": {
+          "edge": {
+            "name": "Edge",
+            "url_template": "https://edge.test/{url}",
+            "registries": []
+          }
+        },
+        "resources": {
+          "sample": {
+            "name": "Sample",
+            "registry": "main",
+            "tags": [],
+            "default_variants": {
+              "linux-amd64": "stable"
+            },
+            "variants": [
+              {
+                "id": "stable",
+                "name": "Stable",
+                "tag_key": "",
+                "tags": [],
+                "artifacts": {
+                  "linux-amd64": {
+                    "artifact": "pkg-{version}.zip",
+                    "version": {
+                      "type": "remote",
+                      "fallback": {
+                        "version": "v1",
+                        "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+                        "source": {
+                          "release": "fallback-{version}"
+                        }
+                      },
+                      "version": {
+                        "resource": {
+                          "registry": "meta",
+                          "artifact": "version.txt"
+                        },
+                        "parser": {
+                          "type": "text",
+                          "trim": true
+                        }
+                      },
+                      "checksum": {
+                        "resource": {
+                          "registry": "meta",
+                          "artifact": "checksums.txt"
+                        },
+                        "parser": {
+                          "type": "gnu",
+                          "algorithm": "sha256"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "resource": "sample",
+      "platform": "linux-amd64",
+      "mirror": "edge"
+    },
+    "expect": {
+      "ok": {
+        "kind": "parsed",
+        "latest": null,
+        "releases": [],
+        "remote": {
+          "request": {
+            "canonical_url": "https://meta.test/version.txt",
+            "mirror_url": "https://edge.test/https://meta.test/version.txt",
+            "kind": "parsed"
+          },
+          "parser": {
+            "type": "text",
+            "trim": true
+          }
+        }
+      }
+    }
+  },
+  {
+    "name": "kind.mirror.url_components",
+    "input": {
+      "operation": "download",
+      "manifest": {
+        "manifest_version": "2.0",
+        "registries": {
+          "main": {
+            "name": "Main",
+            "url_template": "https://origin.test:8443/{artifact}?x=1"
+          },
+          "meta": {
+            "name": "Metadata",
+            "url_template": "https://meta.test/{artifact}"
+          }
+        },
+        "mirrors": {
+          "edge": {
+            "name": "Edge",
+            "url_template": "https://edge.test/{scheme}/{host}/{hostname}/{port}{path_and_query}"
+          }
+        },
+        "resources": {
+          "sample": {
+            "name": "Sample",
+            "registry": "main",
+            "tags": [],
+            "default_variants": {
+              "linux-amd64": "stable"
+            },
+            "variants": [
+              {
+                "id": "stable",
+                "name": "Stable",
+                "tag_key": "",
+                "tags": [],
+                "artifacts": {
+                  "linux-amd64": {
+                    "artifact": "pkg-{version}.zip",
+                    "version": {
+                      "type": "static",
+                      "latest": "v2",
+                      "releases": [
+                        {
+                          "version": "v2",
+                          "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "resource": "sample",
+      "platform": "linux-amd64",
+      "mirror": "edge"
+    },
+    "expect": {
+      "ok": {
+        "artifact": "pkg-v2.zip",
+        "version": "v2",
+        "request": {
+          "canonical_url": "https://origin.test:8443/pkg-v2.zip?x=1",
+          "mirror_url": "https://edge.test/https/origin.test:8443/origin.test/8443/pkg-v2.zip?x=1",
+          "kind": "authoritative"
+        },
+        "checksum": {
+          "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+          "kind": "authoritative"
+        },
+        "checksum_request": null
+      }
+    }
+  },
+  {
+    "name": "kind.mirror.url_encoded",
+    "input": {
+      "operation": "download",
+      "manifest": {
+        "manifest_version": "2.0",
+        "registries": {
+          "main": {
+            "name": "Main",
+            "url_template": "https://origin.test/{artifact}"
+          },
+          "meta": {
+            "name": "Metadata",
+            "url_template": "https://meta.test/{artifact}"
+          }
+        },
+        "mirrors": {
+          "edge": {
+            "name": "Edge",
+            "url_template": "https://edge.test/?url={url_encoded}"
+          }
+        },
+        "resources": {
+          "sample": {
+            "name": "Sample",
+            "registry": "main",
+            "tags": [],
+            "default_variants": {
+              "linux-amd64": "stable"
+            },
+            "variants": [
+              {
+                "id": "stable",
+                "name": "Stable",
+                "tag_key": "",
+                "tags": [],
+                "artifacts": {
+                  "linux-amd64": {
+                    "artifact": "pkg-{version}.zip",
+                    "version": {
+                      "type": "static",
+                      "latest": "v2",
+                      "releases": [
+                        {
+                          "version": "v2",
+                          "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "resource": "sample",
+      "platform": "linux-amd64",
+      "mirror": "edge"
+    },
+    "expect": {
+      "ok": {
+        "artifact": "pkg-v2.zip",
+        "version": "v2",
+        "request": {
+          "canonical_url": "https://origin.test/pkg-v2.zip",
+          "mirror_url": "https://edge.test/?url=https%3A%2F%2Forigin.test%2Fpkg-v2.zip",
+          "kind": "authoritative"
+        },
+        "checksum": {
+          "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+          "kind": "authoritative"
+        },
+        "checksum_request": null
+      }
+    }
+  },
+  {
+    "name": "kind.mirror.fragment_rejected",
+    "input": {
+      "operation": "download",
+      "manifest": {
+        "manifest_version": "2.0",
+        "registries": {
+          "main": {
+            "name": "Main",
+            "url_template": "https://origin.test/{artifact}"
+          },
+          "meta": {
+            "name": "Metadata",
+            "url_template": "https://meta.test/{artifact}"
+          }
+        },
+        "mirrors": {
+          "edge": {
+            "name": "Edge",
+            "url_template": "https://edge.test/{url}#bad"
+          }
+        },
+        "resources": {
+          "sample": {
+            "name": "Sample",
+            "registry": "main",
+            "tags": [],
+            "default_variants": {
+              "linux-amd64": "stable"
+            },
+            "variants": [
+              {
+                "id": "stable",
+                "name": "Stable",
+                "tag_key": "",
+                "tags": [],
+                "artifacts": {
+                  "linux-amd64": {
+                    "artifact": "pkg-{version}.zip",
+                    "version": {
+                      "type": "static",
+                      "latest": "v2",
+                      "releases": [
+                        {
+                          "version": "v2",
+                          "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "resource": "sample",
+      "platform": "linux-amd64",
+      "mirror": "edge"
+    },
+    "expect": {
+      "error": {
+        "code": "url.forbidden_component",
+        "path": "mirrors.edge.url_template",
+        "fields": {
+          "component": "fragment"
+        }
+      }
+    }
+  },
+  {
+    "name": "kind.mirror.excluded_scope_not_validated",
+    "input": {
+      "operation": "download",
+      "manifest": {
+        "manifest_version": "2.0",
+        "registries": {
+          "main": {
+            "name": "Main",
+            "url_template": "https://origin.test/{artifact}"
+          },
+          "meta": {
+            "name": "Metadata",
+            "url_template": "https://meta.test/{artifact}",
+            "variables": {
+              "unused": "available"
+            }
+          }
+        },
+        "mirrors": {
+          "edge": {
+            "name": "Edge",
+            "url_template": "https://edge.test/{unused}",
+            "registries": ["meta"]
+          }
+        },
+        "resources": {
+          "sample": {
+            "name": "Sample",
+            "registry": "main",
+            "tags": [],
+            "default_variants": {
+              "linux-amd64": "stable"
+            },
+            "variants": [
+              {
+                "id": "stable",
+                "name": "Stable",
+                "tag_key": "",
+                "tags": [],
+                "artifacts": {
+                  "linux-amd64": {
+                    "artifact": "pkg-{version}.zip",
+                    "version": {
+                      "type": "static",
+                      "latest": "v2",
+                      "releases": [
+                        {
+                          "version": "v2",
+                          "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "resource": "sample",
+      "platform": "linux-amd64"
+    },
+    "expect": {
+      "ok": {
+        "artifact": "pkg-v2.zip",
+        "version": "v2",
+        "request": {
+          "canonical_url": "https://origin.test/pkg-v2.zip",
+          "mirror_url": null,
+          "kind": "authoritative"
+        },
+        "checksum": {
+          "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+          "kind": "authoritative"
+        },
+        "checksum_request": null
+      }
+    }
+  },
+  {
+    "name": "kind.plan.remote_source_builtin_priority",
+    "input": {
+      "operation": "version",
+      "manifest": {
+        "manifest_version": "2.0",
+        "registries": {
+          "main": {
+            "name": "Main",
+            "url_template": "https://origin.test/{artifact}"
+          },
+          "meta": {
+            "name": "Metadata",
+            "url_template": "https://meta.test/{artifact}"
+          }
+        },
+        "mirrors": {},
+        "resources": {
+          "sample": {
+            "name": "Sample",
+            "registry": "main",
+            "tags": [],
+            "default_variants": {
+              "linux-amd64": "stable"
+            },
+            "variants": [
+              {
+                "id": "stable",
+                "name": "Stable",
+                "tag_key": "",
+                "tags": [],
+                "artifacts": {
+                  "linux-amd64": {
+                    "artifact": "pkg-{version}.zip",
+                    "version": {
+                      "type": "remote",
+                      "fallback": {
+                        "version": "v1",
+                        "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+                        "source": {
+                          "release": "fallback-{version}"
+                        }
+                      },
+                      "version": {
+                        "resource": {
+                          "registry": "meta",
+                          "artifact": "{resource}-{platform}-{token}.txt",
+                          "source": {
+                            "platform": "wrong",
+                            "resource": "wrong",
+                            "token": "remote"
+                          }
+                        },
+                        "parser": {
+                          "type": "text",
+                          "trim": true
+                        }
+                      },
+                      "checksum": {
+                        "resource": {
+                          "registry": "meta",
+                          "artifact": "checksums.txt"
+                        },
+                        "parser": {
+                          "type": "gnu",
+                          "algorithm": "sha256"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "resource": "sample",
+      "platform": "linux-amd64",
+      "source": {
+        "token": "host"
+      }
+    },
+    "expect": {
+      "ok": {
+        "kind": "parsed",
+        "latest": null,
+        "releases": [],
+        "remote": {
+          "request": {
+            "canonical_url": "https://meta.test/sample-linux-amd64-remote.txt",
+            "mirror_url": null,
+            "kind": "parsed"
+          },
+          "parser": {
+            "type": "text",
+            "trim": true
+          }
+        }
+      }
+    }
+  },
+  {
+    "name": "kind.plan.compiled_regex",
+    "input": {
+      "operation": "version",
+      "manifest": {
+        "manifest_version": "2.0",
+        "registries": {
+          "main": {
+            "name": "Main",
+            "url_template": "https://origin.test/{artifact}"
+          },
+          "meta": {
+            "name": "Metadata",
+            "url_template": "https://meta.test/{artifact}"
+          }
+        },
+        "mirrors": {},
+        "resources": {
+          "sample": {
+            "name": "Sample",
+            "registry": "main",
+            "tags": [],
+            "default_variants": {
+              "linux-amd64": "stable"
+            },
+            "variants": [
+              {
+                "id": "stable",
+                "name": "Stable",
+                "tag_key": "",
+                "tags": [],
+                "artifacts": {
+                  "linux-amd64": {
+                    "artifact": "pkg-{version}.zip",
+                    "version": {
+                      "type": "remote",
+                      "fallback": {
+                        "version": "v1",
+                        "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+                        "source": {
+                          "release": "fallback-{version}"
+                        }
+                      },
+                      "version": {
+                        "resource": {
+                          "registry": "meta",
+                          "artifact": "version.txt"
+                        },
+                        "parser": {
+                          "type": "regex",
+                          "pattern": "v([0-9]+)",
+                          "group": 0
+                        }
+                      },
+                      "checksum": {
+                        "resource": {
+                          "registry": "meta",
+                          "artifact": "checksums.txt"
+                        },
+                        "parser": {
+                          "type": "gnu",
+                          "algorithm": "sha256"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "resource": "sample",
+      "platform": "linux-amd64",
+      "response": {
+        "body": "release v42",
+        "headers": []
+      }
+    },
+    "expect": {
+      "ok": {
+        "plan": {
+          "kind": "parsed",
+          "latest": null,
+          "releases": [],
+          "remote": {
+            "request": {
+              "canonical_url": "https://meta.test/version.txt",
+              "mirror_url": null,
+              "kind": "parsed"
+            },
+            "parser": {
+              "type": "regex",
+              "pattern": "v([0-9]+)",
+              "group": 0
+            }
+          }
+        },
+        "version": "v42"
+      }
+    }
+  },
+  {
+    "name": "kind.plan.version_body_limit",
+    "input": {
+      "operation": "version",
+      "manifest": {
+        "manifest_version": "2.0",
+        "registries": {
+          "main": {
+            "name": "Main",
+            "url_template": "https://origin.test/{artifact}"
+          },
+          "meta": {
+            "name": "Metadata",
+            "url_template": "https://meta.test/{artifact}"
+          }
+        },
+        "mirrors": {},
+        "resources": {
+          "sample": {
+            "name": "Sample",
+            "registry": "main",
+            "tags": [],
+            "default_variants": {
+              "linux-amd64": "stable"
+            },
+            "variants": [
+              {
+                "id": "stable",
+                "name": "Stable",
+                "tag_key": "",
+                "tags": [],
+                "artifacts": {
+                  "linux-amd64": {
+                    "artifact": "pkg-{version}.zip",
+                    "version": {
+                      "type": "remote",
+                      "fallback": {
+                        "version": "v1",
+                        "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+                        "source": {
+                          "release": "fallback-{version}"
+                        }
+                      },
+                      "version": {
+                        "resource": {
+                          "registry": "meta",
+                          "artifact": "version.txt"
+                        },
+                        "parser": {
+                          "type": "text",
+                          "trim": true
+                        }
+                      },
+                      "checksum": {
+                        "resource": {
+                          "registry": "meta",
+                          "artifact": "checksums.txt"
+                        },
+                        "parser": {
+                          "type": "gnu",
+                          "algorithm": "sha256"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "resource": "sample",
+      "platform": "linux-amd64",
+      "limits": {
+        "body_bytes": 2
+      },
+      "response": {
+        "body": "v42",
+        "headers": []
+      }
+    },
+    "expect": {
+      "error": {
+        "code": "parser.body_too_large",
+        "path": "response.body",
+        "fields": {
+          "limit": 2,
+          "actual": 3
+        }
+      }
+    }
+  },
+  {
+    "name": "kind.plan.version_host_source_invalid",
+    "input": {
+      "operation": "version",
+      "manifest": {
+        "manifest_version": "2.0",
+        "registries": {
+          "main": {
+            "name": "Main",
+            "url_template": "https://origin.test/{artifact}"
+          },
+          "meta": {
+            "name": "Metadata",
+            "url_template": "https://meta.test/{artifact}"
+          }
+        },
+        "mirrors": {},
+        "resources": {
+          "sample": {
+            "name": "Sample",
+            "registry": "main",
+            "tags": [],
+            "default_variants": {
+              "linux-amd64": "stable"
+            },
+            "variants": [
+              {
+                "id": "stable",
+                "name": "Stable",
+                "tag_key": "",
+                "tags": [],
+                "artifacts": {
+                  "linux-amd64": {
+                    "artifact": "pkg-{version}.zip",
+                    "version": {
+                      "type": "remote",
+                      "fallback": {
+                        "version": "v1",
+                        "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+                        "source": {
+                          "release": "fallback-{version}"
+                        }
+                      },
+                      "version": {
+                        "resource": {
+                          "registry": "meta",
+                          "artifact": "version.txt"
+                        },
+                        "parser": {
+                          "type": "text",
+                          "trim": true
+                        }
+                      },
+                      "checksum": {
+                        "resource": {
+                          "registry": "meta",
+                          "artifact": "checksums.txt"
+                        },
+                        "parser": {
+                          "type": "gnu",
+                          "algorithm": "sha256"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "resource": "sample",
+      "platform": "linux-amd64",
+      "source": {
+        "token": "bad/value"
+      }
+    },
+    "expect": {
+      "error": {
+        "code": "template.invalid_literal",
+        "path": "arg.source.token",
+        "fields": {}
+      }
+    }
+  }
+]

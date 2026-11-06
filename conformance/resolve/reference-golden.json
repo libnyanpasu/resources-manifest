@@ -1,0 +1,344 @@
+[
+  {
+    "expect": {
+      "ok": {
+        "artifact": "clash-darwin-arm64-n2023-09-05-gdcc8d87.gz",
+        "canonical_url": "https://github.com/zhongfly/Clash-premium-backup/releases/download/2023-09-05-gdcc8d87/clash-darwin-arm64-n2023-09-05-gdcc8d87.gz",
+        "download_url": "https://github.com/zhongfly/Clash-premium-backup/releases/download/2023-09-05-gdcc8d87/clash-darwin-arm64-n2023-09-05-gdcc8d87.gz"
+      }
+    },
+    "input": {
+      "manifest": {
+        "snapshot": "resources.json"
+      },
+      "platform": "darwin-arm64",
+      "resource": "clash_premium",
+      "variant": "stable-default",
+      "version": "2023-09-05-gdcc8d87"
+    },
+    "name": "resolve.reference.clash_premium.darwin-arm64"
+  },
+  {
+    "expect": {
+      "ok": {
+        "artifact": "clash-darwin-amd64-n2023-09-05-gdcc8d87.gz",
+        "canonical_url": "https://github.com/zhongfly/Clash-premium-backup/releases/download/2023-09-05-gdcc8d87/clash-darwin-amd64-n2023-09-05-gdcc8d87.gz",
+        "download_url": "https://github.com/zhongfly/Clash-premium-backup/releases/download/2023-09-05-gdcc8d87/clash-darwin-amd64-n2023-09-05-gdcc8d87.gz"
+      }
+    },
+    "input": {
+      "manifest": {
+        "snapshot": "resources.json"
+      },
+      "platform": "darwin-x64",
+      "resource": "clash_premium",
+      "variant": "stable-default",
+      "version": "2023-09-05-gdcc8d87"
+    },
+    "name": "resolve.reference.clash_premium.darwin-x64"
+  },
+  {
+    "expect": {
+      "ok": {
+        "artifact": "clash-linux-arm64-n2023-09-05-gdcc8d87.gz",
+        "canonical_url": "https://github.com/zhongfly/Clash-premium-backup/releases/download/2023-09-05-gdcc8d87/clash-linux-arm64-n2023-09-05-gdcc8d87.gz",
+        "download_url": "https://github.com/zhongfly/Clash-premium-backup/releases/download/2023-09-05-gdcc8d87/clash-linux-arm64-n2023-09-05-gdcc8d87.gz"
+      }
+    },
+    "input": {
+      "manifest": {
+        "snapshot": "resources.json"
+      },
+      "platform": "linux-aarch64",
+      "resource": "clash_premium",
+      "variant": "stable-default",
+      "version": "2023-09-05-gdcc8d87"
+    },
+    "name": "resolve.reference.clash_premium.linux-aarch64"
+  },
+  {
+    "expect": {
+      "ok": {
+        "artifact": "clash-linux-amd64-n2023-09-05-gdcc8d87.gz",
+        "canonical_url": "https://github.com/zhongfly/Clash-premium-backup/releases/download/2023-09-05-gdcc8d87/clash-linux-amd64-n2023-09-05-gdcc8d87.gz",
+        "download_url": "https://github.com/zhongfly/Clash-premium-backup/releases/download/2023-09-05-gdcc8d87/clash-linux-amd64-n2023-09-05-gdcc8d87.gz"
+      }
+    },
+    "input": {
+      "manifest": {
+        "snapshot": "resources.json"
+      },
+      "platform": "linux-amd64",
+      "resource": "clash_premium",
+      "variant": "stable-default",
+      "version": "2023-09-05-gdcc8d87"
+    },
+    "name": "resolve.reference.clash_premium.linux-amd64"
+  },
+  {
+    "expect": {
+      "ok": {
+        "artifact": "clash-windows-arm64-n2023-09-05-gdcc8d87.zip",
+        "canonical_url": "https://github.com/zhongfly/Clash-premium-backup/releases/download/2023-09-05-gdcc8d87/clash-windows-arm64-n2023-09-05-gdcc8d87.zip",
+        "download_url": "https://github.com/zhongfly/Clash-premium-backup/releases/download/2023-09-05-gdcc8d87/clash-windows-arm64-n2023-09-05-gdcc8d87.zip"
+      }
+    },
+    "input": {
+      "manifest": {
+        "snapshot": "resources.json"
+      },
+      "platform": "windows-arm64",
+      "resource": "clash_premium",
+      "variant": "stable-default",
+      "version": "2023-09-05-gdcc8d87"
+    },
+    "name": "resolve.reference.clash_premium.windows-arm64"
+  },
+  {
+    "expect": {
+      "ok": {
+        "artifact": "clash-windows-amd64-n2023-09-05-gdcc8d87.zip",
+        "canonical_url": "https://github.com/zhongfly/Clash-premium-backup/releases/download/2023-09-05-gdcc8d87/clash-windows-amd64-n2023-09-05-gdcc8d87.zip",
+        "download_url": "https://github.com/zhongfly/Clash-premium-backup/releases/download/2023-09-05-gdcc8d87/clash-windows-amd64-n2023-09-05-gdcc8d87.zip"
+      }
+    },
+    "input": {
+      "manifest": {
+        "snapshot": "resources.json"
+      },
+      "platform": "windows-x86_64",
+      "resource": "clash_premium",
+      "variant": "stable-default",
+      "version": "2023-09-05-gdcc8d87"
+    },
+    "name": "resolve.reference.clash_premium.windows-x86_64"
+  },
+  {
+    "expect": {
+      "ok": {
+        "artifact": "clash-rs-aarch64-apple-darwin",
+        "canonical_url": "https://github.com/Watfaq/clash-rs/releases/download/v0.10.7/clash-rs-aarch64-apple-darwin",
+        "download_url": "https://github.com/Watfaq/clash-rs/releases/download/v0.10.7/clash-rs-aarch64-apple-darwin"
+      }
+    },
+    "input": {
+      "manifest": {
+        "snapshot": "resources.json"
+      },
+      "platform": "darwin-arm64",
+      "resource": "clash_rs",
+      "variant": "stable-default",
+      "version": "v0.10.7"
+    },
+    "name": "resolve.reference.clash_rs.darwin-arm64"
+  },
+  {
+    "expect": {
+      "ok": {
+        "artifact": "clash-rs-x86_64-apple-darwin",
+        "canonical_url": "https://github.com/Watfaq/clash-rs/releases/download/v0.10.7/clash-rs-x86_64-apple-darwin",
+        "download_url": "https://github.com/Watfaq/clash-rs/releases/download/v0.10.7/clash-rs-x86_64-apple-darwin"
+      }
+    },
+    "input": {
+      "manifest": {
+        "snapshot": "resources.json"
+      },
+      "platform": "darwin-x64",
+      "resource": "clash_rs",
+      "variant": "stable-default",
+      "version": "v0.10.7"
+    },
+    "name": "resolve.reference.clash_rs.darwin-x64"
+  },
+  {
+    "expect": {
+      "ok": {
+        "artifact": "clash-rs-aarch64-unknown-linux-gnu",
+        "canonical_url": "https://github.com/Watfaq/clash-rs/releases/download/v0.10.7/clash-rs-aarch64-unknown-linux-gnu",
+        "download_url": "https://github.com/Watfaq/clash-rs/releases/download/v0.10.7/clash-rs-aarch64-unknown-linux-gnu"
+      }
+    },
+    "input": {
+      "manifest": {
+        "snapshot": "resources.json"
+      },
+      "platform": "linux-aarch64",
+      "resource": "clash_rs",
+      "variant": "stable-default",
+      "version": "v0.10.7"
+    },
+    "name": "resolve.reference.clash_rs.linux-aarch64"
+  },
+  {
+    "expect": {
+      "ok": {
+        "artifact": "clash-rs-x86_64-unknown-linux-gnu-static-crt",
+        "canonical_url": "https://github.com/Watfaq/clash-rs/releases/download/v0.10.7/clash-rs-x86_64-unknown-linux-gnu-static-crt",
+        "download_url": "https://github.com/Watfaq/clash-rs/releases/download/v0.10.7/clash-rs-x86_64-unknown-linux-gnu-static-crt"
+      }
+    },
+    "input": {
+      "manifest": {
+        "snapshot": "resources.json"
+      },
+      "platform": "linux-amd64",
+      "resource": "clash_rs",
+      "variant": "stable-default",
+      "version": "v0.10.7"
+    },
+    "name": "resolve.reference.clash_rs.linux-amd64"
+  },
+  {
+    "expect": {
+      "ok": {
+        "artifact": "clash-rs-aarch64-pc-windows-msvc.exe",
+        "canonical_url": "https://github.com/Watfaq/clash-rs/releases/download/v0.10.7/clash-rs-aarch64-pc-windows-msvc.exe",
+        "download_url": "https://github.com/Watfaq/clash-rs/releases/download/v0.10.7/clash-rs-aarch64-pc-windows-msvc.exe"
+      }
+    },
+    "input": {
+      "manifest": {
+        "snapshot": "resources.json"
+      },
+      "platform": "windows-arm64",
+      "resource": "clash_rs",
+      "variant": "stable-default",
+      "version": "v0.10.7"
+    },
+    "name": "resolve.reference.clash_rs.windows-arm64"
+  },
+  {
+    "expect": {
+      "ok": {
+        "artifact": "clash-rs-x86_64-pc-windows-msvc.exe",
+        "canonical_url": "https://github.com/Watfaq/clash-rs/releases/download/v0.10.7/clash-rs-x86_64-pc-windows-msvc.exe",
+        "download_url": "https://github.com/Watfaq/clash-rs/releases/download/v0.10.7/clash-rs-x86_64-pc-windows-msvc.exe"
+      }
+    },
+    "input": {
+      "manifest": {
+        "snapshot": "resources.json"
+      },
+      "platform": "windows-x86_64",
+      "resource": "clash_rs",
+      "variant": "stable-default",
+      "version": "v0.10.7"
+    },
+    "name": "resolve.reference.clash_rs.windows-x86_64"
+  },
+  {
+    "expect": {
+      "ok": {
+        "artifact": "mihomo-darwin-arm64-v1.19.28.gz",
+        "canonical_url": "https://github.com/MetaCubeX/mihomo/releases/download/v1.19.28/mihomo-darwin-arm64-v1.19.28.gz",
+        "download_url": "https://github.com/MetaCubeX/mihomo/releases/download/v1.19.28/mihomo-darwin-arm64-v1.19.28.gz"
+      }
+    },
+    "input": {
+      "manifest": {
+        "snapshot": "resources.json"
+      },
+      "platform": "darwin-arm64",
+      "resource": "mihomo",
+      "variant": "stable-arm64",
+      "version": "v1.19.28"
+    },
+    "name": "resolve.reference.mihomo.darwin-arm64"
+  },
+  {
+    "expect": {
+      "ok": {
+        "artifact": "mihomo-darwin-amd64-v2-v1.19.28.gz",
+        "canonical_url": "https://github.com/MetaCubeX/mihomo/releases/download/v1.19.28/mihomo-darwin-amd64-v2-v1.19.28.gz",
+        "download_url": "https://github.com/MetaCubeX/mihomo/releases/download/v1.19.28/mihomo-darwin-amd64-v2-v1.19.28.gz"
+      }
+    },
+    "input": {
+      "manifest": {
+        "snapshot": "resources.json"
+      },
+      "platform": "darwin-x64",
+      "resource": "mihomo",
+      "variant": "stable-goamd64-v2",
+      "version": "v1.19.28"
+    },
+    "name": "resolve.reference.mihomo.darwin-x64"
+  },
+  {
+    "expect": {
+      "ok": {
+        "artifact": "mihomo-linux-arm64-v1.19.28.gz",
+        "canonical_url": "https://github.com/MetaCubeX/mihomo/releases/download/v1.19.28/mihomo-linux-arm64-v1.19.28.gz",
+        "download_url": "https://github.com/MetaCubeX/mihomo/releases/download/v1.19.28/mihomo-linux-arm64-v1.19.28.gz"
+      }
+    },
+    "input": {
+      "manifest": {
+        "snapshot": "resources.json"
+      },
+      "platform": "linux-aarch64",
+      "resource": "mihomo",
+      "variant": "stable-arm64",
+      "version": "v1.19.28"
+    },
+    "name": "resolve.reference.mihomo.linux-aarch64"
+  },
+  {
+    "expect": {
+      "ok": {
+        "artifact": "mihomo-linux-amd64-v2-v1.19.28.gz",
+        "canonical_url": "https://github.com/MetaCubeX/mihomo/releases/download/v1.19.28/mihomo-linux-amd64-v2-v1.19.28.gz",
+        "download_url": "https://github.com/MetaCubeX/mihomo/releases/download/v1.19.28/mihomo-linux-amd64-v2-v1.19.28.gz"
+      }
+    },
+    "input": {
+      "manifest": {
+        "snapshot": "resources.json"
+      },
+      "platform": "linux-amd64",
+      "resource": "mihomo",
+      "variant": "stable-goamd64-v2",
+      "version": "v1.19.28"
+    },
+    "name": "resolve.reference.mihomo.linux-amd64"
+  },
+  {
+    "expect": {
+      "ok": {
+        "artifact": "mihomo-windows-arm64-v1.19.28.zip",
+        "canonical_url": "https://github.com/MetaCubeX/mihomo/releases/download/v1.19.28/mihomo-windows-arm64-v1.19.28.zip",
+        "download_url": "https://github.com/MetaCubeX/mihomo/releases/download/v1.19.28/mihomo-windows-arm64-v1.19.28.zip"
+      }
+    },
+    "input": {
+      "manifest": {
+        "snapshot": "resources.json"
+      },
+      "platform": "windows-arm64",
+      "resource": "mihomo",
+      "variant": "stable-arm64",
+      "version": "v1.19.28"
+    },
+    "name": "resolve.reference.mihomo.windows-arm64"
+  },
+  {
+    "expect": {
+      "ok": {
+        "artifact": "mihomo-windows-amd64-v2-v1.19.28.zip",
+        "canonical_url": "https://github.com/MetaCubeX/mihomo/releases/download/v1.19.28/mihomo-windows-amd64-v2-v1.19.28.zip",
+        "download_url": "https://github.com/MetaCubeX/mihomo/releases/download/v1.19.28/mihomo-windows-amd64-v2-v1.19.28.zip"
+      }
+    },
+    "input": {
+      "manifest": {
+        "snapshot": "resources.json"
+      },
+      "platform": "windows-x86_64",
+      "resource": "mihomo",
+      "variant": "stable-goamd64-v2",
+      "version": "v1.19.28"
+    },
+    "name": "resolve.reference.mihomo.windows-x86_64"
+  }
+]
