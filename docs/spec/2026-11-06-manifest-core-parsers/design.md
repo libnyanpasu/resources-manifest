@@ -283,7 +283,7 @@ body 和单个 header 值的大小按 UTF-8 字节数计算；超限均报 `pars
 | `resolve.`  | `version_required`, `version_not_in_history`, `mirror_not_allowed`, `unknown_registry`, `unknown_mirror`                   | 结构字段待对应实现卡细化          |
 | `verify.`   | `kind_rejected`                                                                                                            | `{ kind }`                        |
 | `verify.`   | `digest_mismatch`                                                                                                          | `{ algorithm, expected, actual }` |
-| `validate.` | 完整清单见下方 B1 校验错误表                                                                                               | 见下表                            |
+| `validate.` | 完整清单见下方 B1 校验错误表                                                                                               | —                                 |
 
 错误都带 `path`，统一使用 dotted locator，根为输入文档、宿主参数 `arg` 或 parser 响应 `response`：以 `.` 连接字段或对象键，数组下标写作 `[<i>]`，例如 `manifest_version`、`resources.<id>.variants[<i>].tags`。宿主传入参数使用同一形式的 `arg.<name>`，例如 `arg.version`；parser 响应错误使用 `response.body` 或 `response.headers.<小写名称>`；不使用裸参数名或其他路径语法。一致性运行器对声明的 `path` 做精确字符串比较。
 
@@ -317,7 +317,8 @@ A2–A5 细化：version 的 `not_found`、`invalid_version` 字段为 `{}`；GN
 `ids.kind` 为 `tag` / `variant`，`reason` 为 `invalid` / `duplicate`；
 `expanded_tag.reason` 为 `unknown` / `mismatch`（对比 id、name、group、description，
 缺省与空字符串不同）。`tag_group.tags` 为按码点排序的不同 ID；`first_variant`
-为第一个相同集合的零起始下标。`default_variant.reason` 为 `missing` / `unknown` /
+为第一个相同集合的零起始下标。`tag_combination.tag_key` 是去重后集合按码点排序、
+以 `+` 拼接的规范 key，不是 variant 输入的 `tag_key`。`default_variant.reason` 为 `missing` / `unknown` /
 `unsupported_platform`，缺默认时 `variant` 为 JSON null，否则为引用的 ID。
 `reference.kind` 当前只有 `registry`：wire 里没有具名 mirror 引用，只有 mirror 对
 registry 的允许列表；宿主选择的 mirror 在 B3 校验，不虚构 manifest 字段。
@@ -416,6 +417,8 @@ remote checksum 作用域检查合并后的有效值（含未被模板使用的�
 优先级为 registry variables < resource source < variant source < artifact source <
 release source / remote source < 内置变量；静态历史逐条检查，remote 检查一般运行时
 与 fallback 作用域，fallback source 不泄漏到版本请求或一般运行时作用域。
+download 的 artifact 名模板只使用 source 与内置变量；registry variables 在产物名
+渲染后才合并。除 §11.1 列出的有意偏差外，作用域与参考实现对齐。
 内置来源为 `resource`、`resource_id`、`variant`、`variant_id`、`tag_key`、`platform`、
 `version`；`version` 作为运行时来源计入，B1 不检查值何时可得。
 `artifact` 在 download 模板检查后、checksum 请求内，以及声明 remote artifact 后可用；
@@ -426,7 +429,7 @@ URL 校验、环 / 深度 / 大小检查，也不要求未知 parser 可执行�
 
 ### 7.2 B2 模板引擎
 
-- 按 §5.2 区分 `Authored` 和 `Literal`；在作用域内按优先级合并：registry `variables` < resource `source` < variant `source` < artifact `source` < release `source` < 宿主 `source` < 内置变量。这与参考实现 `R/resource-template.ts:1068-1110` 逐项对齐，B4 的差分测试负责兜底。
+- 按 §5.2 区分 `Authored` 和 `Literal`；在作用域内按优先级合并：registry `variables` < resource `source` < variant `source` < artifact `source` < release `source` < 宿主 `source` < 内置变量。download 的 artifact 名渲染后才合并 registry variables；除 §11.1 列出的有意偏差外，与参考实现 `R/resource-template.ts:1068-1110,1336-1346` 对齐，B4 的差分测试负责兜底。
 - 用 DFS 检测环，限制深度和输出长度。
 
 ### 7.3 B3 选择、计划与校验策略
@@ -515,6 +518,7 @@ URL 校验、环 / 深度 / 大小检查，也不要求未知 parser 可执行�
 | V-8  | "Rust 消费者实现相同语义"（`D/:214-216`）                                            | "Rust 消费者依赖 `manifest-core`"                                                                                               | 消除第二份实现                                                                              |
 | V-9  | `manifest_version: 2`（整数）                                                        | `manifest_version: "2.0"`（`major.minor`），消费侧对新 minor 宽松                                                               | O-7                                                                                         |
 | V-10 | parser 只读 body                                                                     | 输入是 `RemoteResponse`（body 加 headers）；新增 `header` checksum parser；禁止隐式从响应头取 checksum                          | O-1                                                                                         |
+| V-11 | remote source 可覆盖内置变量                                                         | 内置变量始终拥有最高优先级                                                                                                      | 防止 manifest 覆盖 version、platform 与 resource / variant 身份                             |
 
 ### 11.2 决策
 

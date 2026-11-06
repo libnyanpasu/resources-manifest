@@ -61,6 +61,12 @@ mod validate {
             let raw: ResourceManifest = serde_json::from_value(case.input)
                 .unwrap_or_else(|error| panic!("{}: {error}", case.name));
             let result = validate_manifest(raw.clone());
+            assert_eq!(
+                result,
+                validate_manifest(raw.clone()),
+                "{}: validation result and error order are deterministic",
+                case.name
+            );
             let passed = if let Some(ok) = case.expect.get("ok") {
                 positive += 1;
                 positive_codes.insert(case.name.split('.').take(2).collect::<Vec<_>>().join("."));

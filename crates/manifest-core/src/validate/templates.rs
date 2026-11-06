@@ -98,16 +98,16 @@ pub(super) fn check(manifest: &ResourceManifest, errors: &mut Vec<ValidationErro
                             &format!("{release_path}.source"),
                         );
                     }
-                    let mut scope = registry_scope(manifest, &resource.registry);
-                    scope.extend(values.clone());
                     let builtins: BTreeSet<_> = BUILTINS.iter().copied().collect();
                     inspect_dependencies(
                         &artifact.artifact,
                         &format!("{artifact_path}.artifact"),
-                        &scope,
+                        &values,
                         &builtins,
                         errors,
                     );
+                    let mut scope = registry_scope(manifest, &resource.registry);
+                    scope.extend(values.clone());
                     let mut canonical_builtins = builtins;
                     canonical_builtins.insert("artifact");
                     inspect_scope(&scope, &canonical_builtins, errors);
@@ -279,12 +279,53 @@ fn inspect_dependencies(
 
 #[must_use = "template variable references must be inspected"]
 fn variables(template: &str) -> impl Iterator<Item = &str> {
-    template.match_indices('{').filter_map(|(index, _)| {
-        let (variable, _) = template[index + 1..].split_once('}')?;
-        (!variable.is_empty()
-            && variable
-                .bytes()
-                .all(|byte| byte.is_ascii_alphanumeric() || byte == b'_'))
-        .then_some(variable)
+    let mut bytes = template.bytes().enumerate();
+    let mut start = None;
+    std::iter::from_fn(move || {
+        for (index, byte) in bytes.by_ref() {
+            match byte {
+                b'{' => start = Some(index + 1),
+                b'}' => {
+                    if let Some(start) = start.take().filter(|start| *start < index) {
+                        return Some(&template[start..index]);
+                    }
+                }
+                byte if byte.is_ascii_alphanumeric() || byte == b'_' => {}
+                _ => start = None,
+            }
+        }
+        None
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::variables;
+
+    #[test]
+    fn variable_syntax() {
+        for (template, expected) in [
+            ("{{a}}", vec!["a"]),
+            ("{a{b}", vec!["b"]),
+            ("{}", vec![]),
+            ("{a-b}", vec![]),
+            ("{a_b09}{Z}{0}", vec!["a_b09", "Z", "0"]),
+            ("{é}{a b}{x.y}{bad-{good}}", vec!["good"]),
+            ("{unclosed", vec![]),
+        ] {
+            assert_eq!(
+                variables(template).collect::<Vec<_>>(),
+                expected,
+                "{template}"
+            );
+        }
+    }
+
+    #[test]
+    fn long_unclosed_brace_run() {
+        let mut template = "{".repeat(1024 * 1024);
+        assert_eq!(variables(&template).next(), None);
+        template.push_str("tail}");
+        assert_eq!(variables(&template).collect::<Vec<_>>(), ["tail"]);
+    }
 }

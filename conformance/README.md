@@ -30,12 +30,12 @@
   Rust 的 `corpus_case_names_are_globally_unique` 递归检查整个 `conformance/` 的 corpus JSON，
   包括尚未接入执行的目录；`fixtures/` 中的 HTML 期望清单不是 corpus，不参与名称检查。
 - `input` 总是对象，各目录的形状和操作见下表。
-- `expect` 恰有一个分支：`{ "ok": <结果> }` 或 `{ "error": { "code": "...", "path": "...", "fields": {} } }`。
+- `expect` 恰有一个结果分支：`ok` 或 `error`，分别为 `{ "ok": <结果> }` 或 `{ "error": { "code": "...", "path": "...", "fields": {} } }`。
+  validate 用例选择 `error` 结果分支时，可另外声明 `expect.additional_errors` 数组，列出其余所有错误。
   所有错误期望都必须声明 `path` 和完整的 `fields`，即使字段对象为空也不省略。消费者按稳定的 `code` 与结构字段进行程序化匹配，不解析消息文本。运行器比较 `code`、声明的 `fields`（完整对象结构相等）和声明的 `path`（精确字符串相等）。
   `path` 统一为从输入文档根开始的 dotted locator：以 `.` 连接字段或对象键，数组下标写作 `[<i>]`，如 `manifest_version`、`resources.<id>.variants[<i>].tags`。宿主传入参数使用 `arg.<name>`，例如 `arg.version`，parser 响应错误使用 `response.body` 或 `response.headers.<小写名称>`，规则错误按输入的 `parser` 对象定位：`parser.invalid_pattern` → `parser.pattern`、`parser.group_out_of_range` → `parser.group`、`resolve.unsupported_parser` → `parser.type`。不使用裸参数名或其他路径语法。
 - 结果按 JSON 结构相等比较，对象键顺序无关，数组顺序保留。不得先 trim、规范化输入或丢弃重复 header。
-  validate 用例可在 `expect.error` 之外声明 `expect.additional_errors` 数组，列出其余所有错误；
-  不增加合成的 aggregate 错误码。运行器把首条与 additional_errors 合并为多重集合，
+  validate 不增加合成的 aggregate 错误码。运行器把首条与 additional_errors 合并为多重集合，
   精确比较全部 code、path、fields，错误排列不影响结果，但不会忽略多余、缺失或重复的错误。
 - checksum 成功结果是 `ResourceChecksum` 的序列化字符串：`<algorithm>:<lowercase-hex>`。
   SHA-256 digest 使用 64 个十六进制字符（32 字节），base64 输入表示同样的 32 字节。
@@ -196,14 +196,17 @@ A3 再次直接调用只读参考函数，24 个正常路径成功结果与 corp
 
 ### Validate 的阶段边界
 
+正向用例只要求校验成功。Rust 运行器额外断言 manifest 往返保留（round-trip）与
+`newer_minor` 标记正确；这些属于实现侧检查，不是 corpus 契约的一部分。
+
 `validate.manifest.reference_fixture` 的 `input` 内嵌完整的
 [`resources.json`](../crates/manifest-metadata/tests/fixtures/resources.json) 快照副本，
 与当前快照在 JSON 结构上相等；两者均为字符串版本 `"2.0"`。
 运行器直接消费本文件的 `input`，无需对版本做隐式迁移，另有直接加载快照的回归测试。
 
 B1 运行器位于 `crates/manifest-core/tests/conformance.rs`，递归加载 validate / compat
-目录下所有 JSON 文件，不跳过用例。`validate/invariants.json` 包含 55 条用例，
-加上既有快照共 56 条（19 正、37 反），覆盖 design §7.1 的 10 组不变量，满足 G6。
+目录下所有 JSON 文件，不跳过用例。`validate/invariants.json` 包含 61 条用例，
+加上既有快照共 62 条（21 正、41 反），覆盖 design §7.1 的 10 组不变量，满足 G6。
 下表名称均省略 `validate.` 前缀；对应稳定错误码与完整字段见
 [design §5.6](../docs/spec/2026-11-06-manifest-core-parsers/design.md#56-错误码)。
 

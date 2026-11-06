@@ -4,6 +4,144 @@ use snafu::Snafu;
 
 mod validate;
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[non_exhaustive]
+pub enum ValidateIdsKind {
+    Tag,
+    Variant,
+}
+
+impl ValidateIdsKind {
+    #[must_use]
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Tag => "tag",
+            Self::Variant => "variant",
+        }
+    }
+}
+
+impl std::fmt::Display for ValidateIdsKind {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter.write_str(self.as_str())
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[non_exhaustive]
+pub enum ValidateIdsReason {
+    Invalid,
+    Duplicate,
+}
+
+impl ValidateIdsReason {
+    #[must_use]
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Invalid => "invalid",
+            Self::Duplicate => "duplicate",
+        }
+    }
+}
+
+impl std::fmt::Display for ValidateIdsReason {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter.write_str(self.as_str())
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[non_exhaustive]
+pub enum ExpandTagReason {
+    Unknown,
+    Mismatch,
+}
+
+impl ExpandTagReason {
+    #[must_use]
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Unknown => "unknown",
+            Self::Mismatch => "mismatch",
+        }
+    }
+}
+
+impl std::fmt::Display for ExpandTagReason {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter.write_str(self.as_str())
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[non_exhaustive]
+pub enum ResolveDefaultReason {
+    Missing,
+    Unknown,
+    UnsupportedPlatform,
+}
+
+impl ResolveDefaultReason {
+    #[must_use]
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Missing => "missing",
+            Self::Unknown => "unknown",
+            Self::UnsupportedPlatform => "unsupported_platform",
+        }
+    }
+}
+
+impl std::fmt::Display for ResolveDefaultReason {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter.write_str(self.as_str())
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[non_exhaustive]
+pub enum ResolveReferenceKind {
+    Registry,
+}
+
+impl ResolveReferenceKind {
+    #[must_use]
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Registry => "registry",
+        }
+    }
+}
+
+impl std::fmt::Display for ResolveReferenceKind {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter.write_str(self.as_str())
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[non_exhaustive]
+pub enum ReadHistoryReason {
+    LatestMissing,
+    Duplicate,
+}
+
+impl ReadHistoryReason {
+    #[must_use]
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::LatestMissing => "latest_missing",
+            Self::Duplicate => "duplicate",
+        }
+    }
+}
+
+impl std::fmt::Display for ReadHistoryReason {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter.write_str(self.as_str())
+    }
+}
+
 #[derive(Debug, Clone, PartialEq)]
 #[must_use]
 pub struct ValidatedManifest {
@@ -43,9 +181,9 @@ pub enum ValidationError {
     #[snafu(display("invalid {kind} ID {id:?} at {path}: {reason}"))]
     ValidateIds {
         path: String,
-        kind: &'static str,
+        kind: ValidateIdsKind,
         id: String,
-        reason: &'static str,
+        reason: ValidateIdsReason,
     },
     #[snafu(display("noncanonical tag key at {path}: expected {expected:?}, got {actual:?}"))]
     BuildTagKey {
@@ -57,7 +195,7 @@ pub enum ValidationError {
     ExpandTag {
         path: String,
         id: String,
-        reason: &'static str,
+        reason: ExpandTagReason,
     },
     #[snafu(display("conflicting tags in group {group:?} at {path}"))]
     SelectGroup {
@@ -76,19 +214,19 @@ pub enum ValidationError {
         path: String,
         platform: String,
         variant: Option<String>,
-        reason: &'static str,
+        reason: ResolveDefaultReason,
     },
     #[snafu(display("unknown {kind} reference {id:?} at {path}"))]
     ResolveReference {
         path: String,
-        kind: &'static str,
+        kind: ResolveReferenceKind,
         id: String,
     },
     #[snafu(display("invalid static history version {version:?} at {path}: {reason}"))]
     ReadHistory {
         path: String,
         version: String,
-        reason: &'static str,
+        reason: ReadHistoryReason,
     },
     #[snafu(display("cannot compile parser at {path}: {reason}"))]
     CompileParser {
@@ -139,14 +277,14 @@ impl ValidationError {
             Self::ValidateIds {
                 kind, id, reason, ..
             } => {
-                json!({ "kind": kind, "id": id, "reason": reason })
+                json!({ "kind": kind.as_str(), "id": id, "reason": reason.as_str() })
             }
             Self::BuildTagKey {
                 expected, actual, ..
             } => {
                 json!({ "expected": expected, "actual": actual })
             }
-            Self::ExpandTag { id, reason, .. } => json!({ "id": id, "reason": reason }),
+            Self::ExpandTag { id, reason, .. } => json!({ "id": id, "reason": reason.as_str() }),
             Self::SelectGroup { group, tags, .. } => json!({ "group": group, "tags": tags }),
             Self::SelectTagCombination {
                 tag_key,
@@ -161,13 +299,13 @@ impl ValidationError {
                 reason,
                 ..
             } => {
-                json!({ "platform": platform, "variant": variant, "reason": reason })
+                json!({ "platform": platform, "variant": variant, "reason": reason.as_str() })
             }
-            Self::ResolveReference { kind, id, .. } => json!({ "kind": kind, "id": id }),
+            Self::ResolveReference { kind, id, .. } => json!({ "kind": kind.as_str(), "id": id }),
             Self::ReadHistory {
                 version, reason, ..
             } => {
-                json!({ "version": version, "reason": reason })
+                json!({ "version": version, "reason": reason.as_str() })
             }
             Self::CompileParser {
                 reason, details, ..

@@ -7,7 +7,10 @@ use manifest_metadata::{
 use manifest_parser::{Limits, RemoteChecksumParser, RemoteVersionParser};
 use serde_json::json;
 
-use crate::ValidationError;
+use crate::{
+    ExpandTagReason, ReadHistoryReason, ResolveDefaultReason, ResolveReferenceKind,
+    ValidateIdsKind, ValidateIdsReason, ValidationError,
+};
 
 mod templates;
 
@@ -41,7 +44,7 @@ pub(super) fn collect(manifest: &ResourceManifest) -> Vec<ValidationError> {
             let path = format!("{path}.variants[{index}]");
             check_id(
                 &variant.id,
-                "variant",
+                ValidateIdsKind::Variant,
                 &format!("{path}.id"),
                 &mut ids,
                 &mut errors,
@@ -71,8 +74,8 @@ pub(super) fn collect(manifest: &ResourceManifest) -> Vec<ValidationError> {
             let mut groups: BTreeMap<&str, Vec<String>> = BTreeMap::new();
             for (index, tag) in variant.tags.iter().enumerate() {
                 let reason = match catalog.get(&tag.id) {
-                    None => Some("unknown"),
-                    Some(definition) if **definition != *tag => Some("mismatch"),
+                    None => Some(ExpandTagReason::Unknown),
+                    Some(definition) if **definition != *tag => Some(ExpandTagReason::Mismatch),
                     Some(_) => None,
                 };
                 if let Some(reason) = reason {
@@ -110,7 +113,7 @@ pub(super) fn collect(manifest: &ResourceManifest) -> Vec<ValidationError> {
                                 errors.push(ValidationError::ReadHistory {
                                     path: format!("{path}.releases[{index}].version"),
                                     version: release.version.clone(),
-                                    reason: "duplicate",
+                                    reason: ReadHistoryReason::Duplicate,
                                 });
                             }
                         }
@@ -118,7 +121,7 @@ pub(super) fn collect(manifest: &ResourceManifest) -> Vec<ValidationError> {
                             errors.push(ValidationError::ReadHistory {
                                 path: format!("{path}.latest"),
                                 version: latest.clone(),
-                                reason: "latest_missing",
+                                reason: ReadHistoryReason::LatestMissing,
                             });
                         }
                     }
@@ -180,7 +183,7 @@ fn check_registry(
     if !manifest.registries.contains_key(id) {
         errors.push(ValidationError::ResolveReference {
             path,
-            kind: "registry",
+            kind: ResolveReferenceKind::Registry,
             id: id.to_owned(),
         });
     }
@@ -188,7 +191,7 @@ fn check_registry(
 
 fn check_id<'a>(
     id: &'a str,
-    kind: &'static str,
+    kind: ValidateIdsKind,
     path: &str,
     seen: &mut BTreeSet<&'a str>,
     errors: &mut Vec<ValidationError>,
@@ -197,14 +200,14 @@ fn check_id<'a>(
         && id.bytes().all(|byte| {
             byte.is_ascii_alphanumeric()
                 || b"_.:-".contains(&byte)
-                || (kind == "variant" && byte == b'+')
+                || (kind == ValidateIdsKind::Variant && byte == b'+')
         });
     if !valid {
         errors.push(ValidationError::ValidateIds {
             path: path.to_owned(),
             kind,
             id: id.to_owned(),
-            reason: "invalid",
+            reason: ValidateIdsReason::Invalid,
         });
     }
     if !seen.insert(id) {
@@ -212,7 +215,7 @@ fn check_id<'a>(
             path: path.to_owned(),
             kind,
             id: id.to_owned(),
-            reason: "duplicate",
+            reason: ValidateIdsReason::Duplicate,
         });
     }
 }
@@ -222,7 +225,7 @@ fn check_tags(tags: &[ResourceTag], path: &str, errors: &mut Vec<ValidationError
     for (index, tag) in tags.iter().enumerate() {
         check_id(
             &tag.id,
-            "tag",
+            ValidateIdsKind::Tag,
             &format!("{path}[{index}].id"),
             &mut seen,
             errors,
@@ -243,7 +246,7 @@ fn check_defaults(resource: &ResourceDefinition, path: &str, errors: &mut Vec<Va
                 path: format!("{path}.default_variants.{}", platform_name(platform)),
                 platform: platform_name(platform),
                 variant: None,
-                reason: "missing",
+                reason: ResolveDefaultReason::Missing,
             });
         }
     }
@@ -254,12 +257,12 @@ fn check_defaults(resource: &ResourceDefinition, path: &str, errors: &mut Vec<Va
             .filter(|variant| variant.id == *id)
             .collect();
         let reason = if matching.is_empty() {
-            Some("unknown")
+            Some(ResolveDefaultReason::Unknown)
         } else if !matching
             .iter()
             .any(|variant| variant.artifacts.contains_key(platform))
         {
-            Some("unsupported_platform")
+            Some(ResolveDefaultReason::UnsupportedPlatform)
         } else {
             None
         };
@@ -276,9 +279,5 @@ fn check_defaults(resource: &ResourceDefinition, path: &str, errors: &mut Vec<Va
 
 #[must_use]
 fn platform_name(platform: SupportedPlatform) -> String {
-    serde_json::to_value(platform)
-        .expect("platform serializes as a string")
-        .as_str()
-        .expect("platform string")
-        .to_owned()
+    platform.as_str().to_owned()
 }
