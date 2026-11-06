@@ -1,0 +1,278 @@
+[
+  {
+    "name": "checksum.checksum.normalized",
+    "input": {
+      "parser": {
+        "type": "checksum"
+      },
+      "response": {
+        "body": " \tSHA256:0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF\r\n",
+        "headers": []
+      },
+      "artifact": "selected.zip"
+    },
+    "expect": {
+      "ok": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+    }
+  },
+  {
+    "name": "checksum.gnu.exact_name",
+    "input": {
+      "parser": {
+        "type": "gnu",
+        "algorithm": "sha256"
+      },
+      "response": {
+        "body": "abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789  prefix-selected.zip\r\n0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF *selected.zip\r\n",
+        "headers": []
+      },
+      "artifact": "selected.zip"
+    },
+    "expect": {
+      "ok": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+    }
+  },
+  {
+    "name": "checksum.bsd.matching_label",
+    "input": {
+      "parser": {
+        "type": "bsd",
+        "algorithm": "sha256"
+      },
+      "response": {
+        "body": "SHA256 (selected.zip) = 0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF\n",
+        "headers": []
+      },
+      "artifact": "selected.zip"
+    },
+    "expect": {
+      "ok": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+    }
+  },
+  {
+    "name": "checksum.github_release_assets.own_digest",
+    "input": {
+      "parser": {
+        "type": "github-release-assets"
+      },
+      "response": {
+        "body": "<ul class=\"Box Box--condensed\"><li class=\"Box-row\"><a href=\"/example/project/releases/download/v1.2.3/selected.zip\">selected.zip</a><span class=\"Truncate-text\">sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef</span></li></ul>",
+        "headers": []
+      },
+      "artifact": "selected.zip"
+    },
+    "expect": {
+      "ok": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+    }
+  },
+  {
+    "name": "checksum.github_release_assets.digest_missing",
+    "input": {
+      "parser": {
+        "type": "github-release-assets"
+      },
+      "response": {
+        "body": "<ul class=\"Box Box--condensed\"><li class=\"Box-row\"><a href=\"/example/project/releases/download/v1.2.3/selected.zip\">selected.zip</a></li><li class=\"Box-row\"><a href=\"/example/project/releases/download/v1.2.3/neighbor.zip\">neighbor.zip</a><span class=\"Truncate-text\">sha256:abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789</span></li></ul>",
+        "headers": []
+      },
+      "artifact": "selected.zip"
+    },
+    "expect": {
+      "error": {
+        "code": "parser.digest_missing"
+      }
+    }
+  },
+  {
+    "name": "checksum.github_release_assets.exact_name",
+    "input": {
+      "parser": {
+        "type": "github-release-assets"
+      },
+      "response": {
+        "body": "<ul class=\"Box Box--condensed\"><li class=\"Box-row\"><a href=\"/example/project/releases/download/v1.2.3/prefix-selected.zip\">prefix-selected.zip</a><span class=\"Truncate-text\">sha256:abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789</span></li><li class=\"Box-row\"><a href=\"/example/project/releases/download/v1.2.3/selected.zip\">selected.zip</a><span class=\"Truncate-text\">sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef</span></li></ul>",
+        "headers": []
+      },
+      "artifact": "selected.zip"
+    },
+    "expect": {
+      "ok": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+    }
+  },
+  {
+    "name": "checksum.bsd.mismatched_label",
+    "input": {
+      "parser": {
+        "type": "bsd",
+        "algorithm": "sha256"
+      },
+      "response": {
+        "body": "SHA512 (selected.zip) = 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\n",
+        "headers": []
+      },
+      "artifact": "selected.zip"
+    },
+    "expect": {
+      "error": {
+        "code": "parser.not_found"
+      }
+    }
+  },
+  {
+    "name": "checksum.gnu.conflicting_digests",
+    "input": {
+      "parser": {
+        "type": "gnu",
+        "algorithm": "sha256"
+      },
+      "response": {
+        "body": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef  selected.zip\nabcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789 *selected.zip\n",
+        "headers": []
+      },
+      "artifact": "selected.zip"
+    },
+    "expect": {
+      "error": {
+        "code": "parser.ambiguous"
+      }
+    }
+  },
+  {
+    "name": "checksum.checksum.ignores_digest_header",
+    "input": {
+      "parser": {
+        "type": "checksum"
+      },
+      "response": {
+        "body": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+        "headers": [
+          ["Digest", "sha-256=q83vASNFZ4mrze8BI0VniavN7wEjRWeJq83vASNFZ4k="]
+        ]
+      },
+      "artifact": "selected.zip"
+    },
+    "expect": {
+      "ok": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+    }
+  },
+  {
+    "name": "checksum.header.hex",
+    "input": {
+      "parser": {
+        "type": "header",
+        "name": "X-Checksum-Sha256",
+        "algorithm": "sha256",
+        "encoding": "hex"
+      },
+      "response": {
+        "body": "",
+        "headers": [
+          [
+            "X-Checksum-Sha256",
+            "0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF"
+          ]
+        ]
+      },
+      "artifact": "selected.zip"
+    },
+    "expect": {
+      "ok": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+    }
+  },
+  {
+    "name": "checksum.header.base64",
+    "input": {
+      "parser": {
+        "type": "header",
+        "name": "X-Checksum-Sha256",
+        "algorithm": "sha256",
+        "encoding": "base64"
+      },
+      "response": {
+        "body": "",
+        "headers": [
+          ["X-Checksum-Sha256", "ASNFZ4mrze8BI0VniavN7wEjRWeJq83vASNFZ4mrze8="]
+        ]
+      },
+      "artifact": "selected.zip"
+    },
+    "expect": {
+      "ok": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+    }
+  },
+  {
+    "name": "checksum.header.missing",
+    "input": {
+      "parser": {
+        "type": "header",
+        "name": "X-Checksum-Sha256",
+        "algorithm": "sha256",
+        "encoding": "hex"
+      },
+      "response": {
+        "body": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+        "headers": [["Content-Type", "text/plain"]]
+      },
+      "artifact": "selected.zip"
+    },
+    "expect": {
+      "error": {
+        "code": "parser.not_found"
+      }
+    }
+  },
+  {
+    "name": "checksum.header.conflicting_values",
+    "input": {
+      "parser": {
+        "type": "header",
+        "name": "X-Checksum-Sha256",
+        "algorithm": "sha256",
+        "encoding": "hex"
+      },
+      "response": {
+        "body": "",
+        "headers": [
+          [
+            "X-Checksum-Sha256",
+            "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+          ],
+          [
+            "x-checksum-sha256",
+            "abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789"
+          ]
+        ]
+      },
+      "artifact": "selected.zip"
+    },
+    "expect": {
+      "error": {
+        "code": "parser.ambiguous"
+      }
+    }
+  },
+  {
+    "name": "checksum.header.case_insensitive_name",
+    "input": {
+      "parser": {
+        "type": "header",
+        "name": "X-Checksum-Sha256",
+        "algorithm": "sha256",
+        "encoding": "hex"
+      },
+      "response": {
+        "body": "",
+        "headers": [
+          [
+            "x-cHeCkSuM-sHa256",
+            "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+          ]
+        ]
+      },
+      "artifact": "selected.zip"
+    },
+    "expect": {
+      "ok": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+    }
+  }
+]

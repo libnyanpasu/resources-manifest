@@ -1,0 +1,101 @@
+[
+  {
+    "name": "kind.static.with_checksum",
+    "input": {
+      "artifact": "selected-{version}.zip",
+      "version": {
+        "type": "static",
+        "latest": "v1.2.3",
+        "releases": [
+          {
+            "version": "v1.2.3",
+            "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+          }
+        ]
+      }
+    },
+    "expect": {
+      "ok": "authoritative"
+    }
+  },
+  {
+    "name": "kind.static.without_checksum",
+    "input": {
+      "artifact": "selected-{version}.zip",
+      "version": {
+        "type": "static",
+        "latest": "v1.2.3",
+        "releases": [
+          {
+            "version": "v1.2.3"
+          }
+        ]
+      }
+    },
+    "expect": {
+      "ok": "none"
+    }
+  },
+  {
+    "name": "kind.remote.with_rule",
+    "input": {
+      "artifact": "selected-{version}.zip",
+      "version": {
+        "type": "remote",
+        "fallback": {
+          "version": "v1.2.3",
+          "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+        },
+        "version": {
+          "resource": {
+            "registry": "github-release",
+            "artifact": "version.txt"
+          },
+          "parser": {
+            "type": "text",
+            "trim": true
+          }
+        },
+        "checksum": {
+          "resource": {
+            "registry": "github-release",
+            "artifact": "checksums.txt"
+          },
+          "parser": {
+            "type": "gnu",
+            "algorithm": "sha256"
+          }
+        }
+      }
+    },
+    "expect": {
+      "ok": "parsed"
+    }
+  },
+  {
+    "name": "kind.remote.without_rule",
+    "input": {
+      "artifact": "selected-{version}.zip",
+      "version": {
+        "type": "remote",
+        "fallback": {
+          "version": "v1.2.3",
+          "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+        },
+        "version": {
+          "resource": {
+            "registry": "github-release",
+            "artifact": "version.txt"
+          },
+          "parser": {
+            "type": "text",
+            "trim": true
+          }
+        }
+      }
+    },
+    "expect": {
+      "ok": "none"
+    }
+  }
+]
