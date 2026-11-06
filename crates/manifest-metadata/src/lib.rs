@@ -374,6 +374,17 @@ fn deserialize_template_artifacts<'de, D: Deserializer<'de>>(
                     "unsupported checksum parser type {parser_type:?} in template"
                 )));
             }
+            if let Some(checksum) = checksum
+                && let RemoteChecksumParser::Header { name, .. } = &checksum.parser
+                && (name.is_empty()
+                    || !name.bytes().all(|byte| {
+                        byte.is_ascii_alphanumeric() || b"!#$%&'*+-.^_`|~".contains(&byte)
+                    }))
+            {
+                return Err(serde::de::Error::custom(format!(
+                    "invalid checksum header name {name:?} in template"
+                )));
+            }
         }
     }
     Ok(artifacts)
@@ -1192,7 +1203,7 @@ mod tests {
             for (kind, cases) in [
                 (
                     "version",
-                    [
+                    vec![
                         (r#"{"type":"text","type":"future-parser"}"#, "type"),
                         (r#"{"type":"text","trim":"invalid","trim":true}"#, "trim"),
                         (r#"{"type":"text","extra":1,"extra":2}"#, "extra"),
@@ -1201,7 +1212,7 @@ mod tests {
                 ),
                 (
                     "checksum",
-                    [
+                    vec![
                         (
                             r#"{"type":"gnu","algorithm":"sha256","type":"future-parser"}"#,
                             "type",
@@ -1215,6 +1226,26 @@ mod tests {
                             "extra",
                         ),
                         (r#"{"type":"future-parser","extra":1,"extra":2}"#, "extra"),
+                        (
+                            r#"{"type":"header","type":"future-parser","name":"X-Digest","algorithm":"md5","encoding":"hex"}"#,
+                            "type",
+                        ),
+                        (
+                            r#"{"type":"header","name":"X-Digest","name":"X-Other","algorithm":"md5","encoding":"hex"}"#,
+                            "name",
+                        ),
+                        (
+                            r#"{"type":"header","name":"X-Digest","algorithm":"md5","algorithm":"sha256","encoding":"hex"}"#,
+                            "algorithm",
+                        ),
+                        (
+                            r#"{"type":"header","name":"X-Digest","algorithm":"md5","encoding":"hex","encoding":"base64"}"#,
+                            "encoding",
+                        ),
+                        (
+                            r#"{"type":"header","name":"X-Digest","algorithm":"md5","encoding":"hex","extra":1,"extra":2}"#,
+                            "extra",
+                        ),
                     ],
                 ),
             ] {
@@ -1239,6 +1270,97 @@ mod tests {
                     );
                 }
             }
+        }
+    }
+
+    #[test]
+    fn header_parser_names_are_validated_only_in_templates() {
+        let compiled = sample_manifest_json();
+        let artifact =
+            compiled["resources"]["mihomo"]["variants"][0]["artifacts"]["windows-x86_64"].clone();
+        let template = json!({
+            "manifest_version": "2.0",
+            "registries": {},
+            "resources": {"mihomo": {
+                "name": "Mihomo", "registry": "github-release", "tags": {},
+                "variants": [{"name": "Alpha", "tags": [], "artifacts": {"windows-x86_64": artifact}}]
+            }}
+        });
+        let path = "/resources/mihomo/variants/0/artifacts/windows-x86_64/version/checksum/parser";
+        for name in ["X-Checksum-Sha256", "aZ09!#$%&'*+-.^_`|~"] {
+            for encoding in ["hex", "base64"] {
+                let parser = json!({
+                    "type": "header", "name": name, "algorithm": "sha256", "encoding": encoding
+                });
+                let mut input = compiled.clone();
+                *input.pointer_mut(path).unwrap() = parser.clone();
+                let manifest: ResourceManifest = serde_json::from_value(input).unwrap();
+                assert_eq!(
+                    serde_json::to_value(manifest).unwrap().pointer(path),
+                    Some(&parser)
+                );
+                let mut input = template.clone();
+                *input.pointer_mut(path).unwrap() = parser.clone();
+                let manifest: ResourceManifestTemplate = serde_json::from_value(input).unwrap();
+                assert_eq!(
+                    serde_json::to_value(manifest).unwrap().pointer(path),
+                    Some(&parser)
+                );
+            }
+        }
+        for name in [
+            "",
+            "X Digest",
+            "X:Digest",
+            "X\tDigest",
+            "X\r\nDigest",
+            "X/Digest",
+            "X(Digest)",
+            "X[Digest]",
+            "X\"Digest",
+            "X\\Digest",
+            "摘要",
+            "X\0Digest",
+            "X\u{7f}Digest",
+        ] {
+            let parser = json!({
+                "type": "header", "name": name, "algorithm": "sha256", "encoding": "hex"
+            });
+            let mut input = compiled.clone();
+            *input.pointer_mut(path).unwrap() = parser.clone();
+            serde_json::from_value::<ResourceManifest>(input).unwrap();
+            let mut input = template.clone();
+            *input.pointer_mut(path).unwrap() = parser;
+            let error = serde_json::from_value::<ResourceManifestTemplate>(input).unwrap_err();
+            assert!(
+                error.to_string().contains("invalid checksum header name"),
+                "{name:?}: {error}"
+            );
+        }
+        let parser = json!({
+            "type": "header", "name": "X-Digest", "algorithm": "sha256", "encoding": "hex"
+        });
+        for field in ["name", "algorithm", "encoding"] {
+            for invalid in [None, Some(json!(null)), Some(json!(42))] {
+                let mut malformed = parser.clone();
+                if let Some(value) = invalid {
+                    malformed[field] = value;
+                } else {
+                    malformed.as_object_mut().unwrap().remove(field);
+                }
+                assert!(
+                    serde_json::from_value::<RemoteChecksumParser>(malformed.clone()).is_err(),
+                    "{malformed}"
+                );
+            }
+        }
+        for field in ["algorithm", "encoding"] {
+            let mut malformed = parser.clone();
+            malformed[field] = json!("unsupported");
+            assert!(
+                serde_json::from_value::<RemoteChecksumParser>(malformed.clone()).is_err(),
+                "{malformed}"
+            );
         }
     }
 

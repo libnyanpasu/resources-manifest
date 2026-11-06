@@ -1,9 +1,20 @@
+use base64::{Engine, engine::general_purpose::STANDARD};
 use schemars::JsonSchema;
 use serde::{Deserialize, Deserializer, Serialize};
 use specta::Type;
 
 use crate::version::deserialize_parser_object;
 use crate::{ChecksumAlgorithm, Limits, ParseError, RemoteResponse, ResourceChecksum};
+
+/// How a `header` checksum parser decodes the header value.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema, Type)]
+#[serde(rename_all = "kebab-case")]
+pub enum HeaderEncoding {
+    /// Hexadecimal digest, any case.
+    Hex,
+    /// Standard base64 (`+/`, padded) of the raw digest bytes.
+    Base64,
+}
 
 /// How to parse a remote checksum response.
 #[derive(Debug, Clone, PartialEq, Serialize, JsonSchema, Type)]
@@ -18,6 +29,12 @@ pub enum RemoteChecksumParser {
     Bsd { algorithm: ChecksumAlgorithm },
     /// GitHub `/releases/expanded_assets/<tag>` HTML with asset digests.
     GithubReleaseAssets,
+    /// The digest is read from the named response header (case-insensitive).
+    Header {
+        name: String,
+        algorithm: ChecksumAlgorithm,
+        encoding: HeaderEncoding,
+    },
     #[schemars(skip, !untagged)]
     #[specta(skip)]
     #[serde(untagged)]
@@ -35,7 +52,7 @@ impl RemoteChecksumParser {
         artifact: &str,
         limits: &Limits,
     ) -> Result<ResourceChecksum, ParseError> {
-        if response.body.len() > limits.body_bytes() {
+        if !matches!(self, Self::Header { .. }) && response.body.len() > limits.body_bytes() {
             return Err(ParseError::ValidateBodySize {
                 limit: limits.body_bytes(),
                 actual: response.body.len(),
@@ -54,11 +71,52 @@ impl RemoteChecksumParser {
                 bsd_digest(line, artifact, *algorithm)
             }),
             Self::GithubReleaseAssets => parse_github_assets(response.body, artifact),
+            Self::Header {
+                name,
+                algorithm,
+                encoding,
+            } => parse_header(response, name, *algorithm, *encoding, limits),
             Self::Unsupported { parser_type } => Err(ParseError::ResolveParser {
                 parser_type: parser_type.clone(),
             }),
         }
     }
+}
+
+fn parse_header(
+    response: &RemoteResponse<'_>,
+    name: &str,
+    algorithm: ChecksumAlgorithm,
+    encoding: HeaderEncoding,
+    limits: &Limits,
+) -> Result<ResourceChecksum, ParseError> {
+    for value in response.header_values(name) {
+        if value.len() > limits.header_value_bytes() {
+            return Err(ParseError::ValidateHeaderSize {
+                name: name.to_owned(),
+                limit: limits.header_value_bytes(),
+                actual: value.len(),
+            });
+        }
+    }
+    let value = response.single_header(name)?;
+    let digest = match encoding {
+        HeaderEncoding::Hex => value.to_owned(),
+        HeaderEncoding::Base64 => STANDARD
+            .decode(value)
+            .map_err(|source| ParseError::DecodeHeader {
+                name: name.to_owned(),
+                source,
+            })?
+            .iter()
+            .map(|byte| format!("{byte:02x}"))
+            .collect(),
+    };
+    ResourceChecksum::new(format!("{}:{digest}", algorithm.as_str())).map_err(|_| {
+        ParseError::ValidateHeaderChecksum {
+            name: name.to_owned(),
+        }
+    })
 }
 
 fn parse_github_assets(body: &str, artifact: &str) -> Result<ResourceChecksum, ParseError> {
@@ -223,9 +281,18 @@ impl<'de> Deserialize<'de> for RemoteChecksumParser {
         #[serde(tag = "type", rename_all = "kebab-case")]
         enum Known {
             Checksum,
-            Gnu { algorithm: ChecksumAlgorithm },
-            Bsd { algorithm: ChecksumAlgorithm },
+            Gnu {
+                algorithm: ChecksumAlgorithm,
+            },
+            Bsd {
+                algorithm: ChecksumAlgorithm,
+            },
             GithubReleaseAssets,
+            Header {
+                name: String,
+                algorithm: ChecksumAlgorithm,
+                encoding: HeaderEncoding,
+            },
         }
 
         let value = deserialize_parser_object(deserializer)?;
@@ -235,7 +302,7 @@ impl<'de> Deserialize<'de> for RemoteChecksumParser {
             .ok_or_else(|| serde::de::Error::custom("parser type must be a string"))?;
         if !matches!(
             parser_type,
-            "checksum" | "gnu" | "bsd" | "github-release-assets"
+            "checksum" | "gnu" | "bsd" | "github-release-assets" | "header"
         ) {
             return Ok(Self::Unsupported {
                 parser_type: parser_type.to_owned(),
@@ -246,6 +313,15 @@ impl<'de> Deserialize<'de> for RemoteChecksumParser {
             Known::Gnu { algorithm } => Ok(Self::Gnu { algorithm }),
             Known::Bsd { algorithm } => Ok(Self::Bsd { algorithm }),
             Known::GithubReleaseAssets => Ok(Self::GithubReleaseAssets),
+            Known::Header {
+                name,
+                algorithm,
+                encoding,
+            } => Ok(Self::Header {
+                name,
+                algorithm,
+                encoding,
+            }),
         }
     }
 }

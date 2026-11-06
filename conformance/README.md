@@ -77,16 +77,34 @@ version parser 不支持 header，不把 header helper 当作 version parser 类
 大小写、相同值去重、冲突、缺失及 `response.headers.<小写名称>` 路径由 Rust
 集成测试验证。A5 再在 checksum corpus 中为 header parser 声明路径。
 
-### Checksum 的阶段边界与错误字段（A3 / A4）
+### Checksum 的阶段边界与错误字段（A3 / A4 / A5）
 
 Rust 运行器读取整个 `parsers/checksum.json`，执行 `checksum`、`gnu`、`bsd`、
-`github-release-assets` 和未知 parser type 用例。只有 `header` 用例留给 A5，
-逐项打印 `SKIP <name>: implemented in A5`。
-查看完整名称与跳过记录可运行 `cargo test -p manifest-parser --test conformance -- --nocapture`。
+`github-release-assets`、`header` 和未知 parser type 用例，不跳过任何用例。
+查看完整名称可运行 `cargo test -p manifest-parser --test conformance -- --nocapture`。
 
-`RemoteChecksumParser::parse` 在分派 parser 之前检查 body 的 UTF-8 字节数，
+`RemoteChecksumParser::parse` 对非 `header` 规则在分派之前检查 body 的 UTF-8 字节数，
 超过上限时优先返回 `parser.body_too_large`。`checksum`、`gnu`、`bsd` 都只读 body，
 忽略 headers 的值、冲突和大小，不会在 body 缺失或无效时回退到 header。
+
+`header` 只读取规则显式声明的 header，不读取或限制 body，也忽略其他 header 的大小。
+按 ASCII 大小写不敏感的名称查找，先检查每个匹配值的 UTF-8 字节数，
+任一值超限优先报 `parser.body_too_large`，包括重复值有冲突或编码非法的情况。
+只有原始字符串完全相同的重复值才合并；大小写不同的 hex 值也视为冲突。
+base64 使用 RFC 4648 标准字母表（`+`、`/`），要求规范的 `=` padding（需要时）
+和零填充位；拒绝 URL-safe 字母表、缺失 padding、首尾或内部空白。
+hex 同样不 trim；HTTP 宿主应在构造 `RemoteResponse` 前去除传输层首尾空白。
+`not_found` 和 `ambiguous` 的 fields 为 `{ name }`，保留规则声明的名称；
+`invalid_encoding` 和 `invalid_checksum` 的 fields 为 `{}`。
+所有 header 错误的 path 都是 `response.headers.<ASCII 小写名称>`。
+corpus 覆盖调低的上限、UTF-8 计量、编码错误和路径；Rust 回归还覆盖默认 8 KiB
+header 边界与超过默认 2 MiB 的 body 不影响合法 header。
+
+header 名称在 metadata 的 `ResourceVariantTemplate` artifacts 解码边界校验：
+非空且只能含 RFC 9110 token 字符，即 ASCII 字母、数字及 ``!#$%&'*+-.^_`|~``。
+编译产物保持宽松解码，A5 不因非法名称而拒绝整个 manifest；B1 可进一步语义校验。
+共用 parser 类型的 Schema 不增加名称 pattern，以保持模板专属校验边界，
+生成物仅新增 header 变体和 `HeaderEncoding`。
 
 GNU 和 BSD 按 `\n` 分行，每行只移除一个末尾 `\r`。
 GNU 使用 `<hex>[ \t]+[* ]?<name>[ \t]*`，按完整 artifact 名称匹配，

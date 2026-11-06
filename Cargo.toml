@@ -10,6 +10,7 @@ license = "GPL-3.0-only"
 manifest-metadata = { path = "crates/manifest-metadata" }
 manifest-parser = { path = "crates/manifest-parser" }
 
+base64 = "0.22"
 indexmap = { version = "2", features = ["serde"] }
 percent-encoding = "2.3"
 regex = "1"

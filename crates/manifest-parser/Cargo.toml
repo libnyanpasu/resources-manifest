@@ -6,6 +6,7 @@ description = "Resource checksum and remote parser definitions"
 license.workspace = true
 
 [dependencies]
+base64.workspace = true
 percent-encoding.workspace = true
 regex.workspace = true
 schemars.workspace = true

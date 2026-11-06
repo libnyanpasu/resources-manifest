@@ -455,6 +455,26 @@
             }
           },
           "required": ["type"]
+        },
+        {
+          "description": "The digest is read from the named response header (case-insensitive).",
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string"
+            },
+            "algorithm": {
+              "$ref": "#/$defs/ChecksumAlgorithm"
+            },
+            "encoding": {
+              "$ref": "#/$defs/HeaderEncoding"
+            },
+            "type": {
+              "type": "string",
+              "const": "header"
+            }
+          },
+          "required": ["type", "name", "algorithm", "encoding"]
         }
       ]
     },
@@ -462,6 +482,21 @@
       "description": "Supported checksum algorithms.",
       "type": "string",
       "enum": ["md5", "sha256", "sha512"]
+    },
+    "HeaderEncoding": {
+      "description": "How a `header` checksum parser decodes the header value.",
+      "oneOf": [
+        {
+          "description": "Hexadecimal digest, any case.",
+          "type": "string",
+          "const": "hex"
+        },
+        {
+          "description": "Standard base64 (`+/`, padded) of the raw digest bytes.",
+          "type": "string",
+          "const": "base64"
+        }
+      ]
     }
   }
 }

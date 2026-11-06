@@ -116,11 +116,7 @@ fn compare(result: Result<Value, ParseError>, expect: &Expectation) -> Result<()
     }
 }
 
-fn run_cases(
-    corpus: &str,
-    include: impl Fn(&Value) -> bool,
-    execute: impl Fn(Value) -> Result<Value, ParseError>,
-) {
+fn run_cases(corpus: &str, execute: impl Fn(Value) -> Result<Value, ParseError>) {
     let cases: Vec<Case> = serde_json::from_str(corpus).expect("valid conformance corpus");
     assert!(!cases.is_empty(), "conformance corpus must contain cases");
     let mut failures = Vec::new();
@@ -129,10 +125,6 @@ fn run_cases(
     for case in cases {
         if !names.insert(case.name.clone()) {
             failures.push(format!("{}: duplicate case name", case.name));
-        }
-        if !include(&case.input) {
-            println!("SKIP {}: implemented in A5", case.name);
-            continue;
         }
         executed += 1;
         match compare(execute(case.input), &case.expect) {
@@ -148,7 +140,6 @@ fn run_cases(
 fn version() {
     run_cases(
         include_str!("../../../conformance/parsers/version.json"),
-        |_| true,
         |input| {
             let input: VersionInput = serde_json::from_value(input).expect("valid version input");
             let parser = input.parser.compile(&input.limits.apply())?;
@@ -162,7 +153,6 @@ fn version() {
 fn checksum() {
     run_cases(
         include_str!("../../../conformance/parsers/checksum.json"),
-        |input| input["parser"]["type"].as_str() != Some("header"),
         |input| {
             let input: ChecksumInput = serde_json::from_value(input).expect("valid checksum input");
             let checksum = input.parser.parse(
@@ -275,6 +265,48 @@ fn github_expanded_assets_fixtures() {
         without_digest > 0,
         "fixtures must contain assets without digests"
     );
+}
+
+#[test]
+fn checksum_header_default_limits() {
+    let limits = Limits::default();
+    let parser = RemoteChecksumParser::Header {
+        name: "X-Digest".into(),
+        algorithm: manifest_parser::ChecksumAlgorithm::Sha256,
+        encoding: manifest_parser::HeaderEncoding::Hex,
+    };
+    let body = "!".repeat(limits.body_bytes() + 1);
+    let headers = vec![("x-digest".into(), "AB".repeat(32))];
+    let response = RemoteResponse {
+        body: &body,
+        headers: &headers,
+    };
+    assert_eq!(
+        parser
+            .parse(&response, "unused", &limits)
+            .unwrap()
+            .to_string(),
+        format!("sha256:{}", "ab".repeat(32))
+    );
+    for actual in [limits.header_value_bytes(), limits.header_value_bytes() + 1] {
+        let headers = vec![("x-digest".into(), "g".repeat(actual))];
+        let response = RemoteResponse {
+            body: &body,
+            headers: &headers,
+        };
+        let error = parser.parse(&response, "unused", &limits).unwrap_err();
+        assert_eq!(error.path(), "response.headers.x-digest");
+        if actual == limits.header_value_bytes() {
+            assert_eq!(error.code(), "parser.invalid_checksum");
+            assert_eq!(error.fields(), serde_json::json!({}));
+        } else {
+            assert_eq!(error.code(), "parser.body_too_large");
+            assert_eq!(
+                error.fields(),
+                serde_json::json!({"limit": limits.header_value_bytes(), "actual": actual})
+            );
+        }
+    }
 }
 
 #[test]

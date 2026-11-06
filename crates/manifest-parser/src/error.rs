@@ -32,13 +32,28 @@ pub enum ParseError {
     FindHeader { name: String },
     #[snafu(display("header {name:?} has conflicting values"))]
     SelectHeader { name: String },
+    #[snafu(display("header {name:?} exceeds {limit} bytes: {actual}"))]
+    ValidateHeaderSize {
+        name: String,
+        limit: usize,
+        actual: usize,
+    },
+    #[snafu(display("cannot decode header {name:?}: {source}"))]
+    DecodeHeader {
+        name: String,
+        source: base64::DecodeError,
+    },
+    #[snafu(display("checksum in header {name:?} is invalid"))]
+    ValidateHeaderChecksum { name: String },
 }
 
 impl ParseError {
     #[must_use]
     pub fn code(&self) -> &'static str {
         match self {
-            Self::ValidateBodySize { .. } => "parser.body_too_large",
+            Self::ValidateBodySize { .. } | Self::ValidateHeaderSize { .. } => {
+                "parser.body_too_large"
+            }
             Self::ValidatePatternSize { .. } | Self::CompilePattern { .. } => {
                 "parser.invalid_pattern"
             }
@@ -47,7 +62,10 @@ impl ParseError {
                 "parser.not_found"
             }
             Self::ValidateVersion { .. } => "parser.invalid_version",
-            Self::ValidateChecksum { .. } => "parser.invalid_checksum",
+            Self::ValidateChecksum { .. } | Self::ValidateHeaderChecksum { .. } => {
+                "parser.invalid_checksum"
+            }
+            Self::DecodeHeader { .. } => "parser.invalid_encoding",
             Self::ReadDigest { .. } => "parser.digest_missing",
             Self::ResolveParser { .. } => "resolve.unsupported_parser",
             Self::SelectHeader { .. } | Self::SelectChecksum { .. } => "parser.ambiguous",
@@ -57,7 +75,11 @@ impl ParseError {
     #[must_use]
     pub fn path(&self) -> Cow<'_, str> {
         match self {
-            Self::FindHeader { name } | Self::SelectHeader { name } => {
+            Self::FindHeader { name }
+            | Self::SelectHeader { name }
+            | Self::ValidateHeaderSize { name, .. }
+            | Self::DecodeHeader { name, .. }
+            | Self::ValidateHeaderChecksum { name } => {
                 Cow::Owned(format!("response.headers.{}", name.to_ascii_lowercase()))
             }
             _ => Cow::Borrowed("response.body"),
@@ -68,6 +90,7 @@ impl ParseError {
     pub fn fields(&self) -> Value {
         match self {
             Self::ValidateBodySize { limit, actual }
+            | Self::ValidateHeaderSize { limit, actual, .. }
             | Self::ValidatePatternSize { limit, actual } => {
                 json!({ "limit": limit, "actual": actual })
             }
@@ -81,7 +104,9 @@ impl ParseError {
             Self::CompilePattern { .. }
             | Self::FindVersion {}
             | Self::ValidateVersion {}
-            | Self::ValidateChecksum {} => json!({}),
+            | Self::ValidateChecksum {}
+            | Self::DecodeHeader { .. }
+            | Self::ValidateHeaderChecksum { .. } => json!({}),
         }
     }
 }
