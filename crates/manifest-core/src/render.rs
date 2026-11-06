@@ -259,8 +259,20 @@ pub struct ArtifactRenderOptions<'a> {
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[must_use]
 pub struct RenderedArtifact {
-    pub artifact: String,
-    pub canonical_url: String,
+    artifact: String,
+    canonical_url: String,
+}
+
+impl RenderedArtifact {
+    #[must_use]
+    pub fn artifact(&self) -> &str {
+        &self.artifact
+    }
+
+    #[must_use]
+    pub fn canonical_url(&self) -> &str {
+        &self.canonical_url
+    }
 }
 
 #[must_use = "literal validation errors must be handled"]

@@ -496,7 +496,7 @@ URL 校验、环 / 深度 / 大小检查，也不要求未知 parser 可执行�
 - B2 API：`ValidatedManifest::artifact(resource_id, variant_id, platform)` 只查找明确指定的
   产物，返回借用句柄 `Option<SelectedArtifact>`；不推导默认或 tags，未知组合返回 None。
   `SelectedArtifact::render(ArtifactRenderOptions { version, source }, &Limits)` 返回
-  `RenderedArtifact { artifact, canonical_url }` 或 `RenderError`。static 未给 version 时取
+  `RenderedArtifact` 或 `RenderError`；结果字段私有，提供只读 `artifact()` 和 `canonical_url()` 访问器。static 未给 version 时取
   latest，指定版本必须在历史中；remote 必须提供已解析版本，匹配 fallback 时合并其 source。
   宿主 source 优先于 release source，与参考实现的 release/source 顺序差异遵循本节优先级。
 - `render_template(template, &BTreeMap<&str, TemplateValue>, path, &Limits)` 暴露通用
@@ -534,12 +534,15 @@ kind 列表按 manifest 中 variant 顺序，仅列出支持目标平台的 `{ v
 `check_policy` 成功即接受，失败通过 verify.kind_rejected 和 `{ kind }` 解释。
 
 - 选择先过滤支持平台的 variant，再按 ID / 精确 tags / 平台默认值选择；tags 空或重复都拒绝，
-  不接受子集匹配。未配置默认值且仅有一个候选时直接选择它，与 B1 的有效 manifest 规则一致（V-13）。
+  不接受子集匹配。宿主 tags 按精确 tag ID 集合比较，不按拼接后的 key 匹配（V-14）。
+  未配置默认值且仅有一个候选时直接选择它，与 B1 的有效 manifest 规则一致（V-13）。
 - `VersionPlan` 有 `kind/latest/releases/remote` 访问器；remote 的 `request()` 返回
   `RequestPlan`，`parser()` 返回 `CompiledVersionParser`，宿主调用其 `parse` 解析版本。
   `DownloadPlan` 有 `artifact/version/request/kind/checksum/checksum_request` 访问器。
   `RequestPlan` 始终携带 `canonical_url`、可选 `mirror_url`、`kind`；static version 计划没有请求。
-- static 下载 kind 取实际选择的 release；remote 默认 `ChecksumMode::Remote`，有规则为
+- static 下载 kind 取实际选择的 release；static 产物没有 fallback snapshot，
+  `checksum_mode` 对其无效，`ChecksumMode::Snapshot` 仍返回正常下载计划。
+  remote 默认 `ChecksumMode::Remote`，有规则为
   `parsed`，无规则为 `none`，即使版本匹配 fallback 也不自动降级。显式 `ChecksumMode::Snapshot`
   必须给出恰好等于 fallback.version 的版本且存在 fallback checksum，才输出 `snapshot`，
   此时不生成远端 checksum 请求。未知 version / checksum parser 在所有模式下都先被拒绝。
@@ -635,6 +638,7 @@ kind 列表按 manifest 中 variant 顺序，仅列出支持目标平台的 `{ v
 | V-11 | remote source 可覆盖内置变量                                                         | 内置变量始终拥有最高优先级                                                                                                      | 防止 manifest 覆盖 version、platform 与 resource / variant 身份                             |
 | V-12 | download 的 release source 覆盖宿主 source                                           | 宿主 source 优先于 release source                                                                                               | §7.2 的显式合并顺序；宿主值仍必须先通过 VersionLabel                                        |
 | V-13 | 缺少平台 default_variants 时，即使唯一候选也失败                                     | 唯一候选可直接选中；多个候选仍必须配置默认                                                                                      | B1 已允许单候选省略默认，选择层保持同一有效性规则                                           |
+| V-14 | 宿主 tags 拼接后比较 `tag_key`，`["a+b"]` 可选中 `[a, b]`                            | 按 tag ID 集合精确比较；合法 tag ID 结果相同                                                                                    | 防拼接歧义（§7.1 tag ID 不含 `+`）                                                          |
 
 ### 11.2 决策
 

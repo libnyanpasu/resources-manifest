@@ -328,6 +328,8 @@ pub struct VersionOptions<'a> {
 pub enum ChecksumMode {
     #[default]
     Remote,
+    /// Use a remote artifact's fallback checksum for its exact fallback version.
+    /// Static artifacts have no fallback snapshot; this mode leaves their normal plan unchanged.
     Snapshot,
 }
 
@@ -606,7 +608,7 @@ pub fn plan_download(
     values.insert(
         "artifact",
         (
-            TemplateValue::Literal(&rendered.artifact),
+            TemplateValue::Literal(rendered.artifact()),
             format!("{}.artifact", selected.path()),
         ),
     );
@@ -615,7 +617,7 @@ pub fn plan_download(
     let request = request_plan(
         selected.manifest,
         &selected.resource.registry,
-        &rendered.canonical_url,
+        rendered.canonical_url(),
         &canonical,
         options.mirror,
         kind,
@@ -635,13 +637,13 @@ pub fn plan_download(
             .map(|request| ChecksumPlan {
                 request,
                 parser: remote.parser.clone(),
-                artifact: rendered.artifact.clone(),
+                artifact: rendered.artifact().to_owned(),
                 limits: *limits,
             })
         })
         .transpose()?;
     Ok(DownloadPlan {
-        artifact: rendered.artifact,
+        artifact: rendered.artifact().to_owned(),
         version: version.to_owned(),
         request,
         checksum: checksum.map(|checksum| ResolvedChecksum { checksum, kind }),

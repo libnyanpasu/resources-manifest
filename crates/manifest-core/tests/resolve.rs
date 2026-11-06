@@ -144,7 +144,7 @@ fn corpus() {
                 validated.artifact(&input.resource, &input.variant, input.platform)
                     .unwrap_or_else(|| panic!("{}: explicit artifact exists", case.name))
                     .render(ArtifactRenderOptions { version: input.version.as_deref(), source: input.source.as_ref() }, &input.limits.apply())
-                    .map(|result| json!({ "artifact": result.artifact, "canonical_url": result.canonical_url }))
+                    .map(|result| json!({ "artifact": result.artifact(), "canonical_url": result.canonical_url() }))
             }
         };
         let actual = match result {
@@ -206,9 +206,9 @@ fn every_static_history_url_has_no_query_or_fragment() {
                                 )
                             });
                         assert!(
-                            !result.canonical_url.contains(['?', '#']),
+                            !result.canonical_url().contains(['?', '#']),
                             "{}",
-                            result.canonical_url
+                            result.canonical_url()
                         );
                         count += 1;
                     }

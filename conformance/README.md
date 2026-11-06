@@ -332,8 +332,8 @@ static 还覆盖 latest 不在首位、历史 checksum 与 latest 不同的情�
 
 ### Kind、选择与计划用例（B3）
 
-`crates/manifest-core/tests/conformance.rs` 递归执行 `kind/` 的全部 JSON，当前共 86 条，
-其中 B3 新增 81 条。compat 投影也改为直接调用 core 的静态 kind 与 version 计划，
+`crates/manifest-core/tests/conformance.rs` 递归执行 `kind/` 的全部 JSON，当前共 88 条，
+其中 B3 新增 83 条。compat 投影也改为直接调用 core 的静态 kind 与 version 计划，
 同时断言逐产物支持性；未知 parser 产物还检查全部策略组合都拒绝 none。
 
 | 文件                  | input / 操作                                                                                                | expect.ok                              |

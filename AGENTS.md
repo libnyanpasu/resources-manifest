@@ -10,8 +10,9 @@
 - `crates/manifest-parser`：checksum / parser 的 wire 类型与无 IO 实现，以及
   `Limits`、`RemoteResponse`、`ParseError`；不引入 IO / async 依赖。
   metadata 依赖 parser，禁止反向依赖；`ResourceChecksum` 的实现也位于此 crate。
-- `crates/manifest-core`：编译产物的纯语义校验与 `ValidatedManifest`，依赖 metadata
-  和 parser；不引入 IO / async 依赖，metadata 和 parser 禁止反向依赖 core。
+- `crates/manifest-core`：编译产物的纯语义校验与 `ValidatedManifest`、模板引擎、variant
+  选择、版本与下载计划、`ChecksumKind` 和 `VerifyPolicy`；依赖 metadata 和 parser，
+  不引入 IO / async 依赖，metadata 和 parser 禁止反向依赖 core。
 - `crates/manifest-schema-generator`：从元类型生成 TypeScript 类型定义、版本常量与 JSON
   Schema，写入 `packages/manifest-metadata`。
 - `packages/manifest-metadata`：纯 TypeScript 库，存放生成的类型与 schema
