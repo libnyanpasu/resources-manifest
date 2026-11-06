@@ -114,7 +114,11 @@
     },
     "expect": {
       "error": {
-        "code": "parser.group_out_of_range"
+        "code": "parser.group_out_of_range",
+        "fields": {
+          "group": 2,
+          "groups": 2
+        }
       }
     }
   }

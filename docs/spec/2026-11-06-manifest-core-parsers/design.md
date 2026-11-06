@@ -15,7 +15,7 @@
 2. **采纳拆 crate 的方向，但分两层。** `manifest-parser` 是叶子 crate，拥有 checksum 与 parser 的定义和实现，不依赖 metadata。`manifest-core` 在它之上，拥有语义校验、模板渲染、variant 选择和下载计划。只抽 parser 解决不了偏差问题：parser 只有约 80 行，偏差风险主要在变量合并、模板渲染和语义校验。
 3. **两层都不做 IO（sans-IO）。** 网络请求、凭据、重定向、超时、响应大小上限都由宿主负责。core 输出请求计划，宿主把响应（body 与 headers）交回 parser。
 4. **wasm 只给 Node 包用（O-6，已定）。** 用途是构建期的胶水脚本下载并校验资源。Rust 宿主（clash-nyanpasu 后端）直接链接 crate；webview 只展示后端给出的结果，不加载 wasm。
-5. **默认只接受权威 checksum（O-1，已定）。** 只有 manifest 内嵌、随 manifest 签名的 checksum 才算权威。远端经 parser 规则取得的 checksum（不论来自 body 还是 header，不论走 canonical 还是 mirror）都标为 `Parsed`，默认被拒。从 header 取 checksum 必须由 parser 规则显式声明，宿主不得自行从响应头推断。每个产物的 `ChecksumKind` 不联网就能从 manifest 推出，前端据此在更新 alpha 这类内核前提示用户（§5.1）。
+5. **默认只接受权威 checksum（O-1，已定）。** 只有 manifest 内嵌、随 manifest 签名的 checksum 才算权威。远端经 parser 规则取得的 checksum（不论来自 body 还是 header，不论走 canonical 还是 mirror）都标为 `parsed`，默认被拒。从 header 取 checksum 必须由 parser 规则显式声明，宿主不得自行从响应头推断。每个产物的 `ChecksumKind` 不联网就能从 manifest 推出，前端据此在更新 alpha 这类内核前提示用户（§5.1）。
 6. **版本采用 `major.minor`（O-7，已定，参考 Docker）。** `manifest_version` 改为字符串 `"2.0"`。兼容更新只升 minor；消费者接受同一 major 下的任意 minor。**包发布前 schema 版本保持 `2.0`**，发布前的契约改动都并入 2.0，不升版本（O-11）。
 7. **类型导出只有 specta 一个来源。** wasm 边界用 `serde-wasm-bindgen` 传值，TS 类型复用生成物，不引入 tsify（V-6）。
 8. **优先级：**
@@ -133,7 +133,7 @@ wasm 的价值在于"Node 和 Rust 共享一份实现"，前提是这份实现�
 | G6  | `validate_manifest` 对适用于编译产物的每条不变量都有一正一反两个用例                                                                                                             | `cargo test -p manifest-core validate::`                                                                                                                                     |
 | G7  | 生成物只出现预期内的变化：`manifest_version` 变为 `"2.0"` 及其类型、`group` 上限、版本常量、模板侧 `additionalProperties: false`、`header` parser。`pnpm check:generated` 无差异 | `pnpm check:generated`；PR 描述列出差异                                                                                                                                      |
 | G8  | 一份 `minor` 比已知值更新、且带未知 platform key 和未知 parser type 的 manifest 能被解析；只有受影响的产物报 `resolve.unsupported_*`，其余产物正常                               | `conformance/compat/` 用例                                                                                                                                                   |
-| G9  | 每个产物的 `ChecksumKind` 不联网就能得出；默认策略只接受 `Authoritative`                                                                                                         | `artifact_checksum_kind` 的用例；胶水脚本对 `Parsed` 产物默认失败的测试                                                                                                      |
+| G9  | 每个产物的 `ChecksumKind` 不联网就能得出；默认策略只接受 `authoritative`                                                                                                         | `artifact_checksum_kind` 的用例；胶水脚本对 `parsed` 产物默认失败的测试                                                                                                      |
 | G10 | Node 包只通过 `@manifest/runtime` 调用语义逻辑                                                                                                                                   | `rg 'parseRemote\|renderTemplate\|tag_key' packages --glob '!manifest-runtime/**' --glob '!**/*_test.ts'` 退出码 1                                                           |
 | G11 | wasm 产物大小与 Node 初始化耗时有记录，并据此定下预算                                                                                                                            | C1 卡的 PR 描述；O-8                                                                                                                                                         |
 
@@ -173,21 +173,32 @@ S0a 卡把本节内容写进 `D/`。本节是规范性的。
 ### 5.1 信任模型与 `ChecksumKind`
 
 1. **信任锚点是签过名的 manifest。** 签名只覆盖 manifest 本身，所以只有 manifest 内嵌的 checksum 是权威的（签名方案见 O-2；本 spec 只确定签名的覆盖范围）。
-2. **`ChecksumKind` 有四种：**
+2. **`ChecksumKind` 有四种：** wire 名称固定为小写 snake_case：`authoritative`、`parsed`、`snapshot`、`none`（Rust 用 `#[serde(rename_all = "snake_case")]`）。
 
    | kind            | 来源                                                                                                 | 默认策略                           |
    | --------------- | ---------------------------------------------------------------------------------------------------- | ---------------------------------- |
-   | `Authoritative` | static 产物的 release 中内嵌的 `checksum`                                                            | 接受                               |
-   | `Parsed`        | remote 产物按 parser 规则从远端响应解析出的 checksum（body 或 header；不论走 canonical 还是 mirror） | 拒绝，需要宿主显式开启             |
-   | `Snapshot`      | remote 产物 `fallback` 中内嵌的 checksum，只在解析出的版本恰好等于 `fallback.version` 时适用         | 拒绝，需要宿主显式开启（离线策略） |
-   | `None`          | 没有任何 checksum                                                                                    | 一律拒绝，不提供开关               |
+   | `authoritative` | static 产物的 release 中内嵌的 `checksum`                                                            | 接受                               |
+   | `parsed`        | remote 产物按 parser 规则从远端响应解析出的 checksum（body 或 header；不论走 canonical 还是 mirror） | 拒绝，需要宿主显式开启             |
+   | `snapshot`      | remote 产物 `fallback` 中内嵌的 checksum，只在解析出的版本恰好等于 `fallback.version` 时适用         | 拒绝，需要宿主显式开启（离线策略） |
+   | `none`          | 没有任何 checksum                                                                                    | 一律拒绝，不提供开关               |
 
    md5 不改变 kind；宿主可以另外按算法拒绝。
 
-3. **kind 静态可推。** `artifact_checksum_kind(&ResourceArtifactTemplate) -> ChecksumKind` 只看 manifest：static 且该 release 有 checksum 时为 `Authoritative`；static 但没有 checksum 时为 `None`；remote 且声明了 `checksum` 规则时为 `Parsed`；remote 且没有规则时为 `None`。前端（经 clash-nyanpasu 后端）在用户选择、更新 alpha 这类内核**之前**就能拿到 kind 并提示。下载计划和最终结果也带同一个 kind，作为执行时的依据。
-4. **只有 parser 规则能产生 `Parsed`。** 宿主不得自行从响应头（`Digest`、`Repr-Digest`、`ETag`、`x-*-checksum` 等）或任何未声明的来源推断 checksum。要用 header，必须在 manifest 里写 `header` parser 规则（§5.3）。
+   推荐展示方式如下；具体 UI 文案不在本设计范围内（§12）。展示建议不代替策略决定。
+
+   | kind            | 推荐展示                                                                 |
+   | --------------- | ------------------------------------------------------------------------ |
+   | `authoritative` | 无警告                                                                   |
+   | `parsed`        | 警告：完整性以更新时获取的值为依据，而不是签名 manifest 中的值           |
+   | `snapshot`      | 警告：这是内嵌的离线快照，仅在解析出的版本等于 `fallback.version` 时适用 |
+   | `none`          | 硬性阻止；任何校验策略都不能接受                                         |
+
+   宿主必须在 kind 旁同时暴露有效策略决定：用宿主的 `VerifyPolicy` 调用 `check_policy` 得到接受，或拒绝及原因。kind 本身不能决定最终结果。
+
+3. **kind 静态可推。** `artifact_checksum_kind(&ResourceArtifactTemplate) -> ChecksumKind` 只看 manifest：static 且该 release 有 checksum 时为 `authoritative`；static 但没有 checksum 时为 `none`；remote 且声明了 `checksum` 规则时为 `parsed`；remote 且没有规则时为 `none`。未知 version 或 checksum parser 的产物为 `none`。前端（经 clash-nyanpasu 后端）在用户选择、更新 alpha 这类内核**之前**就能拿到 kind 并提示；提供按 resource 与平台批量列出每个 variant kind 的 helper（§7.3）。静态推导用于选择前展示；下载计划和最终结果携带执行时适用的 kind（包括显式离线 fallback 适用的 `snapshot`），宿主同时暴露该 kind 的有效策略决定。
+4. **只有 parser 规则能产生 `parsed`。** 宿主不得自行从响应头（`Digest`、`Repr-Digest`、`ETag`、`x-*-checksum` 等）或任何未声明的来源推断 checksum。要用 header，必须在 manifest 里写 `header` parser 规则（§5.3）。
 5. **mirror 只负责传输**，不影响 kind。下载计划同时给出 `canonical_url` 和可选的 `mirror_url`，宿主把实际使用的通道交回 core，只用于诊断和日志。
-6. **宿主策略**（胶水脚本的默认值）：只接受 `Authoritative`。`--allow-parsed`、`--allow-snapshot` 分别放开对应 kind，并输出警告。不论哪种 kind，校验失败都在解压或替换之前终止。
+6. **宿主策略**（胶水脚本的默认值）：只接受 `authoritative`。`--allow-parsed`、`--allow-snapshot` 分别放开对应 kind，并输出警告。`none` 不被任何校验策略接受。不论哪种 kind，校验失败都在解压或替换之前终止。
 
 ### 5.2 模板值分类
 
@@ -204,7 +215,7 @@ S0a 卡把本节内容写进 `D/`。本节是规范性的。
 
 ### 5.3 parser 精确语义
 
-parser 的输入是 `RemoteResponse { body: &str, headers: &[(String, String)] }`；header 名称不区分大小写。body 超过上限（§5.5）直接报 `body_too_large`。
+parser 的输入是 `RemoteResponse { body: &str, headers: &[(String, String)] }`；header 名称不区分大小写。body 或单个 header 值超过上限（§5.5）直接报 `parser.body_too_large`，字段为 `{ limit, actual }`。
 
 | parser                  | 语义                                                                                                                                                                                                                             |
 | ----------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -216,6 +227,8 @@ parser 的输入是 `RemoteResponse { body: &str, headers: &[(String, String)] }
 | `github-release-assets` | 把 HTML 切成资产条目：名称取自下载链接 `href` 的最后一个路径段（百分号解码后），digest 只从同一条目内读取。名称必须完全相等；没有匹配报 `not_found`；匹配条目没有 digest 报 `digest_missing`；同名条目 digest 冲突报 `ambiguous` |
 | `header`（新增）        | `{ type: "header", name, algorithm, encoding: "hex" \| "base64" }`：读取指定的响应头。没有这个头报 `not_found`；同名头出现多次且值不同报 `ambiguous`；`base64` 先解码再转成小写 hex；长度必须等于该算法的长度                    |
 
+header 的 base64 非法时报 `parser.invalid_encoding`；hex 含非十六进制字符或字符数为奇数，以及解码后 digest 长度不等于算法长度，均报 `parser.invalid_checksum`。单个 header 值超过 8 KiB 时优先报 `parser.body_too_large`（`{ limit, actual }`）；此码同时适用于 body 和单个 header 值，不新增错误码。
+
 version parser 不支持 header，需求出现时再按 minor 增加。
 
 ### 5.4 版本与兼容策略（参考 Docker）
@@ -224,12 +237,12 @@ version parser 不支持 header，需求出现时再按 minor 增加。
    - TS 类型：`` `2.${number}` ``。
    - Schema：`pattern: "^2\\.(0|[1-9][0-9]*)$"`。
    - Rust：`ManifestVersion { minor: u32 }`，major 是常量 2。
-   - 生产者写出当前的 `CURRENT_MINOR`。
-2. **消费规则：** major 不等于 2 时拒绝（`manifest.unsupported_major`）。minor 任意，都接受。minor 大于已知值时，结果中带 `newer_minor: true`，供诊断。
+   - 生产者写出当前的 `CURRENT_MINOR`（当前为 0）。minor 不允许前导零；`"2.07"` 报 `manifest.invalid_version_format`。
+2. **消费规则：** major 不等于 2 时拒绝（`manifest.unsupported_major`）。minor 任意，都接受。minor 大于消费者的 `CURRENT_MINOR` 时，结果中带 `newer_minor: true`，供诊断。
 3. **只升 minor 的兼容更新**：旧消费者要么能忽略新增内容，要么只对受影响的那个产物报明确的不支持错误，不影响其他产物。
    - 新增可选字段：旧消费者忽略。
    - 新增 platform：旧消费者跳过未知的 platform key。
-   - 新增 parser type 或 checksum parser type：旧消费者解码为"不支持"，只在解析该产物时报 `resolve.unsupported_parser`。旧消费者对这类产物推出的 kind 为 `None`，按默认策略被拒。
+   - 新增 parser type 或 checksum parser type：旧消费者解码为"不支持"，只在解析该产物时报 `resolve.unsupported_parser`，结构字段 `parser_type` 保留原始未知的 `type` tag。旧消费者对这类产物推出的 kind 为 `none`，任何校验策略都不能接受，因此该产物不可用，而不是静默跳过校验。
 4. **必须升 major 的变更：** 新增必填字段；改变已有字段或 parser 的语义；删除字段；把已有产物换成旧消费者不认识的 parser type（这会让旧消费者失去原有的能力）。major 升级沿用 v1 → v2 的双文件过渡模式（`D/:337-348`）。
 5. **宽松只在编译产物的解码侧。** 模板侧严格（`deny_unknown_fields`，O-5），用来拦住作者的拼写错误。生成的 TS 与 JSON Schema 描述当前 minor 的精确契约，不包含"未知"变体。消费者不能只因为旧版 Schema 校验失败就拒绝新 minor 的 manifest，消费侧校验以 `validate_manifest` 为准。Schema 的 `$id` 带 `major.minor`。
 6. **发布前冻结版本号（O-11）：** `@manifest/*` 或 crate 首次发布之前，版本保持 `"2.0"`，这期间的契约改动（包括本 spec 的全部改动）都并入 2.0，不升 minor。发布之后才按第 3、4 条升版本。
@@ -247,24 +260,34 @@ version parser 不支持 header，需求出现时再按 minor 增加。
 | 模板嵌套深度                                 | 8     |
 | 单次渲染输出                                 | 8 KiB |
 
+body 和单个 header 值的大小按 UTF-8 字节数计算；超限均报 `parser.body_too_large`，`limit` 为有效字节上限，`actual` 为实际字节数。
+
 具体数值在 A2 卡用真实页面大小复核，改动记进 §11.2。
 
 ### 5.6 错误码
 
 错误是带结构字段的类型化枚举（rust.md §7.2，用 snafu）。每个变体有稳定的 `code()`；跨语言只靠 `code` 加结构字段识别，不解析 `message`。
 
-| 前缀        | 码                                                                                                                                                               |
-| ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `manifest.` | `unsupported_major`、`invalid_version_format`                                                                                                                    |
-| `parser.`   | `body_too_large`、`not_found`、`ambiguous`、`digest_missing`、`invalid_version`、`invalid_checksum`、`invalid_encoding`、`invalid_pattern`、`group_out_of_range` |
-| `template.` | `unknown_variable`、`cycle`、`depth_exceeded`、`output_too_large`、`invalid_literal`                                                                             |
-| `url.`      | `invalid`、`unsupported_scheme`、`forbidden_component`                                                                                                           |
-| `select.`   | `unknown_resource`、`unsupported_platform`、`unknown_variant`、`no_exact_tags`、`conflicting_selection`、`default_missing`                                       |
-| `resolve.`  | `version_required`、`version_not_in_history`、`mirror_not_allowed`、`unknown_registry`、`unknown_mirror`、`unsupported_parser`                                   |
-| `verify.`   | `kind_rejected`（带 `kind`）、`digest_mismatch`                                                                                                                  |
-| `validate.` | 每条不变量一个码（B1 卡给出完整列表）                                                                                                                            |
+| 前缀        | 码                                                                                                                         | Fields                            |
+| ----------- | -------------------------------------------------------------------------------------------------------------------------- | --------------------------------- |
+| `manifest.` | `unsupported_major`                                                                                                        | `{ major }`                       |
+| `manifest.` | `invalid_version_format`                                                                                                   | `{}`                              |
+| `parser.`   | `body_too_large`                                                                                                           | `{ limit, actual }`               |
+| `parser.`   | `ambiguous`                                                                                                                | `{ name }`                        |
+| `parser.`   | `group_out_of_range`                                                                                                       | `{ group, groups }`               |
+| `parser.`   | `not_found`, `digest_missing`, `invalid_version`, `invalid_checksum`, `invalid_encoding`, `invalid_pattern`                | 结构字段待对应实现卡细化          |
+| `template.` | `unknown_variable`, `cycle`, `depth_exceeded`, `output_too_large`, `invalid_literal`                                       | 结构字段待对应实现卡细化          |
+| `url.`      | `invalid`, `unsupported_scheme`, `forbidden_component`                                                                     | 结构字段待对应实现卡细化          |
+| `select.`   | `unknown_resource`, `unsupported_platform`, `unknown_variant`, `no_exact_tags`, `conflicting_selection`, `default_missing` | 结构字段待对应实现卡细化          |
+| `resolve.`  | `unsupported_parser`                                                                                                       | `{ parser_type }`                 |
+| `resolve.`  | `version_required`, `version_not_in_history`, `mirror_not_allowed`, `unknown_registry`, `unknown_mirror`                   | 结构字段待对应实现卡细化          |
+| `verify.`   | `kind_rejected`                                                                                                            | `{ kind }`                        |
+| `verify.`   | `digest_mismatch`                                                                                                          | `{ algorithm, expected, actual }` |
+| `validate.` | 每条不变量一个码                                                                                                           | B1 定义完整码与字段               |
 
-错误都带 `path`：`resources.<id>.variants[<i>]...` 这类 JSON 路径，或参数名。
+错误都带 `path`，统一使用从输入文档根开始的 dotted locator：以 `.` 连接字段或对象键，数组下标写作 `[<i>]`，例如 `manifest_version`、`resources.<id>.variants[<i>].tags`。宿主传入参数使用同一形式的 `arg.<name>`，例如 `arg.version`；不使用裸参数名或其他路径语法。一致性运行器对声明的 `path` 做精确字符串比较。
+
+消费者按 `code` 与结构字段进行程序化匹配，不解析 `message`。`parser.ambiguous` 的 `name` 是请求的 artifact 文件名或 header 规则中的名称；`groups` 是包含 group 0 的捕获组总数。
 
 ### 5.7 消费者边界
 
@@ -346,8 +369,9 @@ version parser 不支持 header，需求出现时再按 minor 增加。
 - `select_variant`：按 id、精确 tag 或平台默认值选择，语义与 `R/resource-template.ts:887-943` 一致。
 - `artifact_checksum_kind(&ResourceArtifactTemplate) -> ChecksumKind`（§5.1 第 3 条），并为 UI 提供"列出某 resource 在某平台下每个 variant 的 kind"的便捷函数。
 - `plan_version` 与 `plan_download` 返回请求计划：`canonical_url`、可选的 `mirror_url`、已编译的 parser、`ChecksumKind`。
-- `finish_checksum(plan, &RemoteResponse) -> Result<ResolvedChecksum, _>`：返回 checksum 和 `kind: Parsed`。
+- `finish_checksum(plan, &RemoteResponse) -> Result<ResolvedChecksum, _>`：返回 checksum 和 `kind: "parsed"`。
 - `VerifyPolicy { allow_parsed, allow_snapshot }`（实现 `Default`，默认全为 `false`）与 `check_policy(kind, &VerifyPolicy) -> Result<(), VerifyError>`。digest 比对由宿主完成，因为哈希计算属于 IO 侧；比对失败统一报 `verify.digest_mismatch`。
+- 宿主同时暴露 kind 和在其 `VerifyPolicy` 下的 `check_policy` 决定（接受，或拒绝及原因）；静态 kind 用于选择前展示，计划与结果携带执行时适用的 kind。
 - `ChecksumKind`、计划与错误类型 derive `specta::Type`，经 clash-nyanpasu 的 bindings 暴露给前端。
 
 ### 7.4 B4 参考差分
@@ -380,8 +404,8 @@ version parser 不支持 header，需求出现时再按 minor 增加。
 ### 8.4 C4 构建期下载校验胶水脚本（`@manifest/downloader`）
 
 - 命令行用法：`manifest-download --manifest <path|url> --resource <id> --platform <p> [--variant <id> | --tags <a,b>] [--mirror <id>] [--allow-parsed] [--allow-snapshot] --out <dir>`。
-- 流程：获取 manifest → `validateManifest` → 选择 → 打印 kind → `checkPolicy` → 按计划用 `fetch` 请求 → `parseVersion` / `finishChecksum` → 下载到临时文件 → 用 `node:crypto` 计算 digest 并比对 → 原子地移入 `--out`。
-- 默认只接受 `Authoritative`；遇到 `Parsed` 时报 `verify.kind_rejected`，提示可以加 `--allow-parsed`。
+- 流程：获取 manifest → `validateManifest` → 选择 → 打印 kind 与宿主 `VerifyPolicy` 下的 `checkPolicy` 决定（接受或拒绝及原因）→ 按计划用 `fetch` 请求 → `parseVersion` / `finishChecksum` → 下载到临时文件 → 用 `node:crypto` 计算 digest 并比对 → 原子地移入 `--out`。
+- 默认只接受 `authoritative`；遇到 `parsed` 时报 `verify.kind_rejected`，提示可以加 `--allow-parsed`。
 - HTTP 侧的上限（重定向次数、超时、body 大小）与 §5.5 一致；不读取任何未声明的响应头作为 checksum。
 
 ---
@@ -416,7 +440,7 @@ version parser 不支持 header，需求出现时再按 minor 增加。
 
 | #    | 现设计 / 参考实现                                                                    | 本设计                                                                                                                          | 理由                                                                                        |
 | ---- | ------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
-| V-1  | 结果中分开给出 `checksum`、`fallback_checksum`、`checksum_remote`；mirror 不区分信任 | 统一用 `ChecksumKind`（`Authoritative`/`Parsed`/`Snapshot`/`None`），可静态推出；默认只接受 `Authoritative`；mirror 不影响 kind | O-1：只签名权威来源；前端需要提前知道 kind                                                  |
+| V-1  | 结果中分开给出 `checksum`、`fallback_checksum`、`checksum_remote`；mirror 不区分信任 | 统一用 `ChecksumKind`（`authoritative`/`parsed`/`snapshot`/`none`），可静态推出；默认只接受 `authoritative`；mirror 不影响 kind | O-1：只签名权威来源；前端需要提前知道 kind                                                  |
 | V-2  | 模板变量值递归展开；远端 version 不限制字符集                                        | 区分 `Authored`/`Literal`；`VersionLabel`；最终 URL 不带 userinfo 和 fragment                                                   | §1.2 已复现的注入                                                                           |
 | V-3  | `github-release-assets` 在 2048 字符窗口内按邻近查找                                 | 按条目结构解析，名称完全相等                                                                                                    | §1.3 已复现两种错误匹配                                                                     |
 | V-4  | 排序用 `localeCompare`                                                               | 按 Unicode 码点排序                                                                                                             | 跨运行时的确定性；快照中所有 key 与 ID 是 ASCII 小写，两种排序结果相同（2026-11-06 已核对） |
@@ -431,7 +455,7 @@ version parser 不支持 header，需求出现时再按 minor 增加。
 
 | #    | 问题                             | 结论                                                                                                                                                                                   |
 | ---- | -------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| O-1  | 默认校验策略                     | **已定（2026-11-06）：** 只接受权威来源（manifest 内嵌、随签名覆盖）的 checksum。经 parser 取得的一律是 `Parsed`；从 header 取必须由 parser 规则显式声明；前端感知 kind 并提示（§5.1） |
+| O-1  | 默认校验策略                     | **已定（2026-11-06）：** 只接受权威来源（manifest 内嵌、随签名覆盖）的 checksum。经 parser 取得的一律是 `parsed`；从 header 取必须由 parser 规则显式声明；前端感知 kind 并提示（§5.1） |
 | O-2  | manifest 签名                    | **部分已定（2026-11-06）：** 签名只覆盖权威来源，即 manifest 本身。方案（minisign/ed25519 等）与流程另出 spec（D5）                                                                    |
 | O-3  | `github-release-assets` 的解析器 | **待定：** A4 实测后在轻量 tokenizer 与完整 DOM 之间选一个。基于 JSON API 的 parser 不在本 spec 内                                                                                     |
 | O-4  | Clash Rust alpha 的版本来源      | **待定：** D4 开工前确认 `latest/version.txt` 的实际内容                                                                                                                               |

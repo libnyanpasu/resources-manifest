@@ -22,18 +22,19 @@
 
 - `name` 在所有目录、所有 JSON 文件中全局唯一，使用 dotted prefix；运行器以完整名称标识用例。
 - `input` 总是对象，各目录的形状和操作见下表。
-- `expect` 恰有一个分支：`{ "ok": <结果> }` 或 `{ "error": { "code": "...", "path": "..." } }`。
-  `path` 可省略；省略表示不约束路径，有值时精确比较。错误只比较稳定的 `code` 和声明的 `path`，不比较消息文本。
+- `expect` 恰有一个分支：`{ "ok": <结果> }` 或 `{ "error": { "code": "...", "path": "...", "fields": {} } }`。
+  `path` 和 `fields` 可省略；省略表示不约束，有值时精确比较。消费者按稳定的 `code` 与结构字段进行程序化匹配，不解析消息文本。运行器比较 `code`、声明的 `fields`（完整对象结构相等）和声明的 `path`（精确字符串相等）。
+  `path` 统一为从输入文档根开始的 dotted locator：以 `.` 连接字段或对象键，数组下标写作 `[<i>]`，如 `manifest_version`、`resources.<id>.variants[<i>].tags`。宿主传入参数使用 `arg.<name>`，例如 `arg.version`，不使用裸参数名或其他路径语法。
 - 结果按 JSON 结构相等比较，对象键顺序无关，数组顺序保留。不得先 trim、规范化输入或丢弃重复 header。
 - checksum 成功结果是 `ResourceChecksum` 的序列化字符串：`<algorithm>:<lowercase-hex>`。
-  SHA-256 digest 使用 64 位 hex，base64 输入表示同样的 32 字节。
+  SHA-256 digest 使用 64 个十六进制字符（32 字节），base64 输入表示同样的 32 字节。
 
 | 目录 / 文件              | `input` 形状与运行器操作                                                                                         | `expect.ok`                          |
 | ------------------------ | ---------------------------------------------------------------------------------------------------------------- | ------------------------------------ |
 | `parsers/version.json`   | `{ parser, response: { body, headers } }`；编译 version parser，再解析响应                                       | version 字符串                       |
 | `parsers/checksum.json`  | `{ parser, response: { body, headers }, artifact }`；按 artifact 文件名解析 checksum                             | checksum 字符串                      |
 | `validate/manifest.json` | 完整编译产物 manifest；先消费侧解码，再调用 `validate_manifest`，不补字段、不从外部 fixture 加载或合并           | `true`，表示校验成功                 |
-| `compat/manifest.json`   | 完整编译产物 manifest；以已知版本 2.0 宽松解码，再按下文约定逐产物检查支持性，不补字段                           | 兼容性投影对象                       |
+| `compat/manifest.json`   | 完整编译产物 manifest；按运行器的 `CURRENT_MINOR`（当前 0）宽松解码，再按下文约定逐产物检查支持性，不补字段      | 兼容性投影对象                       |
 | `kind/artifact.json`     | artifact template wire object：`{ artifact, source?, version }`；调用 `artifact_checksum_kind`，无请求或响应输入 | kind 字符串                          |
 | `resolve/`               | 由 B4 填充 `reference-golden.json`；当前仅有 `.gitkeep`，没有 resolver 用例                                      | B4 定义下载计划与 URL 的参考比较结果 |
 
@@ -45,6 +46,11 @@ checksum 的 `checksum` / `gnu` / `bsd` / `github-release-assets`，以及设计
 `header` 的 `encoding` 为 `hex` 或 `base64`，`algorithm` 为小写算法名。
 版本用例也必须提供 headers，虽然 version parser 只读取 body。
 checksum 的 `artifact` 是具体文件名，不是带 `{version}` 的模板。
+`checksum.header.invalid_base64` 断言 `parser.invalid_encoding`；
+`checksum.header.invalid_hex` 与 `checksum.header.wrong_length` 断言 `parser.invalid_checksum`。
+非 hex 字符、奇数个 hex 字符和 digest 长度不符都属于 `parser.invalid_checksum`。
+单个 header 值超过 8 KiB 使用 `parser.body_too_large`，同 body 超限一样携带
+`{ limit, actual }`（UTF-8 字节数）；上限一致性用例由 A2 / A5 补充。
 
 ### Validate 的阶段边界
 
@@ -65,8 +71,11 @@ static history、parser 可编译性和模板变量依赖等适用不变量的�
 成功解码后，运行器先验证 manifest，再为该 variant 中每个保留的已知平台产物预检 parser 支持性：
 编译 remote version parser，并检查 remote checksum parser 是否受支持。
 本阶段不发 HTTP 请求、不要求远端版本值，也不执行下载时的 kind 接受策略。
-支持的产物记作 `{ "ok": true }`；未知 version 或 checksum parser 仅在该产物记作
-`{ "error": { "code": "resolve.unsupported_parser" } }`，其他产物继续检查。
+static 产物，以及所有 parser 都受支持的 remote 产物，其支持性结果投影为 `{ "ok": true }`，
+并在同一对象的 `kind` 字段中按设计 §5.1 规则 3 记录静态推导值。
+未知 version 或 checksum parser 仅在该产物记作
+`{ "error": { "code": "resolve.unsupported_parser", "fields": { "parser_type": "..." } }, "kind": "none" }`，
+其他产物继续检查；`none` 不被任何校验策略接受。
 未知 parser 不得使 manifest 的解码或语义校验整体失败。
 
 `expect.ok` 的完整投影形状为：
@@ -80,9 +89,13 @@ static history、parser 可编译性和模板变量依赖等适用不变量的�
   },
   "artifacts": {
     "windows-x86_64": {
-      "error": { "code": "resolve.unsupported_parser" }
+      "error": {
+        "code": "resolve.unsupported_parser",
+        "fields": { "parser_type": "future-version-parser" }
+      },
+      "kind": "none"
     },
-    "linux-amd64": { "ok": true }
+    "linux-amd64": { "ok": true, "kind": "authoritative" }
   }
 }
 ```
@@ -91,7 +104,8 @@ static history、parser 可编译性和模板变量依赖等适用不变量的�
 `artifacts` 必须恰好列出解码后 `resources.sample.variants[0].artifacts` 的全部键。
 未知平台 `future-os-cpu` 必须从这两个映射中跳过。
 运行器还应确认已知 resource / variant 的标签、source 和受支持产物的 wire 数据保留完整。
-`newer_minor` 相对于当前已知 minor `0` 计算，`"2.7"` 为 `true`，`"2.0"` 为 `false`。
+`newer_minor` 相对于运行器的 `CURRENT_MINOR`（当前为 `0`）计算；按当前值，`"2.7"` 为 `true`，`"2.0"` 为 `false`。
+minor 不允许前导零；`compat.version.leading_zero` 断言 `"2.07"` 报 `manifest.invalid_version_format`。
 版本解码失败使用顶层 `expect.error`，不执行逐产物检查。
 `compat.newer_minor.unknown_platform_and_parser` 将新 minor、未知平台和未知 parser
 放在同一个 manifest 中，直接覆盖设计 G8。
@@ -99,8 +113,8 @@ static history、parser 可编译性和模板变量依赖等适用不变量的�
 ### Kind 的名称与静态推导
 
 本测试集用 `authoritative`、`parsed`、`snapshot`、`none` 表示四个 kind。
-这是小写 snake_case 约定，与 metadata 中 `ResourceArtifactVersionTemplate`
-的 serde `rename_all = "snake_case"` 风格一致；当前 Rust 尚未定义 `ChecksumKind`。
+这是设计 §5.1 固定的小写 snake_case wire 名称，Rust `ChecksumKind` 必须使用
+`#[serde(rename_all = "snake_case")]`，并非仅限本测试集的命名约定。
 现有 checksum parser 的 `github-release-assets` 仍按其 kebab-case wire 名称书写。
 
 四条用例分别断言：static release 内嵌 checksum → `authoritative`；static 无 checksum →
@@ -134,6 +148,9 @@ static 用例只有一个 release，且等于 `latest`，不引入历史版本�
 `parseRemoteChecksum(input.response.body, input.parser, input.artifact)`，
 通过 `node:assert/strict` 与 `expect.ok` 比较，未修改上游文件。
 新增 `header` parser 没有上游实现，其结果按规范和 base64 字节解码确定。
+`checksum.github_release_assets.percent_encoded_href` 是规范用例：href 的最后路径段
+`foo%2Bbar.zip` 解码为 `foo+bar.zip`，显示文本刻意不同，仍返回该条目自己的 digest；
+此修正语义不要求旧参考函数通过。
 缺陷用例使用修正结果；额外执行参考函数确认两个 GitHub 陷阱会返回相邻 / 前缀资产的 digest，
 BSD 错标签陷阱会被误当成配置的 SHA-256。
 
@@ -156,7 +173,7 @@ BSD 错标签陷阱会被误当成配置的 SHA-256。
 GitHub 精确名称陷阱将带不同 digest 的 `prefix-selected.zip` 放在 `selected.zip` 前，
 两者距离小于旧实现的 2048 字符窗口；旧邻近正则会错误返回前者。
 缺 digest 陷阱中，`selected.zip` 之后紧邻一个带 digest 的其他资产。
-BSD 陷阱故意将 64 位、符合配置 SHA-256 长度的 digest 标成 `SHA512`；
+BSD 陷阱故意将包含 64 个十六进制字符（32 字节）、符合配置 SHA-256 长度的 digest 标成 `SHA512`；
 这是针对旧实现不核对标签的畸形输入，不是合法的 SHA-512 checksum 示例。
 
 ## 数据验证

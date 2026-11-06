@@ -43,7 +43,7 @@
 ## S0a — 修订 `docs/design/manifest-v2.md`
 
 - [ ] 按 design §5.1 改写 §Registry and mirror model、§Backend resolution flow，并写清 `fallback_checksum`、`checksum_remote` 的去向：
-  - 新增 §Checksum kinds：四种 kind、静态推导规则、默认只接受 `Authoritative`、禁止隐式从响应头取 checksum、签名只覆盖 manifest；
+  - 新增 §Checksum kinds：四种 kind 的固定小写 snake_case wire 名称、静态推导与执行时 kind 的区别、推荐展示表、宿主同时暴露有效策略决定、默认只接受 `authoritative`、禁止隐式从响应头取 checksum、签名只覆盖 manifest；
   - 写明 UI 在选择或更新内核前应展示 kind（V-1）。
 - [ ] 按 design §5.3 改写 §Supported remote version parsers 与 §Supported remote checksum parsers：逐个 parser 写清精确语义，加入 `header` parser，parser 的输入为 body 加 headers（V-10），regex 方言是 Rust `regex`。
 - [ ] 新增以下小节：
@@ -70,7 +70,7 @@
   - `validate/manifest.json`、`compat/manifest.json`；
   - `kind/artifact.json`；
   - `resolve/`（B4 填充）。
-- [ ] 用例格式：`{ "name", "input": {...}, "expect": { "ok": ... } | { "error": { "code", "path"? } } }`，其中 `name` 全局唯一。parser 用例的 `input` 含 `response: { body, headers }`。
+- [ ] 用例格式：`{ "name", "input": {...}, "expect": { "ok": ... } | { "error": { "code", "path"?, "fields"? } } }`，其中 `name` 全局唯一。parser 用例的 `input` 含 `response: { body, headers }`。
 - [ ] 缺陷用例，期望值按 design §5.3 修正后的结果填：
   - [ ] `github-release-assets`：当前资产没有 digest 时，期望 `parser.digest_missing`
   - [ ] `github-release-assets`：`selected.zip` 不得命中 `prefix-selected.zip`
@@ -80,8 +80,9 @@
   - [ ] `gnu`：同名两行、digest 不同时，期望 `parser.ambiguous`
   - [ ] `regex`：`group` 超出捕获组数量时，期望 `parser.group_out_of_range`
   - [ ] 没有声明 `header` 规则时，响应里的 `Digest` 头不被使用（`checksum` parser 只看 body）
-- [ ] `header` parser 用例：hex 和 base64 各一；头不存在；同名多值冲突；名称大小写不敏感。
-- [ ] `compat` 用例（design G8）：`"2.7"` 被接受且标 `newer_minor`；`"3.0"` 报 `manifest.unsupported_major`；`2` 这个整数报 `manifest.invalid_version_format`；未知的 platform key 被跳过；未知 parser type 只让该产物报 `resolve.unsupported_parser`。
+- [ ] `header` parser 用例：hex 和 base64 各一；头不存在；同名多值冲突；名称大小写不敏感；非法 base64 → `parser.invalid_encoding`；非法 hex 或长度错误 → `parser.invalid_checksum`。
+- [ ] `github-release-assets` 用例：href 最后路径段百分号解码后匹配 artifact，显示文本不参与名称判断。
+- [ ] `compat` 用例（design G8）：`"2.7"` 被接受且标 `newer_minor`；`"3.0"` 报 `manifest.unsupported_major`；`2` 这个整数和 `"2.07"` 均报 `manifest.invalid_version_format`；未知的 platform key 被跳过；未知 parser type 只让该产物报 `resolve.unsupported_parser`。逐产物投影携带 kind：未知 parser 为 `none`，受支持产物按 §5.1 规则 3 推导。
 - [ ] `kind` 用例：static 有 checksum、static 无 checksum、remote 有规则、remote 无规则，分别对应四种结果（design §5.1 第 3 条）。
 - [ ] 正常路径用例：至少一个 parser 一个，期望值取参考实现的输出。
 
@@ -131,7 +132,7 @@
   - `ManifestVersion { minor: u32 }`（私有字段，提供 `minor()` 访问器）；
   - 常量 `MANIFEST_MAJOR = 2`、`CURRENT_MINOR = 0`；
   - Serialize 输出 `"2.<minor>"`；
-  - Deserialize 按 design §5.4 第 2 条处理：不是字符串或格式不对时报 `invalid_version_format`，major 不等于 2 时报 `unsupported_major`，minor 任意。
+  - Deserialize 按 design §5.4 第 2 条处理：不是字符串或格式不对（含 minor 前导零，如 `"2.07"`）时报 `invalid_version_format`，major 不等于 2 时报 `unsupported_major`，minor 任意。
   - `RESOURCE_MANIFEST_VERSION` 改为 `"2.0"` 这个字符串常量。
 - [ ] `ManifestVersion::is_newer_minor(&self) -> bool`。
 - [ ] JsonSchema：`{ "type": "string", "pattern": "^2\\.(0|[1-9][0-9]*)$" }`。生成器把 TS 类型改写为 `` `2.${number}` ``（替换 S0e 的字面量 `2`，仍按计数断言）。
@@ -149,7 +150,7 @@
 
 - [ ] 编译产物的 `artifacts`（`BTreeMap<SupportedPlatform, _>`）在反序列化时跳过未知的 platform key。用 `deserialize_with` 实现，只作用于 `ResourceVariant`，模板侧 `ResourceVariantTemplate` 保持严格。
   - [ ] `ResourceDefinition.default_variants` 同样跳过未知 key。
-- [ ] 两个 parser 枚举加 `#[serde(other)] Unsupported` 单元变体，并从 TS 与 Schema 导出中隐藏：先确认 `#[schemars(skip)]` 与 specta 的变体 skip 在当前版本上可用；不可用时由生成器做后处理并计数断言，二者择一，在 PR 中说明。
+- [ ] 两个 parser 枚举加保留原始未知 `type` tag 的 `Unsupported { parser_type: String }` 变体，消费侧自定义解码以支持 `resolve.unsupported_parser` 的 `{ parser_type }` 字段（不能用会丢失 tag 的 `#[serde(other)]` 单元变体），并从 TS 与 Schema 导出中隐藏：先确认 `#[schemars(skip)]` 与 specta 的变体 skip 在当前版本上可用；不可用时由生成器做后处理并计数断言，二者择一，在 PR 中说明。
   - [ ] 模板侧遇到 `Unsupported` 时报错：模板必须使用当前 minor 已知的 parser。
 - [ ] 加测试：一份 `"2.7"` 的 manifest，带一个未知 platform key 和一个未知 parser type，能反序列化成功；已知部分的数据完整。
 
@@ -181,11 +182,12 @@
 - [ ] `VersionLabel` newtype：私有字段，实现 `FromStr`、`Display`、`AsRef<str>`，字符集按 design §5.2。
 - [ ] `Limits` 结构（design §5.5）实现 `Default`；宿主只能调低。
 - [ ] `RemoteVersionParser::compile(&self, &Limits) -> Result<CompiledVersionParser, ParseError>`；`CompiledVersionParser::parse(&self, &RemoteResponse) -> Result<VersionLabel, ParseError>`；`Unsupported` 在 `compile` 时报 `resolve.unsupported_parser`。
-- [ ] `ParseError` 用 snafu，实现 `code()`；变体与 design §5.6 的 `parser.*` 一一对应。
+- [ ] `ParseError` 用 snafu，实现 `code()`；变体、稳定结构字段和 `path` 语法按 design §5.6；运行器比较 `code`、声明的 `fields`，并精确比较声明的 `path`。
 - [ ] 新增依赖 `regex`，用 `RegexBuilder::size_limit` 限制编译大小。
 - [ ] 两个 parser 枚举加 `#[non_exhaustive]`（design §6.6）。
 - [ ] 测试集运行器 `crates/manifest-parser/tests/conformance.rs` 读取 `conformance/parsers/version.json`，以 `name` 作子测试名执行。
 - [ ] 用快照中的全部版本做回归，确认它们都满足 `VersionLabel`。
+- [ ] 增加 design §5.5 上限的一致性用例：`body_too_large`、regex pattern 长度与编译大小上限。
 
 **验证**
 
@@ -208,7 +210,7 @@
 
 - [ ] 采集真实页面 fixture，放在 `conformance/fixtures/github-expanded-assets/`，覆盖 design §6.4 第 1 条的四种情况；README 记下 URL 与采集时间。
 - [ ] 候选 tokenizer 各做一个最小原型，记录对 fixture 是否正确，以及 `wasm32-unknown-unknown` release 下的 `.wasm` 体积增量；结论写进 design §11.2 O-3。
-- [ ] 实现条目切分与精确名称匹配，按 §5.3 报错；删除 A3 留下的 `Unsupported` 变体。
+- [ ] 实现条目切分与精确名称匹配（href 最后路径段百分号解码，不使用显示文本），按 §5.3 报错；删除 A3 留下的 `Unsupported` 变体。
 
 **验证**
 
@@ -218,7 +220,7 @@
 ## A5 — `header` checksum parser（行为卡）
 
 - [ ] `RemoteChecksumParser::Header { name: String, algorithm: ChecksumAlgorithm, encoding: HeaderEncoding }`；`HeaderEncoding` 有 `Hex`、`Base64` 两个变体，按 kebab-case 序列化。
-- [ ] 解码规则按 design §5.3；新增依赖 `base64`。
+- [ ] 解码规则按 design §5.3；新增依赖 `base64`。非法 base64 → `parser.invalid_encoding`；非 hex、奇数个 hex 字符或 digest 长度错误 → `parser.invalid_checksum`；单个 header 值超限 → `parser.body_too_large`，带 `{ limit, actual }`（UTF-8 字节数）；补充超限用例。
 - [ ] 模板侧校验：`name` 非空，且是合法的 header 名称（token 字符）。
 - [ ] 重新生成契约。
 
@@ -256,17 +258,19 @@
 
 ## B3 — 变体选择、计划、`ChecksumKind` 与校验策略（行为卡）
 
-- [ ] `ChecksumKind`（`Authoritative`、`Parsed`、`Snapshot`、`None`），derive `specta::Type`，加 `#[non_exhaustive]`。
+- [ ] `ChecksumKind`（Rust 变体 `Authoritative`、`Parsed`、`Snapshot`、`None`），derive `specta::Type`，加 `#[non_exhaustive]` 与 `#[serde(rename_all = "snake_case")]`；wire 名称固定为 `authoritative`、`parsed`、`snapshot`、`none`。
 - [ ] `artifact_checksum_kind`，以及按 resource 与平台列出各 variant kind 的函数（design §7.3）。
 - [ ] `select_variant`、`plan_version`、`plan_download`、`finish_checksum`；计划中含 `canonical_url`、可选的 `mirror_url` 与 `kind`。
-- [ ] `VerifyPolicy`（实现 `Default`，默认全为 `false`）、`check_policy`、`VerifyError`（`kind_rejected`、`digest_mismatch`）。
+- [ ] `VerifyPolicy`（实现 `Default`，默认全为 `false`）、`check_policy`、`VerifyError`（`kind_rejected`、`digest_mismatch`）；结构字段按 design §5.6。
+- [ ] 宿主在 kind 旁暴露有效策略决定（用宿主 `VerifyPolicy` 调用 `check_policy`，接受或拒绝及原因）；静态 kind 用于选择前展示，计划与结果携带执行时适用的 kind。推荐展示按 design §5.1，具体 UI 文案不在范围内。
+- [ ] 未知 version / checksum parser 的产物静态推导为 `none`，任何校验策略都不能接受；compat 运行器同时断言逐产物支持性和 kind。
 - [ ] mirror 的 `registries` 限制与参考实现一致（`R/resource-template.ts:1037-1045`）。
 - [ ] 测试集运行器加载 `conformance/kind/`。
 
 **验证**
 
 - `kind` 用例与选择类用例通过。
-- 默认策略下 `Parsed`、`Snapshot`、`None` 都被拒；`allow_parsed` 只放开 `Parsed`。
+- 默认策略下 `parsed`、`snapshot`、`none` 都被拒；`allow_parsed` 只放开 `parsed`；任何策略都不接受 `none`。
 
 ## B4 — 参考差分
 
@@ -319,7 +323,7 @@
 ## C4 — 构建期下载校验胶水脚本（行为卡）
 
 - [ ] `packages/manifest-downloader/main.ts` 实现 design §8.4 的命令行与流程，参数解析用 `node:util` 的 `parseArgs`。
-- [ ] 开始下载前打印 resource、variant、版本与 `ChecksumKind`；`Parsed` 或 `Snapshot` 在开关放开后被接受时，输出 `WARN` 行。
+- [ ] 开始下载前打印 resource、variant、版本、kind 和宿主 `VerifyPolicy` 下的 `check_policy` 决定（接受或拒绝及原因）；`parsed` 或 `snapshot` 在开关放开后被接受时，输出 `WARN` 行。
 - [ ] 下载先写临时文件，`node:crypto` 校验通过后再原子 rename；失败时删除临时文件。
 - [ ] HTTP：重定向不超过 5 次；每个请求有超时；body 大小上限与 design §5.5 一致；只把 parser 规则声明的 header 交给 `finishChecksum`。
 - [ ] 测试（`node --test`，用本地 `node:http` 服务模拟上游，不访问外网）：

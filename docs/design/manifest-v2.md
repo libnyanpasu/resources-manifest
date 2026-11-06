@@ -38,12 +38,14 @@ while updater consumers migrate.
 The current major is 2. Rust represents the version as
 `ManifestVersion { minor: u32 }`, with a fixed major; the generated TypeScript
 type is `` `2.${number}` `` and the JSON Schema pattern is
-`^2\.(0|[1-9][0-9]*)$`. Producers write `CURRENT_MINOR`.
+`^2\.(0|[1-9][0-9]*)$`. Producers write `CURRENT_MINOR` (currently 0).
+The minor has no leading zeros: `"2.07"` fails with
+`manifest.invalid_version_format`.
 
 Consumers reject a non-string or malformed version with
 `manifest.invalid_version_format`, and a different major with
 `manifest.unsupported_major`. They accept any minor within major 2, reporting
-`newer_minor: true` when the minor exceeds the known value.
+`newer_minor: true` when the minor exceeds the consumer's `CURRENT_MINOR`.
 
 After the first release, compatible changes increment only the minor:
 
@@ -52,8 +54,10 @@ After the first release, compatible changes increment only the minor:
   platform defaults;
 - new version or checksum parser types decode as unsupported. Only resolving
   the affected artifact fails with `resolve.unsupported_parser`; other artifacts
-  remain usable. Older consumers derive `ChecksumKind::None` for artifacts with
-  unsupported parsers, so the default policy rejects them.
+  remain usable. Decoding preserves the original unknown `type` tag as the
+  error field `parser_type`. Older consumers derive `none` for artifacts with
+  unsupported parsers, which no verification policy accepts, so the artifact is
+  unusable rather than silently unverified.
 
 Changes that require a new major are:
 
@@ -247,10 +251,10 @@ GitHub release API exposes the current asset digest, the generator also embeds
 that artifact-specific checksum in the fallback. It is still not authoritative
 latest state. The separate reference-result fields `fallback_checksum` and
 `checksum_remote` become kind-bearing checksum results and request plans:
-`fallback.checksum` is a `Snapshot`, usable only under an explicit offline policy
+`fallback.checksum` is a `snapshot`, usable only under an explicit offline policy
 and only when the resolved version exactly equals `fallback.version`; the remote
 checksum resource and its parser belong to the download plan, and parsing that
-response produces a checksum with kind `Parsed`. A remote download plan requires
+response produces a checksum with kind `parsed`. A remote download plan requires
 an explicit version, so a consumer cannot silently skip the remote version
 request.
 
@@ -303,7 +307,12 @@ minor addition after release.
   `parser.not_found`; repeated headers with different values fail with
   `parser.ambiguous`. With `hex`, parse the hex value; with `base64`, decode the
   value and convert the bytes to lowercase hex. The decoded digest length must
-  match the configured algorithm.
+  match the configured algorithm. Invalid base64 fails with
+  `parser.invalid_encoding`; non-hex characters, odd hex length, or a decoded
+  digest length that differs from the algorithm fail with
+  `parser.invalid_checksum`. A single header value exceeding 8 KiB fails first
+  with `parser.body_too_large`, carrying `{ limit, actual }`; this code applies
+  to both the body and a single header value.
 
 These parser names are protocol between the manifest generator and backend.
 Rust consumers depend on `manifest-core`, which uses `manifest-parser` for the
@@ -313,66 +322,89 @@ shared parser implementation.
 
 The trust anchor is a signed manifest. The signature covers only the manifest
 itself; the signing scheme and workflow are defined separately. Only checksums
-embedded in static release history are `Authoritative` for normal resolution.
+embedded in static release history are `authoritative` for normal resolution.
+
+`ChecksumKind` wire names are fixed as lowercase snake_case: `authoritative`,
+`parsed`, `snapshot`, `none` (`#[serde(rename_all = "snake_case")]` in Rust).
 
 | `ChecksumKind`  | Source                                                                                                     | Default policy                     |
 | --------------- | ---------------------------------------------------------------------------------------------------------- | ---------------------------------- |
-| `Authoritative` | A static release's embedded `checksum`, covered by the manifest signature                                  | Accept                             |
-| `Parsed`        | A remote response parsed by a declared checksum rule, whether body or header, through canonical or mirror  | Reject; requires explicit opt-in   |
-| `Snapshot`      | A remote artifact's embedded `fallback.checksum`, only when the resolved version equals `fallback.version` | Reject; requires an offline opt-in |
-| `None`          | No checksum                                                                                                | Always reject; no opt-in           |
+| `authoritative` | A static release's embedded `checksum`, covered by the manifest signature                                  | Accept                             |
+| `parsed`        | A remote response parsed by a declared checksum rule, whether body or header, through canonical or mirror  | Reject; requires explicit opt-in   |
+| `snapshot`      | A remote artifact's embedded `fallback.checksum`, only when the resolved version equals `fallback.version` | Reject; requires an offline opt-in |
+| `none`          | No checksum                                                                                                | Always reject; no opt-in           |
+
+The following presentation is recommended; specific UI wording is out of scope
+(design spec §12). These recommendations do not replace the policy decision.
+
+| Kind            | Recommended presentation                                                                                            |
+| --------------- | ------------------------------------------------------------------------------------------------------------------- |
+| `authoritative` | No warning                                                                                                          |
+| `parsed`        | Warn that integrity is anchored on a value fetched at update time, rather than the signed manifest                  |
+| `snapshot`      | Warn that this is an embedded offline snapshot, applicable only when the resolved version equals `fallback.version` |
+| `none`          | Hard block; no verification policy can accept it                                                                    |
+
+The host must expose the effective policy decision alongside the kind: accept,
+or reject with a reason, as returned by `check_policy` under the host's
+`VerifyPolicy`. Kind alone does not determine the outcome.
 
 `artifact_checksum_kind(&ResourceArtifactTemplate) -> ChecksumKind` derives the
 normal resolution kind without network access:
 
-- static release with a checksum: `Authoritative`;
-- static release without a checksum: `None`;
-- remote artifact with a declared checksum rule: `Parsed`;
-- remote artifact without a checksum rule: `None`.
+- static release with a checksum: `authoritative`;
+- static release without a checksum: `none`;
+- remote artifact with a declared checksum rule: `parsed`;
+- remote artifact without a checksum rule: `none`.
 
-An embedded fallback does not change this static classification. `Snapshot`
+Artifacts with an unsupported version or checksum parser derive `none`.
+A batch helper lists the kind of every variant of a resource on a platform
+(design spec §7.3), so the host can expose per-variant kinds before selection.
+
+An embedded fallback does not change this static classification. `snapshot`
 applies only when the host explicitly chooses that fallback under its offline
-policy and the versions match. Plans and resolved results carry the applicable
-kind. The UI receives kind through the Rust backend before the user selects or
-updates a core, including alpha variants, so it can show the policy implications
-in advance.
+policy and the versions match. Static derivation serves pre-selection display;
+plans and resolved results carry the applicable kind at execution time, alongside
+the effective host policy decision. The UI receives per-variant kinds and policy
+decisions through the Rust backend before the user selects or updates a core,
+including alpha variants.
 
-Only a declared parser rule can produce `Parsed`. Hosts must not infer
+Only a declared parser rule can produce `parsed`. Hosts must not infer
 checksums from undeclared `Digest`, `Repr-Digest`, `ETag`, `x-*-checksum` or any
 other response header or source. Reading a header requires a `header` parser in
 the manifest. A canonical transport does not promote a parsed checksum to
-`Authoritative`; a mirror does not change kind either. The actual transport
+`authoritative`; a mirror does not change kind either. The actual transport
 channel is returned to core only for diagnostics and logging.
 
-The default host policy accepts only `Authoritative`. `--allow-parsed` and
+The default host policy accepts only `authoritative`. `--allow-parsed` and
 `--allow-snapshot` explicitly enable the corresponding kind and emit a warning;
-`None` always fails. An md5 checksum does not change kind, but a host may also
+`none` always fails. An md5 checksum does not change kind, but a host may also
 reject algorithms independently. A digest mismatch always stops the operation
 before decompression or replacement.
 
 ## Backend resolution flow
 
-For a selected resource, platform and tag combination:
+For a resource and platform:
 
-1. Run `validate_manifest` and select the variant by `variant.id`, exact tags, or
-   the platform default. Expose the statically derived kind to the UI before
-   selection or update, and apply the host's verification policy.
-2. Obtain a version plan from `plan_version`. For a static artifact, choose
+1. Run `validate_manifest`, derive per-variant kinds, and expose them alongside
+   effective host policy decisions before selection or update.
+2. Select the variant by `variant.id`, exact tags, or the platform default.
+3. Obtain a version plan from `plan_version`. For a static artifact, choose
    `latest` or another entry from `releases`; a version outside that history is
    rejected.
-3. For a remote artifact, request the planned canonical or mirror version URL
+4. For a remote artifact, request the planned canonical or mirror version URL
    and pass the response body and headers to its version parser. Pass the
    resulting version explicitly to `plan_download`.
-4. Render the concrete artifact name and URL. The download plan carries
+5. Render the concrete artifact name and URL. The download plan carries
    `canonical_url`, optional `mirror_url`, its compiled parser where applicable,
    and `ChecksumKind`.
-5. Use the embedded checksum for a static release (`Authoritative`). For a
+6. Use the embedded checksum for a static release (`authoritative`). For a
    remote artifact, fetch its declared checksum resource and pass the plan and
-   `RemoteResponse` to `finish_checksum`, yielding `Parsed` for the concrete
+   `RemoteResponse` to `finish_checksum`, yielding `parsed` for the concrete
    artifact named by the plan. An explicitly selected offline fallback checksum
-   is `Snapshot` only if its version matches exactly. Missing checksums are
-   `None` and fail.
-6. Check the applicable kind against the host policy. Download and compare the
+   is `snapshot` only if its version matches exactly. Missing checksums are
+   `none` and fail.
+7. Expose the execution-time kind and the result of `check_policy` under the
+   host policy; proceed only if accepted. Download and compare the
    digest before decompression or replacement; a mismatch aborts the operation.
 
 The manifest does not ask the backend to trust version text as a checksum. The
@@ -492,6 +524,10 @@ These limits are core constants. Hosts may lower them, but may not raise them.
 | Template nesting depth                              | 8       |
 | Output from a single render                         | 8 KiB   |
 
+Body and single-header-value sizes are measured in UTF-8 bytes. Exceeding
+either applicable limit fails with `parser.body_too_large`: `limit` is the
+effective byte limit and `actual` is the observed byte count.
+
 The A2 implementation checks these values against real page sizes; any revision
 is recorded in the protocol decisions in the associated design spec.
 
@@ -499,19 +535,32 @@ is recorded in the protocol decisions in the associated design spec.
 
 Errors are typed snafu enums with structured fields and a stable `code()` for
 each variant. Across languages, consumers identify errors by `code` and fields,
-not by parsing `message`. Every error carries a `path`, either a JSON path such
-as `resources.<id>.variants[<i>]...` or an argument name.
+not by parsing `message`. Every error carries a `path` using a single dotted
+locator rooted at the input document: join fields or object keys with `.`, and
+write array indices as `[<i>]`, for example `manifest_version` or
+`resources.<id>.variants[<i>].tags`. Host-supplied arguments use `arg.<name>`,
+for example `arg.version`, rather than a bare argument name. The conformance
+runner compares a declared `path` exactly.
 
-| Prefix      | Codes                                                                                                                                                            |
-| ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `manifest.` | `unsupported_major`, `invalid_version_format`                                                                                                                    |
-| `parser.`   | `body_too_large`, `not_found`, `ambiguous`, `digest_missing`, `invalid_version`, `invalid_checksum`, `invalid_encoding`, `invalid_pattern`, `group_out_of_range` |
-| `template.` | `unknown_variable`, `cycle`, `depth_exceeded`, `output_too_large`, `invalid_literal`                                                                             |
-| `url.`      | `invalid`, `unsupported_scheme`, `forbidden_component`                                                                                                           |
-| `select.`   | `unknown_resource`, `unsupported_platform`, `unknown_variant`, `no_exact_tags`, `conflicting_selection`, `default_missing`                                       |
-| `resolve.`  | `version_required`, `version_not_in_history`, `mirror_not_allowed`, `unknown_registry`, `unknown_mirror`, `unsupported_parser`                                   |
-| `verify.`   | `kind_rejected` (with `kind`), `digest_mismatch`                                                                                                                 |
-| `validate.` | One code per invariant; the B1 implementation supplies the complete list                                                                                         |
+For `parser.ambiguous`, `name` is the requested artifact filename or the declared
+header name. For `parser.group_out_of_range`, `groups` includes group 0.
+
+| Prefix      | Codes                                                                                                                      | Fields                                              |
+| ----------- | -------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------- |
+| `manifest.` | `unsupported_major`                                                                                                        | `{ major }`                                         |
+| `manifest.` | `invalid_version_format`                                                                                                   | `{}`                                                |
+| `parser.`   | `body_too_large`                                                                                                           | `{ limit, actual }`                                 |
+| `parser.`   | `ambiguous`                                                                                                                | `{ name }`                                          |
+| `parser.`   | `group_out_of_range`                                                                                                       | `{ group, groups }`                                 |
+| `parser.`   | `not_found`, `digest_missing`, `invalid_version`, `invalid_checksum`, `invalid_encoding`, `invalid_pattern`                | Structured fields deferred to the implementing card |
+| `template.` | `unknown_variable`, `cycle`, `depth_exceeded`, `output_too_large`, `invalid_literal`                                       | Structured fields deferred to the implementing card |
+| `url.`      | `invalid`, `unsupported_scheme`, `forbidden_component`                                                                     | Structured fields deferred to the implementing card |
+| `select.`   | `unknown_resource`, `unsupported_platform`, `unknown_variant`, `no_exact_tags`, `conflicting_selection`, `default_missing` | Structured fields deferred to the implementing card |
+| `resolve.`  | `unsupported_parser`                                                                                                       | `{ parser_type }`                                   |
+| `resolve.`  | `version_required`, `version_not_in_history`, `mirror_not_allowed`, `unknown_registry`, `unknown_mirror`                   | Structured fields deferred to the implementing card |
+| `verify.`   | `kind_rejected`                                                                                                            | `{ kind }`                                          |
+| `verify.`   | `digest_mismatch`                                                                                                          | `{ algorithm, expected, actual }`                   |
+| `validate.` | One code per invariant                                                                                                     | Codes and fields deferred to B1                     |
 
 ## Validation invariants
 

@@ -133,7 +133,10 @@
     },
     "expect": {
       "error": {
-        "code": "parser.ambiguous"
+        "code": "parser.ambiguous",
+        "fields": {
+          "name": "selected.zip"
+        }
       }
     }
   },
@@ -247,7 +250,10 @@
     },
     "expect": {
       "error": {
-        "code": "parser.ambiguous"
+        "code": "parser.ambiguous",
+        "fields": {
+          "name": "X-Checksum-Sha256"
+        }
       }
     }
   },
@@ -270,6 +276,95 @@
         ]
       },
       "artifact": "selected.zip"
+    },
+    "expect": {
+      "ok": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+    }
+  },
+  {
+    "name": "checksum.header.invalid_base64",
+    "input": {
+      "parser": {
+        "type": "header",
+        "name": "X-Checksum-Sha256",
+        "algorithm": "sha256",
+        "encoding": "base64"
+      },
+      "response": {
+        "body": "",
+        "headers": [["X-Checksum-Sha256", "%%%not-base64%%%"]]
+      },
+      "artifact": "selected.zip"
+    },
+    "expect": {
+      "error": {
+        "code": "parser.invalid_encoding"
+      }
+    }
+  },
+  {
+    "name": "checksum.header.invalid_hex",
+    "input": {
+      "parser": {
+        "type": "header",
+        "name": "X-Checksum-Sha256",
+        "algorithm": "sha256",
+        "encoding": "hex"
+      },
+      "response": {
+        "body": "",
+        "headers": [
+          [
+            "X-Checksum-Sha256",
+            "g123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+          ]
+        ]
+      },
+      "artifact": "selected.zip"
+    },
+    "expect": {
+      "error": {
+        "code": "parser.invalid_checksum"
+      }
+    }
+  },
+  {
+    "name": "checksum.header.wrong_length",
+    "input": {
+      "parser": {
+        "type": "header",
+        "name": "X-Checksum-Sha256",
+        "algorithm": "sha256",
+        "encoding": "hex"
+      },
+      "response": {
+        "body": "",
+        "headers": [
+          [
+            "X-Checksum-Sha256",
+            "23456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+          ]
+        ]
+      },
+      "artifact": "selected.zip"
+    },
+    "expect": {
+      "error": {
+        "code": "parser.invalid_checksum"
+      }
+    }
+  },
+  {
+    "name": "checksum.github_release_assets.percent_encoded_href",
+    "input": {
+      "parser": {
+        "type": "github-release-assets"
+      },
+      "response": {
+        "body": "<ul class=\"Box Box--condensed\"><li class=\"Box-row\"><a href=\"/example/project/releases/download/v1.2.3/foo%2Bbar.zip\">A different display label</a><span class=\"Truncate-text\">sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef</span></li></ul>",
+        "headers": []
+      },
+      "artifact": "foo+bar.zip"
     },
     "expect": {
       "ok": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
