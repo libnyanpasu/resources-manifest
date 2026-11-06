@@ -44,7 +44,9 @@
     },
     "expect": {
       "error": {
-        "code": "parser.invalid_version"
+        "code": "parser.invalid_version",
+        "path": "response.body",
+        "fields": {}
       }
     }
   },
@@ -62,7 +64,9 @@
     },
     "expect": {
       "error": {
-        "code": "parser.invalid_version"
+        "code": "parser.invalid_version",
+        "path": "response.body",
+        "fields": {}
       }
     }
   },
@@ -118,7 +122,8 @@
         "fields": {
           "group": 2,
           "groups": 2
-        }
+        },
+        "path": "parser.group"
       }
     }
   },
@@ -476,7 +481,7 @@
     "expect": {
       "error": {
         "code": "parser.invalid_pattern",
-        "path": "response.body",
+        "path": "parser.pattern",
         "fields": {}
       }
     }
@@ -496,7 +501,7 @@
     "expect": {
       "error": {
         "code": "parser.invalid_pattern",
-        "path": "response.body",
+        "path": "parser.pattern",
         "fields": {}
       }
     }
@@ -516,7 +521,7 @@
     "expect": {
       "error": {
         "code": "parser.group_out_of_range",
-        "path": "response.body",
+        "path": "parser.group",
         "fields": {
           "group": 1,
           "groups": 1
@@ -540,7 +545,7 @@
     "expect": {
       "error": {
         "code": "parser.group_out_of_range",
-        "path": "response.body",
+        "path": "parser.group",
         "fields": {
           "group": 4294967295,
           "groups": 2
@@ -566,7 +571,7 @@
     "expect": {
       "error": {
         "code": "parser.invalid_pattern",
-        "path": "response.body",
+        "path": "parser.pattern",
         "fields": {
           "limit": 3,
           "actual": 4
@@ -592,7 +597,7 @@
     "expect": {
       "error": {
         "code": "parser.invalid_pattern",
-        "path": "response.body",
+        "path": "parser.pattern",
         "fields": {
           "limit": 3,
           "actual": 4
@@ -634,7 +639,7 @@
     "expect": {
       "error": {
         "code": "parser.invalid_pattern",
-        "path": "response.body",
+        "path": "parser.pattern",
         "fields": {}
       }
     }
@@ -657,13 +662,13 @@
     "expect": {
       "error": {
         "code": "parser.invalid_pattern",
-        "path": "response.body",
+        "path": "parser.pattern",
         "fields": {}
       }
     }
   },
   {
-    "name": "version.unsupported",
+    "name": "version.unsupported.unknown_type",
     "input": {
       "parser": {
         "type": "future-version-parser"
@@ -676,7 +681,7 @@
     "expect": {
       "error": {
         "code": "resolve.unsupported_parser",
-        "path": "response.body",
+        "path": "parser.type",
         "fields": {
           "parser_type": "future-version-parser"
         }

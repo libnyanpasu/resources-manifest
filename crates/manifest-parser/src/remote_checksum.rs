@@ -124,8 +124,20 @@ fn parse_github_assets(body: &str, artifact: &str) -> Result<ResourceChecksum, P
         .map_err(|_| ParseError::ValidateChecksum {})?;
     let parser = dom.parser();
     let mut selected = None;
-    for row in dom.nodes().iter().filter_map(tl::Node::as_tag) {
-        if !row.name().as_utf8_str().eq_ignore_ascii_case("li") {
+    let mut pending: Vec<_> = dom.children().iter().rev().copied().collect();
+    while let Some(handle) = pending.pop() {
+        let Some(row) = handle.get(parser).and_then(tl::Node::as_tag) else {
+            continue;
+        };
+        let name = row.name().as_utf8_str();
+        if ["script", "style"]
+            .iter()
+            .any(|excluded| name.eq_ignore_ascii_case(excluded))
+        {
+            continue;
+        }
+        pending.extend(row.children().top().as_slice().iter().rev().copied());
+        if !name.eq_ignore_ascii_case("li") {
             continue;
         }
         let Some(digests) = github_entry_digests(row, parser, artifact) else {
@@ -196,7 +208,9 @@ fn github_entry_digests(
                     .any(|class| class == "Truncate-text")
             })
         {
-            digests.push(tag.inner_text(parser).trim().to_owned());
+            if let Some(digest) = github_digest_text(tag, parser) {
+                digests.push(digest);
+            }
             continue;
         }
         pending.extend(tag.children().top().as_slice().iter().rev().copied());
@@ -204,7 +218,40 @@ fn github_entry_digests(
     matched.then_some(digests)
 }
 
+fn github_digest_text(tag: &tl::HTMLTag<'_>, parser: &tl::Parser<'_>) -> Option<String> {
+    let mut pending: Vec<_> = tag
+        .children()
+        .top()
+        .as_slice()
+        .iter()
+        .rev()
+        .copied()
+        .collect();
+    let mut text = String::new();
+    let mut excluded = false;
+    while let Some(handle) = pending.pop() {
+        match handle.get(parser)? {
+            tl::Node::Raw(raw) => text.push_str(&raw.as_utf8_str()),
+            tl::Node::Comment(_) => excluded = true,
+            tl::Node::Tag(tag) => {
+                let name = tag.name().as_utf8_str();
+                if ["li", "script", "style"]
+                    .iter()
+                    .any(|excluded| name.eq_ignore_ascii_case(excluded))
+                {
+                    excluded = true;
+                    continue;
+                }
+                pending.extend(tag.children().top().as_slice().iter().rev().copied());
+            }
+        }
+    }
+    let text = text.trim();
+    (!excluded || !text.is_empty()).then(|| text.to_owned())
+}
+
 fn github_asset_matches(href: &str, artifact: &str) -> bool {
+    let href = decode_html_attribute(href);
     let Some((_, path)) = href.split_once("/releases/download/") else {
         return false;
     };
@@ -216,6 +263,55 @@ fn github_asset_matches(href: &str, artifact: &str) -> bool {
         && percent_encoding::percent_decode_str(name)
             .decode_utf8()
             .is_ok_and(|name| name == artifact)
+}
+
+fn decode_html_attribute(value: &str) -> String {
+    let mut parts = value.split('&');
+    let mut decoded = String::with_capacity(value.len());
+    decoded.push_str(parts.next().unwrap_or_default());
+    for part in parts {
+        if let Some((reference, rest)) = part.split_once(';')
+            && let Some(character) = html_reference(reference)
+        {
+            decoded.push(character);
+            decoded.push_str(rest);
+        } else {
+            decoded.push('&');
+            decoded.push_str(part);
+        }
+    }
+    decoded
+}
+
+fn html_reference(reference: &str) -> Option<char> {
+    match reference {
+        "amp" | "AMP" => Some('&'),
+        "quot" | "QUOT" => Some('"'),
+        "apos" => Some('\''),
+        "lt" | "LT" => Some('<'),
+        "gt" | "GT" => Some('>'),
+        "nbsp" => Some('\u{a0}'),
+        _ => {
+            let number = reference.strip_prefix('#')?;
+            let (digits, radix) = number
+                .strip_prefix(['x', 'X'])
+                .map_or((number, 10), |digits| (digits, 16));
+            if digits.is_empty()
+                || !digits.bytes().all(|byte| match radix {
+                    16 => byte.is_ascii_hexdigit(),
+                    _ => byte.is_ascii_digit(),
+                })
+            {
+                return None;
+            }
+            let character = u32::from_str_radix(digits, radix)
+                .ok()
+                .filter(|&value| value != 0)
+                .and_then(char::from_u32)
+                .unwrap_or(char::REPLACEMENT_CHARACTER);
+            Some(character)
+        }
+    }
 }
 
 fn parse_list<'a>(
@@ -253,16 +349,15 @@ fn parse_list<'a>(
 
 fn gnu_digest<'a>(line: &'a str, artifact: &str) -> Option<&'a str> {
     let (digest, rest) = line.split_once([' ', '\t'])?;
-    let name = rest.trim_end_matches([' ', '\t']);
-    let requested = artifact.trim_end_matches([' ', '\t']);
-    if rest.len() - name.len() < artifact.len() - requested.len() {
-        return None;
-    }
-    let prefix = name.strip_suffix(requested)?;
-    let separator = prefix.strip_suffix('*').unwrap_or(prefix);
-    separator
-        .bytes()
-        .all(|byte| matches!(byte, b' ' | b'\t'))
+    rest.rmatch_indices(artifact)
+        .any(|(start, name)| {
+            let prefix = &rest[..start];
+            let separator = prefix.strip_suffix(['*', ' ']).unwrap_or(prefix);
+            separator.bytes().all(|byte| matches!(byte, b' ' | b'\t'))
+                && rest[start + name.len()..]
+                    .bytes()
+                    .all(|byte| matches!(byte, b' ' | b'\t'))
+        })
         .then_some(digest)
 }
 

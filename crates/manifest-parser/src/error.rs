@@ -75,6 +75,11 @@ impl ParseError {
     #[must_use]
     pub fn path(&self) -> Cow<'_, str> {
         match self {
+            Self::ValidatePatternSize { .. } | Self::CompilePattern { .. } => {
+                Cow::Borrowed("parser.pattern")
+            }
+            Self::ValidateGroup { .. } => Cow::Borrowed("parser.group"),
+            Self::ResolveParser { .. } => Cow::Borrowed("parser.type"),
             Self::FindHeader { name }
             | Self::SelectHeader { name }
             | Self::ValidateHeaderSize { name, .. }

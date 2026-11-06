@@ -16,15 +16,23 @@
     "parser": { "type": "text", "trim": false },
     "response": { "body": "v1.2.3\n", "headers": [] }
   },
-  "expect": { "error": { "code": "parser.invalid_version" } }
+  "expect": {
+    "error": {
+      "code": "parser.invalid_version",
+      "path": "response.body",
+      "fields": {}
+    }
+  }
 }
 ```
 
 - `name` 在所有目录、所有 JSON 文件中全局唯一，使用 dotted prefix；运行器以完整名称标识用例。
+  Rust 的 `corpus_case_names_are_globally_unique` 递归检查整个 `conformance/` 的 corpus JSON，
+  包括尚未接入执行的目录；`fixtures/` 中的 HTML 期望清单不是 corpus，不参与名称检查。
 - `input` 总是对象，各目录的形状和操作见下表。
 - `expect` 恰有一个分支：`{ "ok": <结果> }` 或 `{ "error": { "code": "...", "path": "...", "fields": {} } }`。
-  `path` 和 `fields` 可省略；省略表示不约束，有值时精确比较。消费者按稳定的 `code` 与结构字段进行程序化匹配，不解析消息文本。运行器比较 `code`、声明的 `fields`（完整对象结构相等）和声明的 `path`（精确字符串相等）。
-  `path` 统一为从输入文档根开始的 dotted locator：以 `.` 连接字段或对象键，数组下标写作 `[<i>]`，如 `manifest_version`、`resources.<id>.variants[<i>].tags`。宿主传入参数使用 `arg.<name>`，例如 `arg.version`，parser 错误使用 `response.body` 或 `response.headers.<小写名称>`。不使用裸参数名或其他路径语法。
+  所有错误期望都必须声明 `path` 和完整的 `fields`，即使字段对象为空也不省略。消费者按稳定的 `code` 与结构字段进行程序化匹配，不解析消息文本。运行器比较 `code`、声明的 `fields`（完整对象结构相等）和声明的 `path`（精确字符串相等）。
+  `path` 统一为从输入文档根开始的 dotted locator：以 `.` 连接字段或对象键，数组下标写作 `[<i>]`，如 `manifest_version`、`resources.<id>.variants[<i>].tags`。宿主传入参数使用 `arg.<name>`，例如 `arg.version`，parser 响应错误使用 `response.body` 或 `response.headers.<小写名称>`，规则错误按输入的 `parser` 对象定位：`parser.invalid_pattern` → `parser.pattern`、`parser.group_out_of_range` → `parser.group`、`resolve.unsupported_parser` → `parser.type`。不使用裸参数名或其他路径语法。
 - 结果按 JSON 结构相等比较，对象键顺序无关，数组顺序保留。不得先 trim、规范化输入或丢弃重复 header。
 - checksum 成功结果是 `ResourceChecksum` 的序列化字符串：`<algorithm>:<lowercase-hex>`。
   SHA-256 digest 使用 64 个十六进制字符（32 字节），base64 输入表示同样的 32 字节。
@@ -64,6 +72,12 @@ parser 用例可以增加可选的 `input.limits` 对象。未声明的项采用
 应得到 `parser.body_too_large`，完整字段为 `{ "limit": 3, "actual": 4 }`，
 路径为 `response.body`。这样无需在 corpus 中写入 2 MiB 的 body。
 `version.text.body_limit_utf8` 还覆盖多字节字符计量；默认 2 MiB 的边界由 Rust 回归测试覆盖。
+
+`checksum.header.raised_limits_clamped` 将 `body_bytes` 和 `header_value_bytes`
+都请求为 33,554,432，搭配 8,193 字节的字面 header 值，仍须报
+`parser.body_too_large`，字段为 `{ "limit": 8192, "actual": 8193 }`。
+它用较小的 header 证明调高请求被夹到默认值；body 默认 2 MiB 的不可调高语义
+由 Rust 的 `limits_can_only_be_lowered` 验证，无需新增 corpus 生成语法或大 body。
 
 `version.regex.pattern_limit` 与 `version.regex.pattern_limit_utf8` 覆盖 pattern
 的 UTF-8 字节数；超限使用 `parser.invalid_pattern`，字段为 `{ limit, actual }`。
@@ -121,17 +135,25 @@ BSD 使用固定分隔符 `<LABEL> (<name>) = <hex>`，名称完全相等，
 其中 `name` 为调用者请求的 artifact 原值；`checksum` 的 `parser.invalid_checksum`
 字段为 `{}`。上述错误路径统一为 `response.body`。
 GitHub parser 使用轻量 `tl` 解析 HTML 的 `li` 资产条目，
-从下载链接 href 的最后路径段百分号解码后精确匹配，不看显示文本，字面 `+` 保持原样。
-digest 读取同一条目内的 `.Truncate-text`，不跨相邻或嵌套的 `li`，也不读脚本和注释。
+下载链接 href 先解码一次 HTML 字符引用，再去掉 query / fragment，
+提取最后路径段并百分号解码一次后精确匹配；不看显示文本，字面 `+` 保持原样。
+支持带分号的十进制 / 十六进制数字引用，以及常见命名引用
+`amp`、`quot`、`apos`、`lt`、`gt`、`nbsp`
+（也接受 `AMP`、`QUOT`、`LT`、`GT`）；未知引用保留原文，不递归解码。
+从根遍历资产条目时剪除 script / style / 注释；digest 读取同一条目内的
+`.Truncate-text`，文本收集同样跳过 li / script / style / 注释。
+若 digest 容器只含被排除的内容，视为当前条目缺少 digest。
 未找到名称报 `parser.not_found`；匹配条目没有 digest 报 `parser.digest_missing`；
 同名条目（或同一条目）有不同 digest 报 `parser.ambiguous`，三者 fields 都是 `{ name }`。
 相同 digest 在算法名和 hex 归一化后去重。任意匹配条目没有 digest 都拒绝，
 即使另一个同名条目有 digest。不支持的算法、非法 hex、长度错误或空 digest
 报 `parser.invalid_checksum`，fields 为 `{}`；不校验未匹配条目的 digest。
 这些错误路径均为 `response.body`；body 上限仍在 HTML 解析前检查。
+若 `tl::parse` 无法解析页面，同样映射为 `parser.invalid_checksum`，
+fields 为 `{}`、path 为 `response.body`；不根据 tokenizer 的消息新增错误码。
 临时 `ParseError::Unsupported` 已删除；未知 type 继续使用
 `ResolveParser { parser_type }`，返回 `resolve.unsupported_parser` 和保留原始 tag 的
-`{ parser_type }`，路径也是 `response.body`。
+`{ parser_type }`，路径为 `parser.type`。
 
 真实页面、采集 URL/UTC 时间、独立期望清单及 O-3 体积比较见
 [GitHub fixture README](fixtures/github-expanded-assets/README.md)。

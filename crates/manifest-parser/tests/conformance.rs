@@ -21,8 +21,8 @@ enum Expectation {
 #[derive(Debug, Deserialize)]
 struct ExpectedError {
     code: String,
-    path: Option<String>,
-    fields: Option<Value>,
+    path: String,
+    fields: Value,
 }
 
 #[derive(Deserialize)]
@@ -100,15 +100,19 @@ fn compare(result: Result<Value, ParseError>, expect: &Expectation) -> Result<()
             if actual.code() != error.code {
                 return Err(format!("expected code {}, got {actual:?}", error.code));
             }
-            if let Some(path) = &error.path
-                && actual.path() != *path
-            {
-                return Err(format!("expected path {path:?}, got {:?}", actual.path()));
+            if actual.path() != error.path {
+                return Err(format!(
+                    "expected path {:?}, got {:?}",
+                    error.path,
+                    actual.path()
+                ));
             }
-            if let Some(fields) = &error.fields
-                && actual.fields() != *fields
-            {
-                return Err(format!("expected fields {fields}, got {}", actual.fields()));
+            if actual.fields() != error.fields {
+                return Err(format!(
+                    "expected fields {}, got {}",
+                    error.fields,
+                    actual.fields()
+                ));
             }
             Ok(())
         }
@@ -133,6 +137,44 @@ fn run_cases(corpus: &str, execute: impl Fn(Value) -> Result<Value, ParseError>)
         }
     }
     assert!(executed > 0, "conformance runner must execute cases");
+    assert!(failures.is_empty(), "{}", failures.join("\n"));
+}
+
+#[test]
+fn corpus_case_names_are_globally_unique() {
+    let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../conformance");
+    let mut pending = vec![root.clone()];
+    let mut names = std::collections::BTreeMap::new();
+    let mut failures = Vec::new();
+    while let Some(directory) = pending.pop() {
+        for entry in std::fs::read_dir(&directory).expect("corpus directory exists") {
+            let path = entry.expect("corpus directory entry").path();
+            if path == root.join("fixtures") {
+                continue;
+            }
+            if path.is_dir() {
+                pending.push(path);
+                continue;
+            }
+            if path.extension().is_none_or(|extension| extension != "json") {
+                continue;
+            }
+            let corpus = std::fs::read_to_string(&path).expect("UTF-8 corpus");
+            let cases: Vec<Case> = serde_json::from_str(&corpus)
+                .unwrap_or_else(|error| panic!("{}: {error}", path.display()));
+            for case in cases {
+                if let Some(previous) = names.insert(case.name.clone(), path.clone()) {
+                    failures.push(format!(
+                        "{}: duplicate case name in {} and {}",
+                        case.name,
+                        previous.display(),
+                        path.display()
+                    ));
+                }
+            }
+        }
+    }
+    assert!(!names.is_empty(), "corpus must contain named cases");
     assert!(failures.is_empty(), "{}", failures.join("\n"));
 }
 
@@ -184,7 +226,7 @@ fn checksum_unsupported_parsers() {
         matches!(&error, ParseError::ResolveParser { parser_type } if parser_type == "future-checksum")
     );
     assert_eq!(error.code(), "resolve.unsupported_parser");
-    assert_eq!(error.path(), "response.body");
+    assert_eq!(error.path(), "parser.type");
     assert_eq!(
         error.fields(),
         serde_json::json!({ "parser_type": "future-checksum" })

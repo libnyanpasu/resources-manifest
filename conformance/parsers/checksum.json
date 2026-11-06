@@ -118,7 +118,11 @@
     },
     "expect": {
       "error": {
-        "code": "parser.not_found"
+        "code": "parser.not_found",
+        "path": "response.body",
+        "fields": {
+          "name": "selected.zip"
+        }
       }
     }
   },
@@ -140,7 +144,8 @@
         "code": "parser.ambiguous",
         "fields": {
           "name": "selected.zip"
-        }
+        },
+        "path": "response.body"
       }
     }
   },
@@ -224,7 +229,11 @@
     },
     "expect": {
       "error": {
-        "code": "parser.not_found"
+        "code": "parser.not_found",
+        "path": "response.headers.x-checksum-sha256",
+        "fields": {
+          "name": "X-Checksum-Sha256"
+        }
       }
     }
   },
@@ -257,7 +266,8 @@
         "code": "parser.ambiguous",
         "fields": {
           "name": "X-Checksum-Sha256"
-        }
+        },
+        "path": "response.headers.x-checksum-sha256"
       }
     }
   },
@@ -302,7 +312,9 @@
     },
     "expect": {
       "error": {
-        "code": "parser.invalid_encoding"
+        "code": "parser.invalid_encoding",
+        "path": "response.headers.x-checksum-sha256",
+        "fields": {}
       }
     }
   },
@@ -328,7 +340,9 @@
     },
     "expect": {
       "error": {
-        "code": "parser.invalid_checksum"
+        "code": "parser.invalid_checksum",
+        "path": "response.headers.x-checksum-sha256",
+        "fields": {}
       }
     }
   },
@@ -354,7 +368,9 @@
     },
     "expect": {
       "error": {
-        "code": "parser.invalid_checksum"
+        "code": "parser.invalid_checksum",
+        "path": "response.headers.x-checksum-sha256",
+        "fields": {}
       }
     }
   },
@@ -1260,7 +1276,7 @@
     "expect": {
       "error": {
         "code": "resolve.unsupported_parser",
-        "path": "response.body",
+        "path": "parser.type",
         "fields": {
           "parser_type": "future-checksum"
         }
@@ -2233,6 +2249,524 @@
     },
     "expect": {
       "ok": "sha256:fbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbfb"
+    }
+  },
+  {
+    "name": "checksum.gnu.trailing_space_tab_swapped",
+    "input": {
+      "parser": {
+        "type": "gnu",
+        "algorithm": "sha256"
+      },
+      "response": {
+        "body": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef  selected.zip\t",
+        "headers": []
+      },
+      "artifact": "selected.zip "
+    },
+    "expect": {
+      "error": {
+        "code": "parser.not_found",
+        "path": "response.body",
+        "fields": {
+          "name": "selected.zip "
+        }
+      }
+    }
+  },
+  {
+    "name": "checksum.gnu.trailing_tab_space_swapped",
+    "input": {
+      "parser": {
+        "type": "gnu",
+        "algorithm": "sha256"
+      },
+      "response": {
+        "body": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef  selected.zip ",
+        "headers": []
+      },
+      "artifact": "selected.zip\t"
+    },
+    "expect": {
+      "error": {
+        "code": "parser.not_found",
+        "path": "response.body",
+        "fields": {
+          "name": "selected.zip\t"
+        }
+      }
+    }
+  },
+  {
+    "name": "checksum.gnu.mixed_trailing_whitespace_mismatch",
+    "input": {
+      "parser": {
+        "type": "gnu",
+        "algorithm": "sha256"
+      },
+      "response": {
+        "body": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef  selected.zip\t ",
+        "headers": []
+      },
+      "artifact": "selected.zip \t"
+    },
+    "expect": {
+      "error": {
+        "code": "parser.not_found",
+        "path": "response.body",
+        "fields": {
+          "name": "selected.zip \t"
+        }
+      }
+    }
+  },
+  {
+    "name": "checksum.gnu.mixed_trailing_whitespace_exact",
+    "input": {
+      "parser": {
+        "type": "gnu",
+        "algorithm": "sha256"
+      },
+      "response": {
+        "body": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef  selected.zip \t\t ",
+        "headers": []
+      },
+      "artifact": "selected.zip \t"
+    },
+    "expect": {
+      "ok": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+    }
+  },
+  {
+    "name": "checksum.gnu.leading_star",
+    "input": {
+      "parser": {
+        "type": "gnu",
+        "algorithm": "sha256"
+      },
+      "response": {
+        "body": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef  *selected.zip",
+        "headers": []
+      },
+      "artifact": "*selected.zip"
+    },
+    "expect": {
+      "ok": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+    }
+  },
+  {
+    "name": "checksum.gnu.leading_star_binary",
+    "input": {
+      "parser": {
+        "type": "gnu",
+        "algorithm": "sha256"
+      },
+      "response": {
+        "body": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef  **selected.zip",
+        "headers": []
+      },
+      "artifact": "*selected.zip"
+    },
+    "expect": {
+      "ok": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+    }
+  },
+  {
+    "name": "checksum.gnu.internal_spaces",
+    "input": {
+      "parser": {
+        "type": "gnu",
+        "algorithm": "sha256"
+      },
+      "response": {
+        "body": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef  selected file name.zip",
+        "headers": []
+      },
+      "artifact": "selected file name.zip"
+    },
+    "expect": {
+      "ok": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+    }
+  },
+  {
+    "name": "checksum.github_release_assets.script_only_entry",
+    "input": {
+      "parser": {
+        "type": "github-release-assets"
+      },
+      "response": {
+        "body": "<script><li><a href=\"/x/y/releases/download/v1/selected.zip\">selected.zip</a><span class=\"Truncate-text\">sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff</span></li></script>",
+        "headers": []
+      },
+      "artifact": "selected.zip"
+    },
+    "expect": {
+      "error": {
+        "code": "parser.not_found",
+        "path": "response.body",
+        "fields": {
+          "name": "selected.zip"
+        }
+      }
+    }
+  },
+  {
+    "name": "checksum.github_release_assets.script_fake_before_real",
+    "input": {
+      "parser": {
+        "type": "github-release-assets"
+      },
+      "response": {
+        "body": "<script><li><a href=\"/x/y/releases/download/v1/selected.zip\">selected.zip</a><span class=\"Truncate-text\">sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff</span></li></script><ul><li><a href=\"/x/y/releases/download/v1/selected.zip\">selected.zip</a><span class=\"Truncate-text\">sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef</span></li></ul>",
+        "headers": []
+      },
+      "artifact": "selected.zip"
+    },
+    "expect": {
+      "ok": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+    }
+  },
+  {
+    "name": "checksum.github_release_assets.style_only_entry",
+    "input": {
+      "parser": {
+        "type": "github-release-assets"
+      },
+      "response": {
+        "body": "<style><li><a href=\"/x/y/releases/download/v1/selected.zip\">selected.zip</a><span class=\"Truncate-text\">sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef</span></li></style>",
+        "headers": []
+      },
+      "artifact": "selected.zip"
+    },
+    "expect": {
+      "error": {
+        "code": "parser.not_found",
+        "path": "response.body",
+        "fields": {
+          "name": "selected.zip"
+        }
+      }
+    }
+  },
+  {
+    "name": "checksum.github_release_assets.comment_only_entry",
+    "input": {
+      "parser": {
+        "type": "github-release-assets"
+      },
+      "response": {
+        "body": "<!--<li><a href=\"/x/y/releases/download/v1/selected.zip\">selected.zip</a><span class=\"Truncate-text\">sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef</span></li>-->",
+        "headers": []
+      },
+      "artifact": "selected.zip"
+    },
+    "expect": {
+      "error": {
+        "code": "parser.not_found",
+        "path": "response.body",
+        "fields": {
+          "name": "selected.zip"
+        }
+      }
+    }
+  },
+  {
+    "name": "checksum.github_release_assets.script_digest_isolation",
+    "input": {
+      "parser": {
+        "type": "github-release-assets"
+      },
+      "response": {
+        "body": "<ul><li><a href=\"/x/y/releases/download/v1/selected.zip\">selected.zip</a><span class=\"Truncate-text\"><script>sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef</script></span></li></ul>",
+        "headers": []
+      },
+      "artifact": "selected.zip"
+    },
+    "expect": {
+      "error": {
+        "code": "parser.digest_missing",
+        "path": "response.body",
+        "fields": {
+          "name": "selected.zip"
+        }
+      }
+    }
+  },
+  {
+    "name": "checksum.github_release_assets.nested_li_digest_isolation",
+    "input": {
+      "parser": {
+        "type": "github-release-assets"
+      },
+      "response": {
+        "body": "<ul><li><a href=\"/x/y/releases/download/v1/selected.zip\">selected.zip</a><div class=\"Truncate-text\"><ul><li>sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef</li></ul></div></li></ul>",
+        "headers": []
+      },
+      "artifact": "selected.zip"
+    },
+    "expect": {
+      "error": {
+        "code": "parser.digest_missing",
+        "path": "response.body",
+        "fields": {
+          "name": "selected.zip"
+        }
+      }
+    }
+  },
+  {
+    "name": "checksum.github_release_assets.style_digest_isolation",
+    "input": {
+      "parser": {
+        "type": "github-release-assets"
+      },
+      "response": {
+        "body": "<ul><li><a href=\"/x/y/releases/download/v1/selected.zip\">selected.zip</a><span class=\"Truncate-text\"><style>sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef</style></span></li></ul>",
+        "headers": []
+      },
+      "artifact": "selected.zip"
+    },
+    "expect": {
+      "error": {
+        "code": "parser.digest_missing",
+        "path": "response.body",
+        "fields": {
+          "name": "selected.zip"
+        }
+      }
+    }
+  },
+  {
+    "name": "checksum.github_release_assets.comment_digest_isolation",
+    "input": {
+      "parser": {
+        "type": "github-release-assets"
+      },
+      "response": {
+        "body": "<ul><li><a href=\"/x/y/releases/download/v1/selected.zip\">selected.zip</a><span class=\"Truncate-text\"><!--sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef--></span></li></ul>",
+        "headers": []
+      },
+      "artifact": "selected.zip"
+    },
+    "expect": {
+      "error": {
+        "code": "parser.digest_missing",
+        "path": "response.body",
+        "fields": {
+          "name": "selected.zip"
+        }
+      }
+    }
+  },
+  {
+    "name": "checksum.github_release_assets.href_named_amp",
+    "input": {
+      "parser": {
+        "type": "github-release-assets"
+      },
+      "response": {
+        "body": "<li><a href=\"/x/y/releases/download/v1/a&amp;b.zip\">label</a><span class=\"Truncate-text\">sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef</span></li>",
+        "headers": []
+      },
+      "artifact": "a&b.zip"
+    },
+    "expect": {
+      "ok": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+    }
+  },
+  {
+    "name": "checksum.github_release_assets.href_decimal_plus",
+    "input": {
+      "parser": {
+        "type": "github-release-assets"
+      },
+      "response": {
+        "body": "<li><a href=\"/x/y/releases/download/v1/foo&#43;bar.zip\">label</a><span class=\"Truncate-text\">sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef</span></li>",
+        "headers": []
+      },
+      "artifact": "foo+bar.zip"
+    },
+    "expect": {
+      "ok": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+    }
+  },
+  {
+    "name": "checksum.github_release_assets.href_hex_plus",
+    "input": {
+      "parser": {
+        "type": "github-release-assets"
+      },
+      "response": {
+        "body": "<li><a href=\"/x/y/releases/download/v1/foo&#x2B;bar.zip\">label</a><span class=\"Truncate-text\">sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef</span></li>",
+        "headers": []
+      },
+      "artifact": "foo+bar.zip"
+    },
+    "expect": {
+      "ok": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+    }
+  },
+  {
+    "name": "checksum.github_release_assets.href_named_quote",
+    "input": {
+      "parser": {
+        "type": "github-release-assets"
+      },
+      "response": {
+        "body": "<li><a href=\"/x/y/releases/download/v1/a&quot;b.zip\">label</a><span class=\"Truncate-text\">sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef</span></li>",
+        "headers": []
+      },
+      "artifact": "a\"b.zip"
+    },
+    "expect": {
+      "ok": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+    }
+  },
+  {
+    "name": "checksum.github_release_assets.href_common_named",
+    "input": {
+      "parser": {
+        "type": "github-release-assets"
+      },
+      "response": {
+        "body": "<li><a href=\"/x/y/releases/download/v1/a&lt;b&gt;c&apos;d&nbsp;.zip\">label</a><span class=\"Truncate-text\">sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef</span></li>",
+        "headers": []
+      },
+      "artifact": "a<b>c'd .zip"
+    },
+    "expect": {
+      "ok": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+    }
+  },
+  {
+    "name": "checksum.github_release_assets.href_decoded_query",
+    "input": {
+      "parser": {
+        "type": "github-release-assets"
+      },
+      "response": {
+        "body": "<li><a href=\"/x/y/releases/download/v1/selected.zip&#63;download=1\">label</a><span class=\"Truncate-text\">sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef</span></li>",
+        "headers": []
+      },
+      "artifact": "selected.zip"
+    },
+    "expect": {
+      "ok": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+    }
+  },
+  {
+    "name": "checksum.github_release_assets.href_decoded_fragment",
+    "input": {
+      "parser": {
+        "type": "github-release-assets"
+      },
+      "response": {
+        "body": "<li><a href=\"/x/y/releases/download/v1/selected.zip&#35;digest\">label</a><span class=\"Truncate-text\">sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef</span></li>",
+        "headers": []
+      },
+      "artifact": "selected.zip"
+    },
+    "expect": {
+      "ok": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+    }
+  },
+  {
+    "name": "checksum.github_release_assets.href_decoded_path",
+    "input": {
+      "parser": {
+        "type": "github-release-assets"
+      },
+      "response": {
+        "body": "<li><a href=\"/x/y/releases/download/v1/ignored&#47;selected.zip\">label</a><span class=\"Truncate-text\">sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef</span></li>",
+        "headers": []
+      },
+      "artifact": "selected.zip"
+    },
+    "expect": {
+      "ok": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+    }
+  },
+  {
+    "name": "checksum.github_release_assets.href_entity_decode_once",
+    "input": {
+      "parser": {
+        "type": "github-release-assets"
+      },
+      "response": {
+        "body": "<li><a href=\"/x/y/releases/download/v1/foo&amp;amp;bar.zip\">label</a><span class=\"Truncate-text\">sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef</span></li>",
+        "headers": []
+      },
+      "artifact": "foo&amp;bar.zip"
+    },
+    "expect": {
+      "ok": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+    }
+  },
+  {
+    "name": "checksum.github_release_assets.href_entity_then_percent",
+    "input": {
+      "parser": {
+        "type": "github-release-assets"
+      },
+      "response": {
+        "body": "<li><a href=\"/x/y/releases/download/v1/foo&#37;2Bbar.zip\">label</a><span class=\"Truncate-text\">sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef</span></li>",
+        "headers": []
+      },
+      "artifact": "foo+bar.zip"
+    },
+    "expect": {
+      "ok": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+    }
+  },
+  {
+    "name": "checksum.github_release_assets.href_unknown_entity_literal",
+    "input": {
+      "parser": {
+        "type": "github-release-assets"
+      },
+      "response": {
+        "body": "<li><a href=\"/x/y/releases/download/v1/a&unknown;b.zip\">label</a><span class=\"Truncate-text\">sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef</span></li>",
+        "headers": []
+      },
+      "artifact": "a&unknown;b.zip"
+    },
+    "expect": {
+      "ok": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+    }
+  },
+  {
+    "name": "checksum.header.raised_limits_clamped",
+    "input": {
+      "parser": {
+        "type": "header",
+        "name": "X-Checksum-Sha256",
+        "algorithm": "sha256",
+        "encoding": "hex"
+      },
+      "response": {
+        "body": "",
+        "headers": [
+          [
+            "X-Checksum-Sha256",
+            "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          ]
+        ]
+      },
+      "artifact": "selected.zip",
+      "limits": {
+        "body_bytes": 33554432,
+        "header_value_bytes": 33554432
+      }
+    },
+    "expect": {
+      "error": {
+        "code": "parser.body_too_large",
+        "path": "response.headers.x-checksum-sha256",
+        "fields": {
+          "limit": 8192,
+          "actual": 8193
+        }
+      }
     }
   }
 ]
