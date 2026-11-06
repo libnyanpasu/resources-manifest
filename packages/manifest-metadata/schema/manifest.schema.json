@@ -378,7 +378,8 @@
             "group": {
               "description": "Capture group containing the version. Defaults to 1. Deserializing\nnegative or fractional values fails, matching the reference\nvalidator's non-negative integer rule.",
               "type": "integer",
-              "minimum": 0
+              "minimum": 0,
+              "maximum": 4294967295
             },
             "type": {
               "type": "string",

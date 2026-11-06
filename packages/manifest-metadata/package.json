@@ -8,5 +8,8 @@
     "./types": "./src/types.ts",
     "./schema/manifest": "./schema/manifest.schema.json",
     "./schema/template": "./schema/manifest-template.schema.json"
+  },
+  "devDependencies": {
+    "ajv": "8.20.0"
   }
 }

@@ -313,6 +313,7 @@ pub enum RemoteVersionParser {
         /// validator's non-negative integer rule.
         #[serde(skip_serializing_if = "Option::is_none")]
         #[specta(optional)]
+        #[schemars(range(max = 4_294_967_295_u32))]
         group: Option<u32>,
     },
 }
@@ -386,6 +387,7 @@ pub struct ResourceArtifactTemplate {
 
 /// A tag without its identifier, used by the per-resource tag catalog.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema, Type)]
+#[serde(deny_unknown_fields)]
 pub struct ResourceTagDefinition {
     pub name: String,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -411,6 +413,7 @@ pub struct ResourceTag {
 
 /// A variant as authored in the template.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema, Type)]
+#[serde(deny_unknown_fields)]
 pub struct ResourceVariantTemplate {
     /// A stable, human-readable alias. The semantic identity is still the exact
     /// set of tags, exposed as `tag_key` in the compiled manifest.
@@ -468,7 +471,8 @@ impl std::error::Error for NonFiniteF64Error {}
 /// A finite `f64`, serialized like a JavaScript number: integral values
 /// without a fraction (matching `JSON.stringify`), and NaN/infinity are
 /// rejected instead of silently becoming `null`.
-#[derive(Debug, Clone, Copy, PartialEq, PartialOrd)]
+#[derive(Debug, Clone, Copy, PartialEq, PartialOrd, Type)]
+#[specta(inline)]
 pub struct FiniteF64(f64);
 
 impl FiniteF64 {
@@ -522,13 +526,6 @@ impl JsonSchema for FiniteF64 {
     }
 }
 
-impl Type for FiniteF64 {
-    fn definition(types: &mut Types) -> DataType {
-        // Inline plain number, matching the reference `priority?: number`.
-        f64::definition(types)
-    }
-}
-
 /// A mirror transforms a canonical URL into an accelerated/alternative URL.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema, Type)]
 pub struct MirrorDefinition {
@@ -550,6 +547,7 @@ pub struct MirrorDefinition {
 
 /// A resource as authored in the template.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema, Type)]
+#[serde(deny_unknown_fields)]
 pub struct ResourceTemplate {
     pub name: String,
     pub registry: String,
@@ -583,6 +581,7 @@ pub struct ResourceDefinition {
 
 /// The authored resource manifest template, input of the compiler.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema, Type)]
+#[serde(deny_unknown_fields)]
 pub struct ResourceManifestTemplate {
     pub manifest_version: ManifestVersion,
     pub registries: BTreeMap<String, RegistryDefinition>,
@@ -770,6 +769,49 @@ mod tests {
     }
 
     #[test]
+    fn template_rejects_unknown_fields() {
+        let template_json = json!({
+            "manifest_version": 2,
+            "registries": {},
+            "resources": {
+                "example": {
+                    "name": "Example",
+                    "registry": "example",
+                    "tags": { "stable": { "name": "Stable" } },
+                    "variants": [{
+                        "name": "Stable",
+                        "tags": ["stable"],
+                        "artifacts": {}
+                    }]
+                }
+            }
+        });
+        serde_json::from_value::<ResourceManifestTemplate>(template_json.clone())
+            .expect("deserialize valid template");
+
+        for path in [
+            "",
+            "/resources/example",
+            "/resources/example/variants/0",
+            "/resources/example/tags/stable",
+        ] {
+            let mut invalid = template_json.clone();
+            invalid
+                .pointer_mut(path)
+                .expect("template object exists")
+                .as_object_mut()
+                .expect("template node is an object")
+                .insert("unknown_field".into(), json!(true));
+            let error = serde_json::from_value::<ResourceManifestTemplate>(invalid)
+                .expect_err("unknown template field must be rejected");
+            assert!(
+                error.to_string().contains("unknown field `unknown_field`"),
+                "unexpected error at {path}: {error}"
+            );
+        }
+    }
+
+    #[test]
     fn manifest_version_only_accepts_the_literal() {
         assert_eq!(
             serde_json::from_value::<ManifestVersion>(json!(2)).unwrap(),
@@ -852,6 +894,80 @@ mod tests {
         assert!(FiniteF64::new(f64::NAN).is_err());
         assert!(FiniteF64::new(f64::INFINITY).is_err());
         assert!(serde_json::from_str::<FiniteF64>("1e400").is_err());
+    }
+
+    #[test]
+    fn compiled_manifest_ignores_unknown_fields() {
+        let reference: Value =
+            serde_json::from_str(include_str!("../tests/fixtures/resources.json"))
+                .expect("deserialize reference JSON");
+        let expected: ResourceManifest =
+            serde_json::from_value(reference.clone()).expect("deserialize reference manifest");
+        for path in [
+            "",
+            "/resources/clash_premium",
+            "/resources/clash_premium/variants/0",
+            "/resources/clash_premium/variants/0/artifacts/windows-x86_64",
+            "/registries/github-release",
+            "/mirrors/direct",
+        ] {
+            let mut extended = reference.clone();
+            extended
+                .pointer_mut(path)
+                .expect("fixture node exists")
+                .as_object_mut()
+                .expect("fixture node is an object")
+                .insert("unknown_field".into(), json!(true));
+            let parsed: ResourceManifest = serde_json::from_value(extended)
+                .unwrap_or_else(|error| panic!("unknown field at {path} must be ignored: {error}"));
+            assert_eq!(parsed, expected, "known fields at {path} must be preserved");
+        }
+    }
+
+    #[test]
+    fn template_shared_types_ignore_unknown_fields() {
+        let template = json!({
+            "manifest_version": 2,
+            "registries": { "example": { "name": "Example", "url_template": "https://example.com/{artifact}" } },
+            "mirrors": { "direct": { "name": "Direct", "url_template": "{url}" } },
+            "resources": {
+                "example": {
+                    "name": "Example",
+                    "registry": "example",
+                    "tags": {},
+                    "variants": [{
+                        "name": "Default",
+                        "tags": [],
+                        "artifacts": { "windows-x86_64": {
+                            "artifact": "example.zip",
+                            "version": { "type": "static", "latest": "v1", "releases": [{ "version": "v1" }] }
+                        } }
+                    }]
+                }
+            }
+        });
+        let expected: ResourceManifestTemplate =
+            serde_json::from_value(template.clone()).expect("deserialize valid template");
+        for path in [
+            "/registries/example",
+            "/mirrors/direct",
+            "/resources/example/variants/0/artifacts/windows-x86_64",
+            "/resources/example/variants/0/artifacts/windows-x86_64/version",
+            "/resources/example/variants/0/artifacts/windows-x86_64/version/releases/0",
+        ] {
+            let mut extended = template.clone();
+            extended
+                .pointer_mut(path)
+                .expect("template node exists")
+                .as_object_mut()
+                .expect("template node is an object")
+                .insert("unknown_field".into(), json!(true));
+            let parsed: ResourceManifestTemplate =
+                serde_json::from_value(extended).unwrap_or_else(|error| {
+                    panic!("unknown shared field at {path} must be ignored: {error}")
+                });
+            assert_eq!(parsed, expected, "known fields at {path} must be preserved");
+        }
     }
 
     #[test]
