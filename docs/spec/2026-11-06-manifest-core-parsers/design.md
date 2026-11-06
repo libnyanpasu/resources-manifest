@@ -276,8 +276,8 @@ body 和单个 header 值的大小按 UTF-8 字节数计算；超限均报 `pars
 | `parser.`   | `ambiguous`                                                                                                                | `{ name }`                        |
 | `parser.`   | `group_out_of_range`                                                                                                       | `{ group, groups }`               |
 | `parser.`   | `not_found`, `digest_missing`, `invalid_version`, `invalid_checksum`, `invalid_encoding`, `invalid_pattern`                | 结构字段待对应实现卡细化          |
-| `template.` | `unknown_variable`, `cycle`, `depth_exceeded`, `output_too_large`, `invalid_literal`                                       | 结构字段待对应实现卡细化          |
-| `url.`      | `invalid`, `unsupported_scheme`, `forbidden_component`                                                                     | 结构字段待对应实现卡细化          |
+| `template.` | `unknown_variable`, `cycle`, `depth_exceeded`, `output_too_large`, `invalid_literal`                                       | 见下方 B2 渲染错误表              |
+| `url.`      | `invalid`, `unsupported_scheme`, `forbidden_component`                                                                     | 见下方 B2 渲染错误表              |
 | `select.`   | `unknown_resource`, `unsupported_platform`, `unknown_variant`, `no_exact_tags`, `conflicting_selection`, `default_missing` | 结构字段待对应实现卡细化          |
 | `resolve.`  | `unsupported_parser`                                                                                                       | `{ parser_type }`                 |
 | `resolve.`  | `version_required`, `version_not_in_history`, `mirror_not_allowed`, `unknown_registry`, `unknown_mirror`                   | 结构字段待对应实现卡细化          |
@@ -333,6 +333,43 @@ header 额外检查 RFC 9110 非空 token 名称，失败的 `reason` 为 `inval
 
 `ValidationErrors.errors()` 返回全部错误；同一 locator 的多个独立违规仍分别返回。
 同一模板字段在多个平台 / release 作用域内缺少同一变量时只返回一次相同错误。
+
+#### B2 渲染错误
+
+| 完整 code                        | fields              | path                                                               |
+| -------------------------------- | ------------------- | ------------------------------------------------------------------ |
+| `template.unknown_variable`      | `{ variable }`      | 包含引用的模板字段                                                 |
+| `template.cycle`                 | `{ variables }`     | 包含闭环引用的模板字段                                             |
+| `template.depth_exceeded`        | `{ limit, actual }` | 包含超限引用的模板字段                                             |
+| `template.output_too_large`      | `{ limit, actual }` | 超限输出所属模板字段                                               |
+| `template.invalid_literal`       | `{}`                | `arg.version`、`arg.source.<key>`、`A.version.releases[i].version` |
+| `url.invalid`                    | `{}`                | `registries.<id>.url_template`                                     |
+| `url.unsupported_scheme`         | `{ scheme }`        | `registries.<id>.url_template`                                     |
+| `url.forbidden_component`        | `{ component }`     | `registries.<id>.url_template`                                     |
+| `resolve.version_required`       | `{}`                | `arg.version`                                                      |
+| `resolve.version_not_in_history` | `{ version }`       | `arg.version`                                                      |
+
+`A` 沿用 B1 表的缩写。`variables` 为从根开始的 DFS 变量栈，包含末尾重复的闭环变量；
+`scheme` 为 URL 解析器规范化的小写协议名，不带冒号；`component` 为 `userinfo` 或 `fragment`。
+URL 错误顺序为解析失败、协议、userinfo、fragment；空 userinfo（`https://@host/`）
+也拒绝，通过 `url` 的 `EmbeddedCredentials` 诊断识别，不能在规范化后丢失检查。
+空 fragment 同样拒绝；作者显式写出的 query 允许。
+
+渲染根深度为 0，每进入一个 Authored 变量值深度加 1，Literal 不增加深度；
+检测到重复 DFS 变量时优先报 cycle。`depth_exceeded.actual` 是试图进入的深度。
+每层输出都在追加前检查 UTF-8 字节数，`output_too_large.actual` 是首次超限追加
+将得到的字节数（当前前缀加待追加片段），并非继续展开剩余模板后的总大小；不会分配超限输出。
+没有重新扫描拼接后的结果，所以 Literal 或跨替换边界形成的 `{x}` 都不再解释。
+未知变量、环及深度错误定位到正在解释的模板字段；输出错误定位到正在累积输出的字段。
+通用 `render_template` 没有 manifest locator，统一使用调用者给定的 path。
+
+所有宿主 source 值（包括未使用或被内置值覆盖的项）与宿主 version 在合并之前
+按 `VersionLabel` 校验，不 trim、不接受空值、不另设更宽松的字符集。
+通用 `TemplateValue::Literal` 本身不验证字符集，允许未来 mirror 的 URL 组件包含
+URL 标点；宿主输入必须通过 artifact 渲染入口校验，不能直接作为未检查的通用 Literal 使用。
+默认 static latest 的值在渲染时校验，错误定位到实际 release 的 version 字段；
+宿主传入的 static 历史选择或 remote parser 结果都定位到 `arg.version`。
+remote 缺版本与 static 不在历史中分别使用上表两个 resolve 码，供 B3 复用。
 
 ### 5.7 消费者边界
 
@@ -430,7 +467,21 @@ URL 校验、环 / 深度 / 大小检查，也不要求未知 parser 可执行�
 ### 7.2 B2 模板引擎
 
 - 按 §5.2 区分 `Authored` 和 `Literal`；在作用域内按优先级合并：registry `variables` < resource `source` < variant `source` < artifact `source` < release `source` < 宿主 `source` < 内置变量。download 的 artifact 名渲染后才合并 registry variables；除 §11.1 列出的有意偏差外，与参考实现 `R/resource-template.ts:1068-1110,1336-1346` 对齐，B4 的差分测试负责兜底。
-- 用 DFS 检测环，限制深度和输出长度。
+- 用 DFS 检测环，限制深度和输出长度；计数、字段、错误定位见 §5.6 B2 表。
+- B2 API：`ValidatedManifest::artifact(resource_id, variant_id, platform)` 只查找明确指定的
+  产物，返回借用句柄 `Option<SelectedArtifact>`；不推导默认或 tags，未知组合返回 None。
+  `SelectedArtifact::render(ArtifactRenderOptions { version, source }, &Limits)` 返回
+  `RenderedArtifact { artifact, canonical_url }` 或 `RenderError`。static 未给 version 时取
+  latest，指定版本必须在历史中；remote 必须提供已解析版本，匹配 fallback 时合并其 source。
+  宿主 source 优先于 release source，与参考实现的 release/source 顺序差异遵循本节优先级。
+- `render_template(template, &BTreeMap<&str, TemplateValue>, path, &Limits)` 暴露通用
+  渲染原语；`TemplateValue::{Authored, Literal}` 借用字符串，错误提供 `code/path/fields`。
+  B1 与 B2 共用 scope 合并、registry variables 层与占位符扫描，B1 不新增渲染校验。
+- artifact 渲染后以 Literal 进入 URL 作用域，避免结果被重复展开；renderer 不做百分号编码，
+  `canonical_url` 为 `url` 的 WHATWG 规范化结果（如空格/花括号可能由 URL 解析器编码）。
+  B3 再增加 version/checksum 请求、mirror 和策略计划，B2 不导出新 wire / TS 类型。
+- `url` 2.5 为纯 Rust；B2 用 `wasm32-unknown-unknown` 编译检查其与 core 的兼容性，
+  依赖树不得出现 HTTP 客户端或异步运行时。
 
 ### 7.3 B3 选择、计划与校验策略
 
@@ -519,6 +570,7 @@ URL 校验、环 / 深度 / 大小检查，也不要求未知 parser 可执行�
 | V-9  | `manifest_version: 2`（整数）                                                        | `manifest_version: "2.0"`（`major.minor`），消费侧对新 minor 宽松                                                               | O-7                                                                                         |
 | V-10 | parser 只读 body                                                                     | 输入是 `RemoteResponse`（body 加 headers）；新增 `header` checksum parser；禁止隐式从响应头取 checksum                          | O-1                                                                                         |
 | V-11 | remote source 可覆盖内置变量                                                         | 内置变量始终拥有最高优先级                                                                                                      | 防止 manifest 覆盖 version、platform 与 resource / variant 身份                             |
+| V-12 | download 的 release source 覆盖宿主 source                                           | 宿主 source 优先于 release source                                                                                               | §7.2 的显式合并顺序；宿主值仍必须先通过 VersionLabel                                        |
 
 ### 11.2 决策
 

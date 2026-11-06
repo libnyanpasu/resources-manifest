@@ -40,14 +40,14 @@
 - checksum 成功结果是 `ResourceChecksum` 的序列化字符串：`<algorithm>:<lowercase-hex>`。
   SHA-256 digest 使用 64 个十六进制字符（32 字节），base64 输入表示同样的 32 字节。
 
-| 目录 / 文件              | `input` 形状与运行器操作                                                                                         | `expect.ok`                          |
-| ------------------------ | ---------------------------------------------------------------------------------------------------------------- | ------------------------------------ |
-| `parsers/version.json`   | `{ parser, response: { body, headers } }`；编译 version parser，再解析响应                                       | version 字符串                       |
-| `parsers/checksum.json`  | `{ parser, response: { body, headers }, artifact }`；按 artifact 文件名解析 checksum                             | checksum 字符串                      |
-| `validate/manifest.json` | 完整编译产物 manifest；先消费侧解码，再调用 `validate_manifest`，不补字段、不从外部 fixture 加载或合并           | `true`，表示校验成功                 |
-| `compat/manifest.json`   | 完整编译产物 manifest；按运行器的 `CURRENT_MINOR`（当前 0）宽松解码，再按下文约定逐产物检查支持性，不补字段      | 兼容性投影对象                       |
-| `kind/artifact.json`     | artifact template wire object：`{ artifact, source?, version }`；调用 `artifact_checksum_kind`，无请求或响应输入 | kind 字符串                          |
-| `resolve/`               | 由 B4 填充 `reference-golden.json`；当前仅有 `.gitkeep`，没有 resolver 用例                                      | B4 定义下载计划与 URL 的参考比较结果 |
+| 目录 / 文件              | `input` 形状与运行器操作                                                                                         | `expect.ok`                            |
+| ------------------------ | ---------------------------------------------------------------------------------------------------------------- | -------------------------------------- |
+| `parsers/version.json`   | `{ parser, response: { body, headers } }`；编译 version parser，再解析响应                                       | version 字符串                         |
+| `parsers/checksum.json`  | `{ parser, response: { body, headers }, artifact }`；按 artifact 文件名解析 checksum                             | checksum 字符串                        |
+| `validate/manifest.json` | 完整编译产物 manifest；先消费侧解码，再调用 `validate_manifest`，不补字段、不从外部 fixture 加载或合并           | `true`，表示校验成功                   |
+| `compat/manifest.json`   | 完整编译产物 manifest；按运行器的 `CURRENT_MINOR`（当前 0）宽松解码，再按下文约定逐产物检查支持性，不补字段      | 兼容性投影对象                         |
+| `kind/artifact.json`     | artifact template wire object：`{ artifact, source?, version }`；调用 `artifact_checksum_kind`，无请求或响应输入 | kind 字符串                            |
+| `resolve/templates.json` | B2：明确的产物渲染或通用模板渲染，见下文                                                                         | `{ artifact, canonical_url }` 或字符串 |
 
 `response.headers` 是 `[name, value]` 二元组数组，例如
 `[["X-Checksum-Sha256", "..."], ["x-checksum-sha256", "..."]]`。
@@ -62,6 +62,37 @@ checksum 的 `artifact` 是具体文件名，不是带 `{version}` 的模板。
 非 hex 字符、奇数个 hex 字符和 digest 长度不符都属于 `parser.invalid_checksum`。
 单个 header 值超过单值上限（默认 8 KiB，宿主调低后以生效值为准）使用 `parser.body_too_large`，同 body 超限一样携带
 `{ limit, actual }`（UTF-8 字节数）；上限一致性用例由 A2 / A5 补充。
+
+### Resolve 模板用例（B2）
+
+`resolve/templates.json` 由 `crates/manifest-core/tests/resolve.rs` 执行，所有用例
+继续受 parser 运行器的递归全局名称唯一性检查覆盖。B4 将另增 reference golden。
+
+产物用例 input 为 `{ manifest, resource, variant, platform, version?, source?, limits? }`：
+`manifest` 是完整编译产物，或恰为 `{ "snapshot": "resources.json" }`，后者加载
+`crates/manifest-metadata/tests/fixtures/resources.json`，不接受其他路径，也不合并覆盖字段。
+先消费侧解码并 `validate_manifest`，再按明确 resource / variant / platform 获取产物。
+`version` 和 `source` 是宿主 Literal，version 可来自 remote parser；static 默认 latest，
+remote 必须传 version；匹配 static release 或 remote fallback 时应用其 source。
+`expect.ok` 恰为 `{ artifact, canonical_url }`，错误仍精确比较 code、path、完整 fields。
+
+通用模板 input 为 `{ template, values, path, limits? }`，每个 values 值恰为
+`{ "authored": "..." }` 或 `{ "literal": "..." }`；`expect.ok` 为字符串。
+这些用例直接调用 `render_template`，包括已被 B1 提前阻止的未知依赖，以及
+未来 mirror 使用的含 URL 标点/花括号的 Literal；通用 Literal 不实施宿主字符集校验。
+传入的 path 用于模板内部错误。本文件使用 `arg.template`，不伪造 manifest locator。
+
+两种 input 的 `limits` 只接受 `template_depth`、`render_output_bytes`，均通过
+`Limits::with_*` 调低，不能调高；未声明使用默认值。深度根为 0，进入 Authored 加 1，
+Literal 不加深度；输出按 UTF-8 字节，在每次追加前检查，actual 为首次超限追加的
+前缀与片段总字节数。测试包含默认与调低上限的正反边界，以及调高请求被夹到默认值。
+
+`resolve.host_version_injection` 在 `arg.version` 拒绝 `alpha?x=1#f`；
+`resolve.authored_release` 验证 `release: "{version}"` 可递归展开。
+其余用例覆盖每层优先级、Literal 不重新扫描、DFS、所有 template / url 错误、
+URL 规范化、保留已有百分号与 `+`、允许作者 query、拒绝空 userinfo / fragment。
+快照回归逐 resource × variant × platform × static history 渲染全部 48 个 URL，
+确认每个 canonical URL 均不含 `?` 或 `#`；不访问网络。
 
 ### Parser 上限覆盖（A2）
 
@@ -362,4 +393,4 @@ pnpm fmt:check
 ```
 
 A2 / A3 建立 Rust parser 运行器，B1 / B3 补充 validate / kind 运行器，
-B4 填充 `resolve/`，C3 再让 Node 读取同一份数据并核对用例名清单。
+B2 填充 `resolve/templates.json`、B4 增加参考差分，C3 再让 Node 读取同一份数据并核对用例名清单。

@@ -2,7 +2,14 @@ use manifest_metadata::ResourceManifest;
 use serde_json::{Value, json};
 use snafu::Snafu;
 
+mod render;
+mod scope;
 mod validate;
+
+pub use render::{
+    ArtifactRenderOptions, RenderError, RenderedArtifact, SelectedArtifact, TemplateValue,
+    render_template,
+};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[non_exhaustive]
