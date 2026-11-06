@@ -7,8 +7,8 @@
 //! `specta::Type` for the TypeScript export.
 //!
 //! Two invariants are part of the type definitions themselves rather than a
-//! separate validator: `manifest_version` only accepts the literal
-//! [`RESOURCE_MANIFEST_VERSION`], and [`ResourceChecksum`] only accepts the
+//! separate validator: `manifest_version` only accepts canonical versions within
+//! [`MANIFEST_MAJOR`], and [`ResourceChecksum`] only accepts the
 //! normalized `<algorithm>:<hex>` serialization. Cross-field rules from the
 //! design document (tag keys, default variants, registry references, …) are
 //! enforced by the compiler/validator, not by these types.
@@ -29,42 +29,123 @@
 use std::borrow::Cow;
 use std::collections::BTreeMap;
 use std::fmt;
+use std::str::FromStr;
 
 use schemars::{JsonSchema, Schema};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
+use snafu::Snafu;
 use specta::datatype::DataType;
 use specta::{Type, Types};
 
 /// Manifest schema version produced by the generator.
-pub const RESOURCE_MANIFEST_VERSION: u32 = 2;
+pub const RESOURCE_MANIFEST_VERSION: &str = "2.0";
 
-/// The `manifest_version` field: only [`RESOURCE_MANIFEST_VERSION`] is valid.
-///
-/// A unit type so an incompatible version is unrepresentable in Rust;
-/// deserialization rejects any other value.
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
-pub struct ManifestVersion;
+pub const MANIFEST_MAJOR: u32 = 2;
+pub const CURRENT_MINOR: u32 = 0;
+
+/// The `manifest_version` field accepts canonical versions within [`MANIFEST_MAJOR`].
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct ManifestVersion {
+    minor: u32,
+}
 
 impl ManifestVersion {
-    pub const VALUE: u32 = RESOURCE_MANIFEST_VERSION;
+    #[must_use]
+    pub const fn current() -> Self {
+        Self {
+            minor: CURRENT_MINOR,
+        }
+    }
+
+    #[must_use]
+    pub const fn minor(&self) -> u32 {
+        self.minor
+    }
+
+    #[must_use]
+    pub const fn is_newer_minor(&self) -> bool {
+        self.minor > CURRENT_MINOR
+    }
+}
+
+impl Default for ManifestVersion {
+    fn default() -> Self {
+        Self::current()
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Snafu)]
+#[non_exhaustive]
+pub enum ParseManifestVersionError {
+    #[snafu(display("manifest.invalid_version_format at manifest_version"))]
+    InvalidVersionFormat {},
+    #[snafu(display("manifest.unsupported_major at manifest_version: {major}"))]
+    UnsupportedMajor { major: u32 },
+}
+
+impl ParseManifestVersionError {
+    #[must_use]
+    pub const fn code(&self) -> &'static str {
+        match self {
+            Self::InvalidVersionFormat {} => "manifest.invalid_version_format",
+            Self::UnsupportedMajor { .. } => "manifest.unsupported_major",
+        }
+    }
+
+    #[must_use]
+    pub const fn path(&self) -> &'static str {
+        "manifest_version"
+    }
+}
+
+impl FromStr for ManifestVersion {
+    type Err = ParseManifestVersionError;
+
+    fn from_str(value: &str) -> Result<Self, Self::Err> {
+        let (major, minor) = value
+            .split_once('.')
+            .ok_or(ParseManifestVersionError::InvalidVersionFormat {})?;
+        for part in [major, minor] {
+            if part.is_empty()
+                || (part.len() > 1 && part.starts_with('0'))
+                || !part.bytes().all(|byte| byte.is_ascii_digit())
+            {
+                return Err(ParseManifestVersionError::InvalidVersionFormat {});
+            }
+        }
+        let major = major
+            .parse::<u32>()
+            .map_err(|_| ParseManifestVersionError::InvalidVersionFormat {})?;
+        let minor = minor
+            .parse::<u32>()
+            .map_err(|_| ParseManifestVersionError::InvalidVersionFormat {})?;
+        if major != MANIFEST_MAJOR {
+            return Err(ParseManifestVersionError::UnsupportedMajor { major });
+        }
+        Ok(Self { minor })
+    }
+}
+
+impl TryFrom<&str> for ManifestVersion {
+    type Error = ParseManifestVersionError;
+
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        value.parse()
+    }
 }
 
 impl Serialize for ManifestVersion {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        serializer.serialize_u32(Self::VALUE)
+        serializer.collect_str(&format_args!("{MANIFEST_MAJOR}.{}", self.minor))
     }
 }
 
 impl<'de> Deserialize<'de> for ManifestVersion {
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
-        let value = u32::deserialize(deserializer)?;
-        if value != Self::VALUE {
-            return Err(serde::de::Error::custom(format!(
-                "unsupported manifest_version {value}, expected {}",
-                Self::VALUE
-            )));
-        }
-        Ok(ManifestVersion)
+        let value = String::deserialize(deserializer).map_err(|_| {
+            serde::de::Error::custom(ParseManifestVersionError::InvalidVersionFormat {})
+        })?;
+        value.parse().map_err(serde::de::Error::custom)
     }
 }
 
@@ -75,8 +156,8 @@ impl JsonSchema for ManifestVersion {
 
     fn json_schema(_generator: &mut schemars::SchemaGenerator) -> Schema {
         schemars::json_schema!({
-            "type": "integer",
-            "const": Self::VALUE,
+            "type": "string",
+            "pattern": r"^2\.(0|[1-9][0-9]*)$",
         })
     }
 }
@@ -84,8 +165,8 @@ impl JsonSchema for ManifestVersion {
 impl Type for ManifestVersion {
     fn definition(types: &mut Types) -> DataType {
         // Placeholder shape; the schema generator rewrites this to the
-        // TypeScript literal `2` during export.
-        u32::definition(types)
+        // TypeScript template literal `2.${number}` during export.
+        String::definition(types)
     }
 }
 
@@ -613,7 +694,7 @@ mod tests {
 
     fn sample_manifest_json() -> Value {
         json!({
-            "manifest_version": 2,
+            "manifest_version": "2.0",
             "registries": {
                 "github-release": {
                     "name": "GitHub Releases",
@@ -698,7 +779,7 @@ mod tests {
         let expected = sample_manifest_json();
         let manifest: ResourceManifest =
             serde_json::from_value(expected.clone()).expect("deserialize manifest");
-        assert_eq!(manifest.manifest_version, ManifestVersion);
+        assert_eq!(manifest.manifest_version, ManifestVersion::current());
         let serialized = serde_json::to_value(&manifest).expect("serialize manifest");
         assert_eq!(serialized, expected);
     }
@@ -750,7 +831,7 @@ mod tests {
     #[test]
     fn template_roundtrips_reference_shape() {
         let template_json = json!({
-            "manifest_version": 2,
+            "manifest_version": "2.0",
             "registries": {},
             "resources": {},
             "mirrors": {
@@ -771,7 +852,7 @@ mod tests {
     #[test]
     fn template_rejects_unknown_fields() {
         let template_json = json!({
-            "manifest_version": 2,
+            "manifest_version": "2.0",
             "registries": {},
             "resources": {
                 "example": {
@@ -812,18 +893,139 @@ mod tests {
     }
 
     #[test]
-    fn manifest_version_only_accepts_the_literal() {
+    fn manifest_version_accepts_supported_major_and_preserves_minor() {
         assert_eq!(
-            serde_json::from_value::<ManifestVersion>(json!(2)).unwrap(),
-            ManifestVersion
+            RESOURCE_MANIFEST_VERSION,
+            format!("{MANIFEST_MAJOR}.{CURRENT_MINOR}")
         );
-        for version in [0, 1, 3, 42] {
-            assert!(
-                serde_json::from_value::<ManifestVersion>(json!(version)).is_err(),
-                "version {version} must be rejected"
+        assert_eq!(ManifestVersion::default(), ManifestVersion::current());
+        for (version, minor) in [("2.0", 0), ("2.7", 7), ("2.4294967295", u32::MAX)] {
+            let parsed = ManifestVersion::try_from(version).expect("valid version");
+            assert_eq!(parsed.minor(), minor);
+            assert_eq!(parsed.is_newer_minor(), minor > CURRENT_MINOR);
+            assert_eq!(serde_json::to_value(parsed).unwrap(), json!(version));
+            assert_eq!(
+                serde_json::from_value::<ManifestVersion>(json!(version)).unwrap(),
+                parsed
             );
         }
-        assert_eq!(serde_json::to_value(ManifestVersion).unwrap(), json!(2));
+    }
+
+    #[test]
+    fn manifest_version_rejects_unsupported_majors() {
+        for major in [0, 1, 3, u32::MAX] {
+            let version = format!("{major}.0");
+            let error = version.parse::<ManifestVersion>().unwrap_err();
+            assert_eq!(error, ParseManifestVersionError::UnsupportedMajor { major });
+            assert_eq!(error.code(), "manifest.unsupported_major");
+            assert_eq!(error.path(), "manifest_version");
+            let serde_error = serde_json::from_value::<ManifestVersion>(json!(version))
+                .expect_err("unsupported major");
+            assert!(serde_error.to_string().contains(error.code()));
+        }
+    }
+
+    #[test]
+    fn manifest_version_rejects_malformed_input() {
+        for version in [
+            "",
+            "2",
+            "2.07",
+            "02.0",
+            "2.00",
+            "2.",
+            ".0",
+            "2.0.0",
+            "2.+1",
+            "+2.0",
+            "2.-1",
+            "-2.0",
+            " 2.0",
+            "2.0 ",
+            "2.0\n",
+            "2. 0",
+            "2.1e2",
+            "2.１",
+            "2.4294967296",
+            "4294967296.0",
+            "3.07",
+            "3.4294967296",
+        ] {
+            let error = version.parse::<ManifestVersion>().unwrap_err();
+            assert_eq!(
+                error,
+                ParseManifestVersionError::InvalidVersionFormat {},
+                "{version:?}"
+            );
+            assert_eq!(error.code(), "manifest.invalid_version_format");
+            assert_eq!(error.path(), "manifest_version");
+            let serde_error = serde_json::from_value::<ManifestVersion>(json!(version))
+                .expect_err("malformed version");
+            assert!(
+                serde_error.to_string().contains(error.code()),
+                "{version:?}"
+            );
+        }
+        for value in [
+            json!(2),
+            json!(2.0),
+            json!(null),
+            json!(true),
+            json!([]),
+            json!({}),
+        ] {
+            let error = serde_json::from_value::<ManifestVersion>(value.clone()).unwrap_err();
+            assert!(
+                error
+                    .to_string()
+                    .contains("manifest.invalid_version_format"),
+                "{value}"
+            );
+            assert!(error.to_string().contains("manifest_version"), "{value}");
+        }
+    }
+
+    #[test]
+    fn manifest_version_matches_compatibility_cases() {
+        let cases: Vec<Value> =
+            serde_json::from_str(include_str!("../../../conformance/compat/manifest.json"))
+                .expect("compatibility cases");
+        for case in cases.iter().filter(|case| {
+            case["name"]
+                .as_str()
+                .unwrap()
+                .starts_with("compat.version.")
+        }) {
+            let version = case["input"]["manifest_version"].clone();
+            let parsed = serde_json::from_value::<ManifestVersion>(version.clone());
+            if let Some(expected) = case["expect"].get("error") {
+                let error = parsed.expect_err("version must be rejected");
+                assert!(
+                    error
+                        .to_string()
+                        .contains(expected["code"].as_str().unwrap())
+                );
+                assert_eq!(expected["path"], "manifest_version");
+                if let Some(version) = version.as_str() {
+                    let error = version.parse::<ManifestVersion>().unwrap_err();
+                    assert_eq!(error.code(), expected["code"]);
+                    assert_eq!(error.path(), expected["path"]);
+                    let fields = match error {
+                        ParseManifestVersionError::UnsupportedMajor { major } => {
+                            json!({"major": major})
+                        }
+                        ParseManifestVersionError::InvalidVersionFormat {} => json!({}),
+                    };
+                    assert_eq!(fields, expected["fields"]);
+                }
+            } else {
+                let parsed = parsed.expect("version must be accepted");
+                assert_eq!(
+                    json!(parsed.is_newer_minor()),
+                    case["expect"]["ok"]["newer_minor"]
+                );
+            }
+        }
     }
 
     #[test]
@@ -927,7 +1129,7 @@ mod tests {
     #[test]
     fn template_shared_types_ignore_unknown_fields() {
         let template = json!({
-            "manifest_version": 2,
+            "manifest_version": "2.0",
             "registries": { "example": { "name": "Example", "url_template": "https://example.com/{artifact}" } },
             "mirrors": { "direct": { "name": "Direct", "url_template": "{url}" } },
             "resources": {
@@ -975,10 +1177,13 @@ mod tests {
         // A snapshot of the compiled v2 manifest produced by the reference
         // generator (see `files/manifest/resources.json`); guards against
         // drift between the meta types and reality.
-        let manifest: ResourceManifest =
+        let expected: Value =
             serde_json::from_str(include_str!("../tests/fixtures/resources.json"))
-                .expect("deserialize reference manifest");
-        assert_eq!(manifest.manifest_version, ManifestVersion);
+                .expect("deserialize reference JSON");
+        let manifest: ResourceManifest =
+            serde_json::from_value(expected.clone()).expect("deserialize reference manifest");
+        assert_eq!(serde_json::to_value(&manifest).unwrap(), expected);
+        assert_eq!(manifest.manifest_version, ManifestVersion::current());
         assert!(!manifest.resources.is_empty());
     }
 }

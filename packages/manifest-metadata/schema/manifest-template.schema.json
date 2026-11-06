@@ -1,4 +1,5 @@
 {
+  "$id": "https://libnyanpasu.github.io/resources-manifest/schema/2.0/manifest-template.schema.json",
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "ResourceManifestTemplate",
   "description": "The authored resource manifest template, input of the compiler.",
@@ -33,8 +34,8 @@
   "required": ["manifest_version", "registries", "resources"],
   "$defs": {
     "ManifestVersion": {
-      "type": "integer",
-      "const": 2
+      "type": "string",
+      "pattern": "^2\\.(0|[1-9][0-9]*)$"
     },
     "RegistryDefinition": {
       "description": "A registry produces canonical download/metadata URLs.",

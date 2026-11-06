@@ -5,7 +5,7 @@
 ## 布局约束
 
 - `crates/manifest-metadata`：资源元类型定义，以 serde、schemars、specta 标注。
-  强约束内建在类型里：`ManifestVersion`（只接受字面量 2）、`ResourceChecksum`
+  强约束内建在类型里：`ManifestVersion`（接受 major 为 2、minor 为无前导零的 u32 的版本字符串，如 `"2.0"`）、`ResourceChecksum`
   （`<algorithm>:<hex>` 校验并归一化）、`FiniteF64`（拒绝 NaN/无穷）。
 - `crates/manifest-schema-generator`：从元类型生成 TypeScript 类型定义、版本常量与 JSON
   Schema，写入 `packages/manifest-metadata`。

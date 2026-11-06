@@ -142,7 +142,7 @@ export type ResourceDefinition = {
 
 /**  The compiled resource manifest consumed by downloaders and UIs. */
 export type ResourceManifest = {
-  manifest_version: 2;
+  manifest_version: `2.${number}`;
   registries: { [key in string]: RegistryDefinition };
   mirrors: { [key in string]: MirrorDefinition };
   resources: { [key in string]: ResourceDefinition };
@@ -151,7 +151,7 @@ export type ResourceManifest = {
 
 /**  The authored resource manifest template, input of the compiler. */
 export type ResourceManifestTemplate = {
-  manifest_version: 2;
+  manifest_version: `2.${number}`;
   registries: { [key in string]: RegistryDefinition };
   mirrors?: { [key in string]: MirrorDefinition };
   resources: { [key in string]: ResourceTemplate };

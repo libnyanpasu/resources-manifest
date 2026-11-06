@@ -18,7 +18,7 @@ use specta_typescript::Typescript;
 /// Attribute key recorded by the specta derive for
 /// `#[serde(skip_serializing_if = ...)]`, as defined by `specta-serde`.
 const FIELD_SKIP_SERIALIZING_IF: &str = "serde:field:skip_serializing_if";
-const MANIFEST_VERSION_TYPE: &str = "2";
+const MANIFEST_VERSION_TYPE: &str = "`2.${number}`";
 
 /// TypeScript export shape with these adjustments over `specta_serde::Format`:
 ///
@@ -29,8 +29,7 @@ const MANIFEST_VERSION_TYPE: &str = "2";
 ///    type as `*_Serialize` / `*_Deserialize`. The meta types only use the
 ///    attribute for optional JSON fields (and mark them `#[specta(optional)]`),
 ///    so stripping it up front keeps the export faithful.
-/// 2. `manifest_version` is exported as the literal `2`, matching
-///    `typeof RESOURCE_MANIFEST_VERSION` in the reference definitions.
+/// 2. `manifest_version` is exported as the template literal `` `2.${number}` ``.
 /// 3. `ResourceChecksum` is exported as the template literal
 ///    `` `${ChecksumAlgorithm}:${string}` `` instead of a plain string. A
 ///    `define` reference cannot serve as a named type body (the exporter
@@ -452,6 +451,12 @@ fn export_json_schema<T: schemars::JsonSchema>(
 ) -> Result<PathBuf, Box<dyn Error>> {
     let settings = schemars::generate::SchemaSettings::draft2020_12();
     let mut schema = settings.into_generator().into_root_schema_for::<T>();
+    schema.insert(
+        "$id".into(),
+        Value::String(format!(
+            "https://libnyanpasu.github.io/resources-manifest/schema/{RESOURCE_MANIFEST_VERSION}/{file_name}"
+        )),
+    );
     normalize_schema(&mut schema)?;
     if authored_template {
         relax_checksum_pattern(&mut schema)?;

@@ -466,6 +466,7 @@ body 和单个 header 值的大小按 UTF-8 字节数计算；超限均报 `pars
 | O-9  | 本仓库的 Rust 规则               | **推荐：** 采用 clash-nyanpasu `rust.md`                                                                                                                                               |
 | O-10 | crate 和包的正式名称             | 沿用工作名，在创建该包的 PR 中确定                                                                                                                                                     |
 | O-11 | 发布前的版本号                   | **已定（2026-11-06）：** 包首次发布前保持 `"2.0"`，这期间的契约改动都并入 2.0，不升版本。理解是"发布前不升 schema 版本"，并非"发布前完全不改契约"；若理解有误，以维护者更正为准        |
+| O-12 | Schema `$id` 前缀                | **已定（本 PR，2026-11-06）：** `https://libnyanpasu.github.io/resources-manifest/schema/`；后接 `2.0/manifest.schema.json` 或 `2.0/manifest-template.schema.json`                     |
 
 ---
 

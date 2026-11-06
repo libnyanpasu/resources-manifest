@@ -16,7 +16,7 @@ test("reference compiled manifest passes the manifest schema", () => {
 
 test("schema rejects an incompatible manifest_version", () => {
   const invalid = structuredClone(referenceManifest) as Record<string, unknown>;
-  invalid.manifest_version = 3;
+  invalid.manifest_version = "3.0";
   assert.equal(validateManifest(invalid), false);
 });
 

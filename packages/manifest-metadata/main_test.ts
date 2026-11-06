@@ -10,7 +10,7 @@ const validateTemplate = ajv.compile(templateSchema);
 const validateManifest = ajv.compile(manifestSchema);
 
 const template = {
-  manifest_version: 2,
+  manifest_version: "2.0",
   registries: {
     example: {
       name: "Example",
