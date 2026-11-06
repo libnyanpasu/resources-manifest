@@ -8,6 +8,7 @@ use crate::version::deserialize_parser_object;
 /// How to parse a remote checksum response.
 #[derive(Debug, Clone, PartialEq, Serialize, JsonSchema, Type)]
 #[serde(tag = "type", rename_all = "kebab-case")]
+#[non_exhaustive]
 pub enum RemoteChecksumParser {
     /// The response body itself is `<algorithm>:<hex>`.
     Checksum,

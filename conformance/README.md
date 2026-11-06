@@ -52,6 +52,31 @@ checksum 的 `artifact` 是具体文件名，不是带 `{version}` 的模板。
 单个 header 值超过单值上限（默认 8 KiB，宿主调低后以生效值为准）使用 `parser.body_too_large`，同 body 超限一样携带
 `{ limit, actual }`（UTF-8 字节数）；上限一致性用例由 A2 / A5 补充。
 
+### Parser 上限覆盖（A2）
+
+parser 用例可以增加可选的 `input.limits` 对象。未声明的项采用默认值；
+所有值都是非负整数，名称为 `body_bytes`、`header_value_bytes`、
+`regex_pattern_bytes`、`regex_size_bytes`、`template_depth`、`render_output_bytes`。
+运行器通过 `Limits::with_*` 调低对应上限；请求值高于当前上限时夹到当前值，
+不能提高默认值。未知字段应被拒绝。此扩展也供 A3 / A5 的 checksum 用例复用。
+
+例如 `"limits": { "body_bytes": 3 }` 配合 `"body": " v1\n"`，
+应得到 `parser.body_too_large`，完整字段为 `{ "limit": 3, "actual": 4 }`，
+路径为 `response.body`。这样无需在 corpus 中写入 2 MiB 的 body。
+`version.text.body_limit_utf8` 还覆盖多字节字符计量；默认 2 MiB 的边界由 Rust 回归测试覆盖。
+
+`version.regex.pattern_limit` 与 `version.regex.pattern_limit_utf8` 覆盖 pattern
+的 UTF-8 字节数；超限使用 `parser.invalid_pattern`，字段为 `{ limit, actual }`。
+`version.regex.compiled_size_limit` 用短 pattern 触发默认 1 MiB 编译上限；
+`version.regex.compiled_size_lowered` 验证宿主调低的上限也生效。
+regex 语法或编译大小错误的 `fields` 为 `{}`，不比较依赖库的错误消息。
+版本未找到或无效时的 `fields` 也为 `{}`。
+
+version parser 不支持 header，不把 header helper 当作 version parser 类型。
+`version.text.ignores_conflicting_headers` 确认它忽略 headers；header helper 的
+大小写、相同值去重、冲突、缺失及 `response.headers.<小写名称>` 路径由 Rust
+集成测试验证。A5 再在 checksum corpus 中为 header parser 声明路径。
+
 ### Validate 的阶段边界
 
 `validate.manifest.reference_fixture` 的 `input` 内嵌完整的
