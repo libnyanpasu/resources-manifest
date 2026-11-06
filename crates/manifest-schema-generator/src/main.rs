@@ -7,15 +7,19 @@ use std::error::Error;
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use manifest_metadata::{RESOURCE_MANIFEST_VERSION, ResourceManifest, ResourceManifestTemplate};
+use manifest_metadata::{
+    FiniteF64, MirrorDefinition, RESOURCE_MANIFEST_VERSION, ResourceManifest,
+    ResourceManifestTemplate,
+};
 use serde_json::Value;
-use specta::datatype::{DataType, Field, Fields};
-use specta::{Format, FormatError, Types};
+use specta::datatype::{DataType, Field, Fields, NamedReferenceType, Primitive, Reference};
+use specta::{Format, FormatError, Type, Types};
 use specta_typescript::Typescript;
 
 /// Attribute key recorded by the specta derive for
 /// `#[serde(skip_serializing_if = ...)]`, as defined by `specta-serde`.
 const FIELD_SKIP_SERIALIZING_IF: &str = "serde:field:skip_serializing_if";
+const MANIFEST_VERSION_TYPE: &str = "2";
 
 /// TypeScript export shape with these adjustments over `specta_serde::Format`:
 ///
@@ -38,8 +42,8 @@ const FIELD_SKIP_SERIALIZING_IF: &str = "serde:field:skip_serializing_if";
 ///    `FiniteF64`, which rejects non-finite values by construction, so the
 ///    semantic lossless-float remap (`number`) is applied. The remap is
 ///    collection-level only (`apply_types`); `map_type` stays unmapped, which
-///    is fine because the exporter only drives `map_types` here. The
-///    `| null` assertion in `export_typescript` pins this invariant.
+///    is fine because the exporter only drives `map_types` here.
+///    `validate_f64` checks this invariant before the remap.
 struct SerdeShape {
     semantic: specta_typescript::semantic::Configuration,
 }
@@ -52,12 +56,34 @@ impl SerdeShape {
         }
     }
 
-    fn adjust(types: &mut Types) {
+    fn adjust(types: &mut Types) -> Result<(), FormatError> {
+        let mut rewrites = 0;
         types.iter_mut(|named| {
             if let Some(ty) = named.ty.as_mut() {
+                if matches!(
+                    named.name.as_ref(),
+                    "ResourceManifest" | "ResourceManifestTemplate"
+                ) && let DataType::Struct(strct) = ty
+                    && let Fields::Named(fields) = &mut strct.fields
+                {
+                    for (name, field) in &mut fields.fields {
+                        if name == "manifest_version" {
+                            field.ty = Some(DataType::Reference(specta_typescript::define(
+                                MANIFEST_VERSION_TYPE,
+                            )));
+                            rewrites += 1;
+                        }
+                    }
+                }
                 Self::adjust_datatype(ty);
             }
         });
+        if rewrites != 2 {
+            return Err(
+                format!("expected exactly 2 manifest_version rewrites, found {rewrites}").into(),
+            );
+        }
+        Ok(())
     }
 
     fn adjust_datatype(ty: &mut DataType) {
@@ -75,13 +101,13 @@ impl SerdeShape {
     fn adjust_fields(fields: &mut Fields) {
         match fields {
             Fields::Named(named) => {
-                for (name, field) in &mut named.fields {
-                    Self::adjust_field(name, field);
+                for (_, field) in &mut named.fields {
+                    Self::adjust_field(field);
                 }
             }
             Fields::Unnamed(unnamed) => {
                 for field in &mut unnamed.fields {
-                    Self::adjust_field("", field);
+                    Self::adjust_field(field);
                 }
             }
             Fields::Unit => {}
@@ -98,11 +124,7 @@ impl SerdeShape {
         }
     }
 
-    fn adjust_field(name: &str, field: &mut Field) {
-        if name == "manifest_version" {
-            field.ty = Some(DataType::Reference(specta_typescript::define("2")));
-        }
-
+    fn adjust_field(field: &mut Field) {
         if !field.attributes.contains_key(FIELD_SKIP_SERIALIZING_IF) {
             return;
         }
@@ -116,8 +138,9 @@ impl SerdeShape {
 
 impl Format for SerdeShape {
     fn map_types<'a>(&'a self, types: &Types) -> Result<Cow<'a, Types>, FormatError> {
+        validate_f64(types)?;
         let mut types = types.clone();
-        Self::adjust(&mut types);
+        Self::adjust(&mut types)?;
         let mapped = specta_serde::Format.map_types(&types)?.into_owned();
         // Semantic remapping (lossless floats) runs last, on the serde-shaped
         // graph, as documented by `specta_typescript::semantic`.
@@ -137,6 +160,90 @@ impl Format for SerdeShape {
     }
 }
 
+fn validate_f64(types: &Types) -> Result<(), FormatError> {
+    let _: fn(&MirrorDefinition) -> Option<FiniteF64> = |mirror| mirror.priority;
+    let finite = <Option<FiniteF64>>::definition(&mut Types::default());
+    let mut occurrences = 0;
+    for named in types.into_sorted_iter() {
+        let count = named.ty.as_ref().map(count_f64).unwrap_or_default()
+            + named
+                .generics
+                .iter()
+                .filter_map(|generic| generic.default.as_ref())
+                .map(count_f64)
+                .sum::<usize>();
+        if count == 0 {
+            continue;
+        }
+        let valid = named.name == "MirrorDefinition"
+            && named.module_path == "manifest_metadata"
+            && count == 1
+            && matches!(&named.ty, Some(DataType::Struct(strct))
+                if matches!(&strct.fields, Fields::Named(fields)
+                    if fields.fields.iter().any(|(name, field)| name == "priority" && field.ty.as_ref() == Some(&finite))));
+        if !valid {
+            return Err(format!(
+                "unexpected f64 in {}::{}; only the inline FiniteF64 at MirrorDefinition.priority is allowed",
+                named.module_path, named.name
+            ).into());
+        }
+        occurrences += count;
+    }
+    if occurrences != 1 {
+        return Err(format!(
+            "expected exactly one inline FiniteF64 in the type graph, found {occurrences}"
+        )
+        .into());
+    }
+    Ok(())
+}
+
+#[must_use]
+fn count_f64(ty: &DataType) -> usize {
+    match ty {
+        DataType::Primitive(Primitive::f64) => 1,
+        DataType::Primitive(_) | DataType::Generic(_) => 0,
+        DataType::List(list) => count_f64(&list.ty),
+        DataType::Map(map) => count_f64(map.key_ty()) + count_f64(map.value_ty()),
+        DataType::Struct(strct) => count_f64_fields(&strct.fields),
+        DataType::Enum(enm) => enm
+            .variants
+            .iter()
+            .map(|(_, variant)| count_f64_fields(&variant.fields))
+            .sum(),
+        DataType::Tuple(tuple) => tuple.elements.iter().map(count_f64).sum(),
+        DataType::Nullable(inner) => count_f64(inner),
+        DataType::Intersection(types) => types.iter().map(count_f64).sum(),
+        DataType::Reference(Reference::Named(reference)) => match &reference.inner {
+            NamedReferenceType::Inline { dt, .. } => count_f64(dt),
+            NamedReferenceType::Reference { generics, .. } => {
+                generics.iter().map(|(_, ty)| count_f64(ty)).sum()
+            }
+            NamedReferenceType::Recursive(_) => 0,
+        },
+        DataType::Reference(Reference::Opaque(_)) => 0,
+    }
+}
+
+#[must_use]
+fn count_f64_fields(fields: &Fields) -> usize {
+    match fields {
+        Fields::Named(named) => named
+            .fields
+            .iter()
+            .filter_map(|(_, field)| field.ty.as_ref())
+            .map(count_f64)
+            .sum(),
+        Fields::Unnamed(unnamed) => unnamed
+            .fields
+            .iter()
+            .filter_map(|field| field.ty.as_ref())
+            .map(count_f64)
+            .sum(),
+        Fields::Unit => 0,
+    }
+}
+
 /// JSON schema transform aligning optional properties with the TypeScript
 /// contract: a property that may be absent must not also accept `null`.
 ///
@@ -147,14 +254,30 @@ impl Format for SerdeShape {
 /// The walk also drops the `format` keyword: schemars emits implementation
 /// detail formats (`uint32`, `double`, …) that strict validators like ajv
 /// reject as unknown.
-fn normalize_schema(schema: &mut schemars::Schema) {
+fn normalize_schema(schema: &mut schemars::Schema) -> Result<(), Box<dyn Error>> {
     if let Some(object) = schema.as_object_mut() {
-        normalize_schema_map(object);
+        normalize_schema_map(object)?;
     }
+    Ok(())
 }
 
-fn normalize_schema_map(object: &mut serde_json::Map<String, Value>) {
-    object.shift_remove("format");
+fn normalize_schema_map(object: &mut serde_json::Map<String, Value>) -> Result<(), Box<dyn Error>> {
+    if let Some(format) = object.get("format") {
+        let numeric = format.as_str().is_some_and(|format| {
+            matches!(format, "float" | "double")
+                || format
+                    .strip_prefix("uint")
+                    .or_else(|| format.strip_prefix("int"))
+                    .is_some_and(|width| width.bytes().all(|byte| byte.is_ascii_digit()))
+        });
+        if !numeric {
+            return Err(format!(
+                "unexpected schema format {format}; only integer and float formats may be removed"
+            )
+            .into());
+        }
+        object.shift_remove("format");
+    }
 
     let required: HashSet<String> = object
         .get("required")
@@ -175,21 +298,53 @@ fn normalize_schema_map(object: &mut serde_json::Map<String, Value>) {
         }
     }
 
-    for (_, child) in object.iter_mut() {
-        normalize_schema_value(child);
+    for (keyword, child) in object.iter_mut() {
+        match keyword.as_str() {
+            "properties" | "patternProperties" | "$defs" | "definitions" | "dependentSchemas"
+            | "dependencies" => {
+                if let Value::Object(schemas) = child {
+                    for schema in schemas.values_mut() {
+                        if let Value::Object(object) = schema {
+                            normalize_schema_map(object)?;
+                        }
+                    }
+                }
+            }
+            "allOf"
+            | "anyOf"
+            | "oneOf"
+            | "prefixItems"
+            | "items"
+            | "not"
+            | "if"
+            | "then"
+            | "else"
+            | "contains"
+            | "additionalProperties"
+            | "unevaluatedProperties"
+            | "unevaluatedItems"
+            | "propertyNames"
+            | "additionalItems"
+            | "contentSchema" => {
+                normalize_schema_value(child)?;
+            }
+            _ => {}
+        }
     }
+    Ok(())
 }
 
-fn normalize_schema_value(value: &mut Value) {
+fn normalize_schema_value(value: &mut Value) -> Result<(), Box<dyn Error>> {
     match value {
-        Value::Object(object) => normalize_schema_map(object),
+        Value::Object(object) => normalize_schema_map(object)?,
         Value::Array(items) => {
             for item in items {
-                normalize_schema_value(item);
+                normalize_schema_value(item)?;
             }
         }
         _ => {}
     }
+    Ok(())
 }
 
 /// Remove the `null` alternative from a property schema, keeping every other
@@ -243,9 +398,7 @@ fn export_typescript(out_dir: &Path) -> Result<PathBuf, Box<dyn Error>> {
     let bindings = bindings.replace(CHECKSUM_ALIAS, CHECKSUM_TEMPLATE);
 
     // The package contract is "absent or concrete value" (see the metadata
-    // README), so no optional property may render as nullable. Notably this
-    // pins the lossless-float remap: a future plain `f64` field would surface
-    // here instead of silently leaking `| null` into the bindings.
+    // README), so no optional property may render as nullable.
     if bindings.contains("| null") {
         return Err(format!(
             "generated TypeScript in {} contains `| null`; optional fields must \
@@ -308,10 +461,9 @@ fn export_json_schema<T: schemars::JsonSchema>(
     file_name: &str,
     authored_template: bool,
 ) -> Result<PathBuf, Box<dyn Error>> {
-    let settings = schemars::generate::SchemaSettings::draft2020_12().with(|settings| {
-        settings.transforms.push(Box::new(normalize_schema));
-    });
+    let settings = schemars::generate::SchemaSettings::draft2020_12();
     let mut schema = settings.into_generator().into_root_schema_for::<T>();
+    normalize_schema(&mut schema)?;
     if authored_template {
         relax_checksum_pattern(&mut schema)?;
     }
@@ -344,4 +496,238 @@ fn main() -> Result<(), Box<dyn Error>> {
         println!("wrote {}", path.display());
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use specta::datatype::{NamedDataType, Primitive, Struct};
+
+    #[test]
+    fn manifest_version_rewrites_only_the_two_root_types() {
+        let mut types = Types::default()
+            .register::<ResourceManifest>()
+            .register::<ResourceManifestTemplate>();
+        let unrelated = Struct::named()
+            .field("manifest_version", Field::new(Primitive::str.into()))
+            .build();
+        NamedDataType::new("Unrelated", &mut types, |_, named| {
+            named.ty = Some(unrelated.clone());
+        });
+        SerdeShape::adjust(&mut types).expect("rewrite the two manifest roots");
+        for named in types.into_unsorted_iter() {
+            if named.name == "Unrelated" {
+                assert_eq!(named.ty.as_ref(), Some(&unrelated));
+            } else if matches!(
+                named.name.as_ref(),
+                "ResourceManifest" | "ResourceManifestTemplate"
+            ) {
+                let DataType::Struct(strct) = named.ty.as_ref().expect("root type exists") else {
+                    panic!("manifest root must be a struct");
+                };
+                let Fields::Named(fields) = &strct.fields else {
+                    panic!("manifest root must have named fields");
+                };
+                let (_, field) = fields
+                    .fields
+                    .iter()
+                    .find(|(name, _)| name == "manifest_version")
+                    .expect("manifest root has a version field");
+                assert_eq!(
+                    field.ty,
+                    Some(DataType::Reference(specta_typescript::define(
+                        MANIFEST_VERSION_TYPE
+                    )))
+                );
+            }
+        }
+        for mut incomplete in [
+            Types::default(),
+            Types::default().register::<ResourceManifest>(),
+        ] {
+            let error = SerdeShape::adjust(&mut incomplete).expect_err("missing roots must fail");
+            assert!(
+                error
+                    .to_string()
+                    .contains("expected exactly 2 manifest_version rewrites")
+            );
+        }
+        NamedDataType::new("ResourceManifest", &mut types, |_, named| {
+            named.ty = Some(unrelated);
+        });
+        assert_eq!(
+            SerdeShape::adjust(&mut types)
+                .expect_err("extra root must fail")
+                .to_string(),
+            "expected exactly 2 manifest_version rewrites, found 3"
+        );
+    }
+
+    #[test]
+    fn schema_normalization_only_removes_numeric_formats_on_schema_nodes() {
+        let mut schema = schemars::json_schema!({
+            "type": "object",
+            "properties": {
+                "format": { "type": "integer", "format": "uint32" },
+                "optional": { "type": ["number", "null"], "format": "double" }
+            },
+            "required": ["format"],
+            "$defs": { "format": { "type": "number", "format": "float" } },
+            "examples": [{ "format": "date-time" }],
+            "default": { "format": "email" },
+            "const": { "format": "uuid" }
+        });
+        normalize_schema(&mut schema).expect("normalize numeric schema formats");
+        assert_eq!(
+            schema,
+            schemars::json_schema!({
+                "type": "object",
+                "properties": {
+                    "format": { "type": "integer" },
+                    "optional": { "type": "number" }
+                },
+                "required": ["format"],
+                "$defs": { "format": { "type": "number" } },
+                "examples": [{ "format": "date-time" }],
+                "default": { "format": "email" },
+                "const": { "format": "uuid" }
+            })
+        );
+        for format in [
+            "uint", "uint8", "uint32", "uint128", "int", "int64", "float", "double",
+        ] {
+            let mut schema = schemars::json_schema!({ "format": format });
+            normalize_schema(&mut schema).expect("numeric format is supported");
+            assert_eq!(schema, schemars::json_schema!({}), "format {format}");
+        }
+        for format in [
+            serde_json::json!("date-time"),
+            serde_json::json!("email"),
+            serde_json::json!("integerish"),
+            serde_json::json!(null),
+            serde_json::json!(42),
+        ] {
+            let mut schema = schemars::json_schema!({ "format": format });
+            let error = normalize_schema(&mut schema).expect_err("unexpected format must fail");
+            assert!(error.to_string().contains("unexpected schema format"));
+        }
+        for keyword in [
+            "properties",
+            "patternProperties",
+            "$defs",
+            "definitions",
+            "dependentSchemas",
+            "dependencies",
+        ] {
+            let mut value = serde_json::json!({});
+            value[keyword] = serde_json::json!({ "format": { "format": "date-time" } });
+            let mut schema = schemars::Schema::try_from(value).expect("schema object");
+            assert!(normalize_schema(&mut schema).is_err(), "keyword {keyword}");
+        }
+        for keyword in [
+            "allOf",
+            "anyOf",
+            "oneOf",
+            "prefixItems",
+            "items",
+            "not",
+            "if",
+            "then",
+            "else",
+            "contains",
+            "additionalProperties",
+            "unevaluatedProperties",
+            "unevaluatedItems",
+            "propertyNames",
+            "additionalItems",
+            "contentSchema",
+        ] {
+            let mut value = serde_json::json!({});
+            value[keyword] = if matches!(keyword, "allOf" | "anyOf" | "oneOf" | "prefixItems") {
+                serde_json::json!([{ "format": "date-time" }])
+            } else {
+                serde_json::json!({ "format": "date-time" })
+            };
+            let mut schema = schemars::Schema::try_from(value).expect("schema object");
+            assert!(normalize_schema(&mut schema).is_err(), "keyword {keyword}");
+        }
+    }
+
+    #[test]
+    fn f64_is_only_allowed_at_the_inline_finite_f64_before_remapping() {
+        use specta::datatype::{Enum, Generic, GenericDefinition, List, Map, Tuple, Variant};
+
+        let types = Types::default()
+            .register::<ResourceManifest>()
+            .register::<ResourceManifestTemplate>();
+        let shape = SerdeShape::new();
+        shape
+            .map_types(&types)
+            .expect("current graph has one FiniteF64");
+        assert_eq!(
+            validate_f64(&Types::default())
+                .expect_err("missing FiniteF64 must fail")
+                .to_string(),
+            "expected exactly one inline FiniteF64 in the type graph, found 0"
+        );
+
+        let float = DataType::Primitive(Primitive::f64);
+        let mut enm = Enum::default();
+        enm.variants.push((
+            "Value".into(),
+            Variant::unnamed().field(Field::new(float.clone())).build(),
+        ));
+        let generic = NamedDataType::new("GenericContainer", &mut types.clone(), |_, named| {
+            named.ty = Some(Primitive::str.into());
+        })
+        .reference(vec![(Generic::new("T".into()), float.clone())]);
+        for ty in [
+            float.clone(),
+            DataType::Nullable(Box::new(List::new(float.clone()).into())),
+            Map::new(Primitive::str.into(), float.clone()).into(),
+            Map::new(float.clone(), Primitive::str.into()).into(),
+            Struct::named()
+                .field("value", Field::new(float.clone()))
+                .build(),
+            Struct::unnamed().field(Field::new(float.clone())).build(),
+            enm.into(),
+            Tuple::new(vec![float.clone()]).into(),
+            DataType::Intersection(vec![float.clone()]),
+            DataType::Reference(generic),
+        ] {
+            let mut invalid = types.clone();
+            NamedDataType::new("Unexpected", &mut invalid, |_, named| {
+                named.ty = Some(ty);
+            });
+            let error = shape
+                .map_types(&invalid)
+                .expect_err("extra f64 must fail before lossless remapping");
+            assert!(error.to_string().contains("unexpected f64"), "{error}");
+        }
+        let mut invalid = types.clone();
+        invalid.iter_mut(|named| {
+            if named.name == "MirrorDefinition"
+                && let Some(DataType::Struct(strct)) = &mut named.ty
+                && let Fields::Named(fields) = &mut strct.fields
+            {
+                for (name, _) in &mut fields.fields {
+                    if name == "priority" {
+                        *name = "other".into();
+                    }
+                }
+            }
+        });
+        assert!(
+            validate_f64(&invalid).is_err(),
+            "a single f64 at the wrong location must fail"
+        );
+        let mut invalid = types;
+        NamedDataType::new("DefaultFloat", &mut invalid, |_, named| {
+            named.generics = vec![GenericDefinition::new("T".into(), Some(float))].into();
+        });
+        assert!(
+            validate_f64(&invalid).is_err(),
+            "generic defaults must be checked"
+        );
+    }
 }
