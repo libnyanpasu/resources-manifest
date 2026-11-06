@@ -9,7 +9,7 @@ use manifest_parser::{
     CompiledVersionParser, Limits, ParseError, RemoteChecksumParser, RemoteResponse,
     RemoteVersionParser, ResourceChecksum,
 };
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 use snafu::Snafu;
 use specta::Type;
@@ -323,8 +323,9 @@ pub struct VersionOptions<'a> {
     pub mirror: Option<&'a str>,
 }
 
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize, Type)]
 #[non_exhaustive]
+#[serde(rename_all = "snake_case")]
 pub enum ChecksumMode {
     #[default]
     Remote,

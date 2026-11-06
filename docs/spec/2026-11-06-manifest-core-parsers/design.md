@@ -572,7 +572,54 @@ kind 列表按 manifest 中 variant 顺序，仅列出支持目标平台的 `{ v
 
 - `crate-type = ["cdylib"]`；导出 `validateManifest`、`artifactChecksumKind`、`selectVariant`、`planVersion`、`planDownload`、`parseVersion`、`finishChecksum`、`checkPolicy`。
 - 值的转换用 `serde-wasm-bindgen`，采用 `Serializer::json_compatible()`。错误一律转成 `{ code, path, message, fields }`。`ValidatedManifest` 以不透明句柄留在 wasm 内。
+- C1 的 JS 边界签名如下；`?` 表示可以省略、传 `undefined` 或 `null`，使用默认值。
+
+  | JS API                                                                                                                                                                              | 返回值                         |
+  | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------ |
+  | `validateManifest(raw: ResourceManifest)`                                                                                                                                           | `ValidatedManifest` 句柄       |
+  | `artifactChecksumKind(artifact: ResourceArtifactTemplate)`                                                                                                                          | `ChecksumKind` 字符串          |
+  | `selectVariant(manifest: ValidatedManifest, resource: string, platform: SupportedPlatform, selection?: { id?: string, tags?: string[] })`                                           | `SelectedArtifact` 句柄        |
+  | `planVersion(selected: SelectedArtifact, options?: { source?: SourceVariables, mirror?: string }, limits?: LimitsInput)`                                                            | `VersionPlan` 句柄             |
+  | `planDownload(selected: SelectedArtifact, options?: { version?: string, source?: SourceVariables, mirror?: string, checksum_mode?: "remote" \| "snapshot" }, limits?: LimitsInput)` | `DownloadPlan` 句柄            |
+  | `parseVersion(parser: RemoteVersionParser, response: RemoteResponseInput, limits?: LimitsInput)`                                                                                    | 经过 VersionLabel 校验的字符串 |
+  | `finishChecksum(plan: DownloadPlan, response: RemoteResponseInput)`                                                                                                                 | `{ checksum, kind: "parsed" }` |
+  | `checkPolicy(kind: ChecksumKind, policy?: VerifyPolicy)`                                                                                                                            | `void`（拒绝时抛出）           |
+
+- `ValidatedManifest.newerMinor` 是只读布尔属性。`SelectedArtifact.value` 返回所选 variant；
+  `VersionPlan.value`、`DownloadPlan.value` 返回 core 的 serde 计划投影，wire 字段保持 snake_case。
+  每次读取 `value` 都生成新的普通 JS 对象，修改它不改变 wasm 状态。
+  这些类均无公开构造函数，使用 wasm-bindgen 的 `free()` / `Symbol.dispose` 释放。
+  selection 内部共享不可变 manifest 的所有权，因此释放原 manifest 句柄后仍可规划；
+  计划拥有执行所需状态，释放 selection 后仍可完成 checksum。
+  计划只序列化，不增加 `Deserialize`，`finishChecksum` 只接受真实下载计划句柄；
+  从中取得绑定的 ChecksumPlan，不接受 JS 伪造的 parser、artifact 或 kind。
+- `RemoteResponseInput` 是 `{ body: string, headers?: [string, string][] }`，headers 默认空数组，
+  保留重复头与顺序。`LimitsInput` 的可选字段为 `body_bytes`、`header_value_bytes`、
+  `regex_pattern_bytes`、`regex_size_bytes`、`template_depth`、`render_output_bytes`；
+  逐字段调用 `Limits::with_*`，只能调低默认上限。core 的 selection/options 与 parser 的
+  response 是借用类型，边界先解码其各字段，再构造借用输入，不复制定义对应的 wire struct，
+  不给带私有上限不变量的 Limits 添加 `Deserialize`。
+  `ChecksumMode` 的 serde / specta 定义直接放在 core，wire 值为 `remote` / `snapshot`。
+- `parseVersion` 可直接接收规则以覆盖 C3 的独立 parser 语料（包括编译失败用例）；
+  解析版本请求时从 `versionPlan.value.remote.parser` 取得规则，并传入规划时相同的 Limits。
+  它只返回已验证版本字符串，不接收或生成校验可信度。
+- 错误为普通对象（不是 JS Error），`message` 只用于展示，不保证文本稳定。
+  `validateManifest` 的语义错误列表统一抛出
+  `{ code: "validate.failed", path: "arg.manifest", message, fields: { errors: [{ code, path, message, fields }, ...] } }`，
+  保留 core 的错误顺序与每条原始 code/path/fields。
+  manifest 版本先按元类型校验，保留 `manifest.invalid_version_format` /
+  `manifest.unsupported_major`、`path: "manifest_version"` 和 `{ major }` 字段。
+  其余反序列化失败使用 `wasm.invalid_input`、`fields: {}`，path 为对应参数或字段
+  （如 `arg.manifest`、`arg.platform`、`arg.options.checksum_mode`、`response.body`）。
+  不含远端 checksum 请求的下载计划传给 `finishChecksum` 时，抛出
+  `wasm.checksum_plan_missing`、`path: "arg.plan"`、`fields: {}`。
+  输出序列化失败使用 `wasm.serialization_failed`、`path: "arg.result"`、`fields: {}`。
+  core/parser 执行错误保留 §5.6 的 code/path/fields。句柄必须属于当前 wasm 实例且尚未释放。
 - 构建方式：`pnpm build:wasm` 依次执行 `cargo build -p manifest-wasm --target wasm32-unknown-unknown --release` 和 `wasm-bindgen --target web --out-dir packages/manifest-runtime/wasm`。crate 与 CLI 的版本必须一致，并且锁定。
+- 构建脚本先比较 CLI 与 Cargo.lock 中的 wasm-bindgen 版本，再执行构建；cargo 使用 `--locked`。
+  通过 `cargo metadata` 定位 target_directory，遵守 `CARGO_TARGET_DIR`，产物目录相对仓库根定位。
+  release 使用 `opt-level = "s"`、LTO、单 codegen unit 与 strip；LTO 不支持 package override，
+  因此这些选项统一放在 workspace 的 `[profile.release]`，普通 test / clippy 仍使用 dev/test profile。
 - 产物不入库；CI 中的顺序是 `check:generated` → `build:wasm` → `test`。
 - 记录 `.wasm` 原始大小与 gzip 大小，以及 Node 下 `initSync` 的耗时（G11、O-8）。
 
@@ -645,20 +692,29 @@ kind 列表按 manifest 中 variant 顺序，仅列出支持目标平台的 `{ v
 A2 已用真实响应复核 §5.5 上限并保持不变：mihomo expanded_assets 为 523,715 B，
 checksums.txt 为 13,835 B，最大 header 值为 3,969 B。
 
-| #    | 问题                             | 结论                                                                                                                                                                                   |
-| ---- | -------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| O-1  | 默认校验策略                     | **已定（2026-11-06）：** 只接受权威来源（manifest 内嵌、随签名覆盖）的 checksum。经 parser 取得的一律是 `parsed`；从 header 取必须由 parser 规则显式声明；前端感知 kind 并提示（§5.1） |
-| O-2  | manifest 签名                    | **部分已定（2026-11-06）：** 签名只覆盖权威来源，即 manifest 本身。方案（minisign/ed25519 等）与流程另出 spec（D5）                                                                    |
-| O-3  | `github-release-assets` 的解析器 | **已定（A4，2026-11-06）：** 用轻量 tokenizer `tl`；fixture 结果与完整 DOM 相同，wasm 增量约 64 KiB 对 605 KiB（测量见 `conformance/fixtures/github-expanded-assets/README.md`）       |
-| O-4  | Clash Rust alpha 的版本来源      | **待定：** D4 开工前确认 `latest/version.txt` 的实际内容                                                                                                                               |
-| O-5  | 模板侧是否 `deny_unknown_fields` | **推荐：是**（S0c）；编译产物侧保持宽松（§5.4 第 5 条）                                                                                                                                |
-| O-6  | wasm 的消费者                    | **已定（2026-11-06）：** 只有 Node 包，用于构建期胶水脚本下载并校验资源                                                                                                                |
-| O-7  | 版本与兼容方式                   | **已定（2026-11-06）：** 参考 Docker 采用 `major.minor`；兼容更新只升 minor（§5.4）                                                                                                    |
-| O-8  | wasm 体积预算                    | **待定：** C1 实测后定                                                                                                                                                                 |
-| O-9  | 本仓库的 Rust 规则               | **推荐：** 采用 clash-nyanpasu `rust.md`                                                                                                                                               |
-| O-10 | crate 和包的正式名称             | 沿用工作名，在创建该包的 PR 中确定                                                                                                                                                     |
-| O-11 | 发布前的版本号                   | **已定（2026-11-06）：** 包首次发布前保持 `"2.0"`，这期间的契约改动都并入 2.0，不升版本。理解是"发布前不升 schema 版本"，并非"发布前完全不改契约"；若理解有误，以维护者更正为准        |
-| O-12 | Schema `$id` 前缀                | **已定（本 PR，2026-11-06）：** `https://libnyanpasu.github.io/resources-manifest/schema/`；后接 `2.0/manifest.schema.json` 或 `2.0/manifest-template.schema.json`                     |
+| #    | 问题                             | 结论                                                                                                                                                                                         |
+| ---- | -------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| O-1  | 默认校验策略                     | **已定（2026-11-06）：** 只接受权威来源（manifest 内嵌、随签名覆盖）的 checksum。经 parser 取得的一律是 `parsed`；从 header 取必须由 parser 规则显式声明；前端感知 kind 并提示（§5.1）       |
+| O-2  | manifest 签名                    | **部分已定（2026-11-06）：** 签名只覆盖权威来源，即 manifest 本身。方案（minisign/ed25519 等）与流程另出 spec（D5）                                                                          |
+| O-3  | `github-release-assets` 的解析器 | **已定（A4，2026-11-06）：** 用轻量 tokenizer `tl`；fixture 结果与完整 DOM 相同，wasm 增量约 64 KiB 对 605 KiB（测量见 `conformance/fixtures/github-expanded-assets/README.md`）             |
+| O-4  | Clash Rust alpha 的版本来源      | **待定：** D4 开工前确认 `latest/version.txt` 的实际内容                                                                                                                                     |
+| O-5  | 模板侧是否 `deny_unknown_fields` | **推荐：是**（S0c）；编译产物侧保持宽松（§5.4 第 5 条）                                                                                                                                      |
+| O-6  | wasm 的消费者                    | **已定（2026-11-06）：** 只有 Node 包，用于构建期胶水脚本下载并校验资源                                                                                                                      |
+| O-7  | 版本与兼容方式                   | **已定（2026-11-06）：** 参考 Docker 采用 `major.minor`；兼容更新只升 minor（§5.4）                                                                                                          |
+| O-8  | wasm 体积预算                    | **C1 实测（2026-11-07）：** raw 1,513,596 B，gzip（level 9）535,484 B；Node initSync 五次中位数 1.963 ms。建议 gzip ≤ 803,226 B（当前 1.5 倍），初始化中位数 ≤ 10 ms；测量环境与方法见下文。 |
+| O-9  | 本仓库的 Rust 规则               | **推荐：** 采用 clash-nyanpasu `rust.md`                                                                                                                                                     |
+| O-10 | crate 和包的正式名称             | 沿用工作名，在创建该包的 PR 中确定                                                                                                                                                           |
+| O-11 | 发布前的版本号                   | **已定（2026-11-06）：** 包首次发布前保持 `"2.0"`，这期间的契约改动都并入 2.0，不升版本。理解是"发布前不升 schema 版本"，并非"发布前完全不改契约"；若理解有误，以维护者更正为准              |
+| O-12 | Schema `$id` 前缀                | **已定（本 PR，2026-11-06）：** `https://libnyanpasu.github.io/resources-manifest/schema/`；后接 `2.0/manifest.schema.json` 或 `2.0/manifest-template.schema.json`                           |
+
+C1 测量使用 Windows x86_64、Node v26.12.1、wasm-bindgen 0.2.114、Rust stable 1.99.1
+和 §8.1 的 release profile。指定的 Rust 1.95.0 在依赖编译阶段 ICE，重跑仍复现，
+因此以上是 stable 回退构建的实测值，不视作 1.95 验证通过。
+原始大小统计 bindgen 输出的 `manifest_wasm_bg.wasm`；gzip 使用 Node `zlib.gzipSync`
+且 level 为 9。每次启动一个新的 Node 进程，在导入 JS glue 后计时，范围包含
+`readFileSync` 与 `initSync({ module: bytes })`，不包含进程启动和 glue 导入。
+五次耗时依次为 9.978、1.856、4.790、1.768、1.963 ms；预算为 C1 建议值，
+后续应在修复后的指定工具链与同一测量环境复核。
 
 ---
 
