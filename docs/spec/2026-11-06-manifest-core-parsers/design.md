@@ -283,17 +283,56 @@ body 和单个 header 值的大小按 UTF-8 字节数计算；超限均报 `pars
 | `resolve.`  | `version_required`, `version_not_in_history`, `mirror_not_allowed`, `unknown_registry`, `unknown_mirror`                   | 结构字段待对应实现卡细化          |
 | `verify.`   | `kind_rejected`                                                                                                            | `{ kind }`                        |
 | `verify.`   | `digest_mismatch`                                                                                                          | `{ algorithm, expected, actual }` |
-| `validate.` | 每条不变量一个码                                                                                                           | B1 定义完整码与字段               |
+| `validate.` | 完整清单见下方 B1 校验错误表                                                                                               | —                                 |
 
 错误都带 `path`，统一使用 dotted locator，根为输入文档、宿主参数 `arg` 或 parser 响应 `response`：以 `.` 连接字段或对象键，数组下标写作 `[<i>]`，例如 `manifest_version`、`resources.<id>.variants[<i>].tags`。宿主传入参数使用同一形式的 `arg.<name>`，例如 `arg.version`；parser 响应错误使用 `response.body` 或 `response.headers.<小写名称>`；不使用裸参数名或其他路径语法。一致性运行器对声明的 `path` 做精确字符串比较。
 
-parser 规则错误使用相对于规则的定位：`invalid_pattern` 为 `parser.pattern`，`group_out_of_range` 为 `parser.group`，`resolve.unsupported_parser` 为 `parser.type`；B1 校验完整 manifest 时加上规则所在位置的前缀，例如 `resources.<id>.variants[<i>].version.parser.pattern`。
+parser 规则错误使用相对于规则的定位：`invalid_pattern` 为 `parser.pattern`，`group_out_of_range` 为 `parser.group`，`resolve.unsupported_parser` 为 `parser.type`；B1 校验完整 manifest 时加上规则所在位置的前缀，例如 `resources.<id>.variants[<i>].artifacts.<platform>.version.version.parser.pattern`。两个 `version` 分别是产物的版本策略和 remote 策略里的版本请求；不得省略 wire 层级。
 
 A4 细化：GitHub 的 `not_found`、`digest_missing`、`ambiguous` 字段均为 `{ name }`，名称为请求的 artifact 原值；`invalid_checksum` 字段为 `{}`，包括不支持的算法、非法 hex 和算法长度错误。上述错误的 `path` 均为 `response.body`。匹配条目没有 digest 时拒绝，即使另有同名条目带 digest；未匹配条目的畸形 digest 不参与校验。
 
 A2–A5 细化：version 的 `not_found`、`invalid_version` 字段为 `{}`；GNU / BSD 的 `not_found`、`ambiguous` 字段为 `{ name }`，保留 artifact 原值。`invalid_checksum`、`invalid_encoding` 字段为 `{}`；`invalid_pattern` 在 pattern 字节数超限时为 `{ limit, actual }`，语法或编译大小错误时为 `{}`。header 的 `not_found`、`ambiguous` 字段为 `{ name }`，保留规则声明的大小写；其 `body_too_large` 字段为 `{ limit, actual }`。所有 header 响应错误的路径为 `response.headers.<ASCII 小写名称>`，其余响应错误为 `response.body`；规则错误路径遵循上面的 parser 规则定位。
 
 消费者按 `code` 与结构字段进行程序化匹配，不解析 `message`。`parser.ambiguous` 的 `name` 是请求的 artifact 文件名或 header 规则中的名称；`groups` 是包含 group 0 的捕获组总数。
+
+#### B1 校验错误
+
+以下十行对应 §7.1 的十组不变量，每组一个稳定码。`R` 表示
+`resources.<id>`，`V` 表示 `R.variants[<i>]`，`A` 表示
+`V.artifacts.<platform>`；这些缩写只用于表格，实际 `path()` 返回完整 locator。
+
+| 不变量             | 完整 code                    | fields                          | path                                                                                          |
+| ------------------ | ---------------------------- | ------------------------------- | --------------------------------------------------------------------------------------------- |
+| ID 合法且唯一      | `validate.ids`               | `{ kind, id, reason }`          | `R.tags[i].id`、`V.id`、`V.tags[i].id`                                                        |
+| tag key 规范拼接   | `validate.tag_key`           | `{ expected, actual }`          | `V.tag_key`                                                                                   |
+| 展开 tag 一致      | `validate.expanded_tag`      | `{ id, reason }`                | `V.tags[i]`                                                                                   |
+| group 互斥         | `validate.tag_group`         | `{ group, tags }`               | `V.tags`                                                                                      |
+| 精确 tag 组合唯一  | `validate.tag_combination`   | `{ tag_key, first_variant }`    | `V.tags`                                                                                      |
+| 平台默认有效且完整 | `validate.default_variant`   | `{ platform, variant, reason }` | `R.default_variants.<platform>`                                                               |
+| 引用存在           | `validate.reference`         | `{ kind, id }`                  | `R.registry`、`A.version.<version\|checksum>.resource.registry`、`mirrors.<id>.registries[i]` |
+| static 历史有效    | `validate.static_history`    | `{ version, reason }`           | `A.version.latest`、`A.version.releases[i].version`                                           |
+| 已知 parser 可编译 | `validate.parser_compile`    | `{ reason, details }`           | `A.version.version.parser.<pattern\|group>`、`A.version.checksum.parser.name`                 |
+| 模板依赖完整       | `validate.template_variable` | `{ variable }`                  | 实际包含缺失变量引用的 artifact、source、variables 或 url_template 字段                       |
+
+`ids.kind` 为 `tag` / `variant`，`reason` 为 `invalid` / `duplicate`；
+`expanded_tag.reason` 为 `unknown` / `mismatch`（对比 id、name、group、description，
+缺省与空字符串不同）。`tag_group.tags` 为按码点排序的不同 ID；`first_variant`
+为第一个相同集合的零起始下标。`tag_combination.tag_key` 是去重后集合按码点排序、
+以 `+` 拼接的规范 key，不是 variant 输入的 `tag_key`。`default_variant.reason` 为 `missing` / `unknown` /
+`unsupported_platform`，缺默认时 `variant` 为 JSON null，否则为引用的 ID。
+`reference.kind` 当前只有 `registry`：wire 里没有具名 mirror 引用，只有 mirror 对
+registry 的允许列表；宿主选择的 mirror 在 B3 校验，不虚构 manifest 字段。
+`static_history.reason` 为 `latest_missing` / `duplicate`。
+
+版本 parser 使用 `compile(&Limits::default())`，错误统一包为
+`validate.parser_compile`，`reason` 保留原 `ParseError::code()`，`details`
+完整保留原 `fields()`，path 为请求位置加原规则相对路径。checksum parser 当前没有
+compile API：checksum / GNU / BSD / GitHub 的配置由类型表达，预检不会读响应；
+header 额外检查 RFC 9110 非空 token 名称，失败的 `reason` 为 `invalid_header_name`，
+`details` 为 `{ name }`。两种 `Unsupported` 都不产生校验错误。
+
+`ValidationErrors.errors()` 返回全部错误；同一 locator 的多个独立违规仍分别返回。
+同一模板字段在多个平台 / release 作用域内缺少同一变量时只返回一次相同错误。
 
 ### 5.7 消费者边界
 
@@ -365,9 +404,32 @@ A2–A5 细化：version 的 `not_found`、`invalid_version` 字段为 `{}`；GN
   - 每个已知 parser 都能 `compile`；未知 parser 不报校验错误，在解析该产物时才报（§5.4 第 3 条）；
   - 模板变量可解析（只检查依赖是否完整）。
 
+B1 的 ID 规则与只读参考实现对齐并在此冻结：tag ID 为
+`^[A-Za-z0-9][A-Za-z0-9._:-]*$`，variant ID 为
+`^[A-Za-z0-9][A-Za-z0-9._:+-]*$`。大小写敏感，不 trim；tag 的 `+` 保留作分隔符。
+resource 目录内 tag ID 唯一，每个 variant 内 tag ID 唯一，resource 内 variant ID 唯一。
+`tag_key` 是所有 tag ID 按 Unicode 码点排序后用 `+` 拼接（空列表为 `""`）；
+组合唯一性比较去重后的精确集合，不相信输入的 `tag_key`。group 只有缺省与 `""`
+不参与互斥，空白字符串也是非空 group。重复 ID、伪造 key 和重复组合各自独立报告。
+
+模板依赖检查识别 `{[A-Za-z0-9_]+}`，对实例化的 download、remote version、
+remote checksum 作用域检查合并后的有效值（含未被模板使用的有效 source 值）及模板。
+优先级为 registry variables < resource source < variant source < artifact source <
+release source / remote source < 内置变量；静态历史逐条检查，remote 检查一般运行时
+与 fallback 作用域，fallback source 不泄漏到版本请求或一般运行时作用域。
+download 的 artifact 名模板只使用 source 与内置变量；registry variables 在产物名
+渲染后才合并。除 §11.1 列出的有意偏差外，作用域与参考实现对齐。
+内置来源为 `resource`、`resource_id`、`variant`、`variant_id`、`tag_key`、`platform`、
+`version`；`version` 作为运行时来源计入，B1 不检查值何时可得。
+`artifact` 在 download 模板检查后、checksum 请求内，以及声明 remote artifact 后可用；
+版本请求没有 remote artifact 时不自动提供它。mirror 还可使用 §5.2 的 URL 组件变量，
+只对其允许的 registry 作用域检查，空允许列表表示全部。未实例化的 registry / mirror
+可保留上下文变量。错误定位到包含引用的实际字段，不定位到渲染结果；不做替换、
+URL 校验、环 / 深度 / 大小检查，也不要求未知 parser 可执行，这些由后续卡负责。
+
 ### 7.2 B2 模板引擎
 
-- 按 §5.2 区分 `Authored` 和 `Literal`；在作用域内按优先级合并：registry `variables` < resource `source` < variant `source` < artifact `source` < release `source` < 宿主 `source` < 内置变量。这与参考实现 `R/resource-template.ts:1068-1110` 逐项对齐，B4 的差分测试负责兜底。
+- 按 §5.2 区分 `Authored` 和 `Literal`；在作用域内按优先级合并：registry `variables` < resource `source` < variant `source` < artifact `source` < release `source` < 宿主 `source` < 内置变量。download 的 artifact 名渲染后才合并 registry variables；除 §11.1 列出的有意偏差外，与参考实现 `R/resource-template.ts:1068-1110,1336-1346` 对齐，B4 的差分测试负责兜底。
 - 用 DFS 检测环，限制深度和输出长度。
 
 ### 7.3 B3 选择、计划与校验策略
@@ -456,6 +518,7 @@ A2–A5 细化：version 的 `not_found`、`invalid_version` 字段为 `{}`；GN
 | V-8  | "Rust 消费者实现相同语义"（`D/:214-216`）                                            | "Rust 消费者依赖 `manifest-core`"                                                                                               | 消除第二份实现                                                                              |
 | V-9  | `manifest_version: 2`（整数）                                                        | `manifest_version: "2.0"`（`major.minor`），消费侧对新 minor 宽松                                                               | O-7                                                                                         |
 | V-10 | parser 只读 body                                                                     | 输入是 `RemoteResponse`（body 加 headers）；新增 `header` checksum parser；禁止隐式从响应头取 checksum                          | O-1                                                                                         |
+| V-11 | remote source 可覆盖内置变量                                                         | 内置变量始终拥有最高优先级                                                                                                      | 防止 manifest 覆盖 version、platform 与 resource / variant 身份                             |
 
 ### 11.2 决策
 

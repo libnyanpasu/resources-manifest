@@ -1,0 +1,5987 @@
+[
+  {
+    "name": "validate.ids.valid",
+    "input": {
+      "manifest_version": "2.0",
+      "registries": {
+        "github-release": {
+          "name": "GitHub Releases",
+          "url_template": "https://github.com/{owner}/{repo}/releases/download/{release}/{artifact}"
+        }
+      },
+      "mirrors": {},
+      "resources": {
+        "sample": {
+          "name": "Sample",
+          "registry": "github-release",
+          "source": {
+            "owner": "example",
+            "repo": "project"
+          },
+          "tags": [
+            {
+              "id": "channel:stable",
+              "name": "Stable",
+              "group": "channel"
+            }
+          ],
+          "default_variants": {
+            "windows-x86_64": "Stable+v2",
+            "linux-amd64": "Stable+v2"
+          },
+          "variants": [
+            {
+              "id": "Stable+v2",
+              "tag_key": "channel:stable",
+              "name": "Stable",
+              "tags": [
+                {
+                  "id": "channel:stable",
+                  "name": "Stable",
+                  "group": "channel"
+                }
+              ],
+              "source": {
+                "release": "{version}"
+              },
+              "artifacts": {
+                "windows-x86_64": {
+                  "artifact": "selected-{version}.zip",
+                  "version": {
+                    "type": "static",
+                    "latest": "v1.2.3",
+                    "releases": [
+                      {
+                        "version": "v1.2.3",
+                        "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+                      }
+                    ]
+                  }
+                },
+                "linux-amd64": {
+                  "artifact": "selected-{version}.gz",
+                  "version": {
+                    "type": "static",
+                    "latest": "v1.2.3",
+                    "releases": [
+                      {
+                        "version": "v1.2.3",
+                        "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    "expect": {
+      "ok": true
+    }
+  },
+  {
+    "name": "validate.tag_key.canonical",
+    "input": {
+      "manifest_version": "2.0",
+      "registries": {
+        "github-release": {
+          "name": "GitHub Releases",
+          "url_template": "https://github.com/{owner}/{repo}/releases/download/{release}/{artifact}"
+        }
+      },
+      "mirrors": {},
+      "resources": {
+        "sample": {
+          "name": "Sample",
+          "registry": "github-release",
+          "source": {
+            "owner": "example",
+            "repo": "project"
+          },
+          "tags": [
+            {
+              "id": "channel:stable",
+              "name": "Stable",
+              "group": "channel"
+            },
+            {
+              "id": "z:2",
+              "name": "z:2"
+            },
+            {
+              "id": "A:1",
+              "name": "A:1"
+            }
+          ],
+          "default_variants": {
+            "windows-x86_64": "stable",
+            "linux-amd64": "stable"
+          },
+          "variants": [
+            {
+              "id": "stable",
+              "tag_key": "A:1+channel:stable+z:2",
+              "name": "Stable",
+              "tags": [
+                {
+                  "id": "A:1",
+                  "name": "A:1"
+                },
+                {
+                  "id": "z:2",
+                  "name": "z:2"
+                },
+                {
+                  "id": "channel:stable",
+                  "name": "Stable",
+                  "group": "channel"
+                }
+              ],
+              "source": {
+                "release": "{version}"
+              },
+              "artifacts": {
+                "windows-x86_64": {
+                  "artifact": "selected-{version}.zip",
+                  "version": {
+                    "type": "static",
+                    "latest": "v1.2.3",
+                    "releases": [
+                      {
+                        "version": "v1.2.3",
+                        "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+                      }
+                    ]
+                  }
+                },
+                "linux-amd64": {
+                  "artifact": "selected-{version}.gz",
+                  "version": {
+                    "type": "static",
+                    "latest": "v1.2.3",
+                    "releases": [
+                      {
+                        "version": "v1.2.3",
+                        "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    "expect": {
+      "ok": true
+    }
+  },
+  {
+    "name": "validate.expanded_tag.consistent",
+    "input": {
+      "manifest_version": "2.0",
+      "registries": {
+        "github-release": {
+          "name": "GitHub Releases",
+          "url_template": "https://github.com/{owner}/{repo}/releases/download/{release}/{artifact}"
+        }
+      },
+      "mirrors": {},
+      "resources": {
+        "sample": {
+          "name": "Sample",
+          "registry": "github-release",
+          "source": {
+            "owner": "example",
+            "repo": "project"
+          },
+          "tags": [
+            {
+              "id": "channel:stable",
+              "name": "Stable",
+              "group": "channel",
+              "description": "Stable builds"
+            }
+          ],
+          "default_variants": {
+            "windows-x86_64": "stable",
+            "linux-amd64": "stable"
+          },
+          "variants": [
+            {
+              "id": "stable",
+              "tag_key": "channel:stable",
+              "name": "Stable",
+              "tags": [
+                {
+                  "id": "channel:stable",
+                  "name": "Stable",
+                  "group": "channel",
+                  "description": "Stable builds"
+                }
+              ],
+              "source": {
+                "release": "{version}"
+              },
+              "artifacts": {
+                "windows-x86_64": {
+                  "artifact": "selected-{version}.zip",
+                  "version": {
+                    "type": "static",
+                    "latest": "v1.2.3",
+                    "releases": [
+                      {
+                        "version": "v1.2.3",
+                        "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+                      }
+                    ]
+                  }
+                },
+                "linux-amd64": {
+                  "artifact": "selected-{version}.gz",
+                  "version": {
+                    "type": "static",
+                    "latest": "v1.2.3",
+                    "releases": [
+                      {
+                        "version": "v1.2.3",
+                        "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    "expect": {
+      "ok": true
+    }
+  },
+  {
+    "name": "validate.tag_group.empty_and_distinct",
+    "input": {
+      "manifest_version": "2.0",
+      "registries": {
+        "github-release": {
+          "name": "GitHub Releases",
+          "url_template": "https://github.com/{owner}/{repo}/releases/download/{release}/{artifact}"
+        }
+      },
+      "mirrors": {},
+      "resources": {
+        "sample": {
+          "name": "Sample",
+          "registry": "github-release",
+          "source": {
+            "owner": "example",
+            "repo": "project"
+          },
+          "tags": [
+            {
+              "id": "channel:stable",
+              "name": "Stable",
+              "group": "channel"
+            },
+            {
+              "id": "cpu:one",
+              "name": "cpu:one",
+              "group": "cpu"
+            },
+            {
+              "id": "extra:one",
+              "name": "extra:one",
+              "group": ""
+            },
+            {
+              "id": "extra:two",
+              "name": "extra:two",
+              "group": ""
+            },
+            {
+              "id": "plain:one",
+              "name": "plain:one"
+            },
+            {
+              "id": "plain:two",
+              "name": "plain:two"
+            }
+          ],
+          "default_variants": {
+            "windows-x86_64": "stable",
+            "linux-amd64": "stable"
+          },
+          "variants": [
+            {
+              "id": "stable",
+              "tag_key": "channel:stable+cpu:one+extra:one+extra:two+plain:one+plain:two",
+              "name": "Stable",
+              "tags": [
+                {
+                  "id": "channel:stable",
+                  "name": "Stable",
+                  "group": "channel"
+                },
+                {
+                  "id": "cpu:one",
+                  "name": "cpu:one",
+                  "group": "cpu"
+                },
+                {
+                  "id": "extra:one",
+                  "name": "extra:one",
+                  "group": ""
+                },
+                {
+                  "id": "extra:two",
+                  "name": "extra:two",
+                  "group": ""
+                },
+                {
+                  "id": "plain:one",
+                  "name": "plain:one"
+                },
+                {
+                  "id": "plain:two",
+                  "name": "plain:two"
+                }
+              ],
+              "source": {
+                "release": "{version}"
+              },
+              "artifacts": {
+                "windows-x86_64": {
+                  "artifact": "selected-{version}.zip",
+                  "version": {
+                    "type": "static",
+                    "latest": "v1.2.3",
+                    "releases": [
+                      {
+                        "version": "v1.2.3",
+                        "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+                      }
+                    ]
+                  }
+                },
+                "linux-amd64": {
+                  "artifact": "selected-{version}.gz",
+                  "version": {
+                    "type": "static",
+                    "latest": "v1.2.3",
+                    "releases": [
+                      {
+                        "version": "v1.2.3",
+                        "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    "expect": {
+      "ok": true
+    }
+  },
+  {
+    "name": "validate.tag_combination.distinct",
+    "input": {
+      "manifest_version": "2.0",
+      "registries": {
+        "github-release": {
+          "name": "GitHub Releases",
+          "url_template": "https://github.com/{owner}/{repo}/releases/download/{release}/{artifact}"
+        }
+      },
+      "mirrors": {},
+      "resources": {
+        "sample": {
+          "name": "Sample",
+          "registry": "github-release",
+          "source": {
+            "owner": "example",
+            "repo": "project"
+          },
+          "tags": [
+            {
+              "id": "channel:stable",
+              "name": "Stable",
+              "group": "channel"
+            }
+          ],
+          "default_variants": {
+            "windows-x86_64": "stable",
+            "linux-amd64": "stable"
+          },
+          "variants": [
+            {
+              "id": "stable",
+              "tag_key": "channel:stable",
+              "name": "Stable",
+              "tags": [
+                {
+                  "id": "channel:stable",
+                  "name": "Stable",
+                  "group": "channel"
+                }
+              ],
+              "source": {
+                "release": "{version}"
+              },
+              "artifacts": {
+                "windows-x86_64": {
+                  "artifact": "selected-{version}.zip",
+                  "version": {
+                    "type": "static",
+                    "latest": "v1.2.3",
+                    "releases": [
+                      {
+                        "version": "v1.2.3",
+                        "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+                      }
+                    ]
+                  }
+                },
+                "linux-amd64": {
+                  "artifact": "selected-{version}.gz",
+                  "version": {
+                    "type": "static",
+                    "latest": "v1.2.3",
+                    "releases": [
+                      {
+                        "version": "v1.2.3",
+                        "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+                      }
+                    ]
+                  }
+                }
+              }
+            },
+            {
+              "id": "other",
+              "tag_key": "",
+              "name": "Stable",
+              "tags": [],
+              "source": {
+                "release": "{version}"
+              },
+              "artifacts": {
+                "windows-x86_64": {
+                  "artifact": "selected-{version}.zip",
+                  "version": {
+                    "type": "static",
+                    "latest": "v1.2.3",
+                    "releases": [
+                      {
+                        "version": "v1.2.3",
+                        "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+                      }
+                    ]
+                  }
+                },
+                "linux-amd64": {
+                  "artifact": "selected-{version}.gz",
+                  "version": {
+                    "type": "static",
+                    "latest": "v1.2.3",
+                    "releases": [
+                      {
+                        "version": "v1.2.3",
+                        "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    "expect": {
+      "ok": true
+    }
+  },
+  {
+    "name": "validate.default_variant.multiple_configured",
+    "input": {
+      "manifest_version": "2.0",
+      "registries": {
+        "github-release": {
+          "name": "GitHub Releases",
+          "url_template": "https://github.com/{owner}/{repo}/releases/download/{release}/{artifact}"
+        }
+      },
+      "mirrors": {},
+      "resources": {
+        "sample": {
+          "name": "Sample",
+          "registry": "github-release",
+          "source": {
+            "owner": "example",
+            "repo": "project"
+          },
+          "tags": [
+            {
+              "id": "channel:stable",
+              "name": "Stable",
+              "group": "channel"
+            }
+          ],
+          "default_variants": {
+            "windows-x86_64": "stable",
+            "linux-amd64": "stable"
+          },
+          "variants": [
+            {
+              "id": "stable",
+              "tag_key": "channel:stable",
+              "name": "Stable",
+              "tags": [
+                {
+                  "id": "channel:stable",
+                  "name": "Stable",
+                  "group": "channel"
+                }
+              ],
+              "source": {
+                "release": "{version}"
+              },
+              "artifacts": {
+                "windows-x86_64": {
+                  "artifact": "selected-{version}.zip",
+                  "version": {
+                    "type": "static",
+                    "latest": "v1.2.3",
+                    "releases": [
+                      {
+                        "version": "v1.2.3",
+                        "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+                      }
+                    ]
+                  }
+                },
+                "linux-amd64": {
+                  "artifact": "selected-{version}.gz",
+                  "version": {
+                    "type": "static",
+                    "latest": "v1.2.3",
+                    "releases": [
+                      {
+                        "version": "v1.2.3",
+                        "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+                      }
+                    ]
+                  }
+                }
+              }
+            },
+            {
+              "id": "other",
+              "tag_key": "",
+              "name": "Stable",
+              "tags": [],
+              "source": {
+                "release": "{version}"
+              },
+              "artifacts": {
+                "windows-x86_64": {
+                  "artifact": "selected-{version}.zip",
+                  "version": {
+                    "type": "static",
+                    "latest": "v1.2.3",
+                    "releases": [
+                      {
+                        "version": "v1.2.3",
+                        "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+                      }
+                    ]
+                  }
+                },
+                "linux-amd64": {
+                  "artifact": "selected-{version}.gz",
+                  "version": {
+                    "type": "static",
+                    "latest": "v1.2.3",
+                    "releases": [
+                      {
+                        "version": "v1.2.3",
+                        "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    "expect": {
+      "ok": true
+    }
+  },
+  {
+    "name": "validate.reference.existing",
+    "input": {
+      "manifest_version": "2.0",
+      "registries": {
+        "github-release": {
+          "name": "GitHub Releases",
+          "url_template": "https://github.com/{owner}/{repo}/releases/download/{release}/{artifact}"
+        }
+      },
+      "mirrors": {
+        "accel": {
+          "name": "Accelerator",
+          "url_template": "https://mirror.test{path_and_query}",
+          "registries": ["github-release"]
+        }
+      },
+      "resources": {
+        "sample": {
+          "name": "Sample",
+          "registry": "github-release",
+          "source": {
+            "owner": "example",
+            "repo": "project"
+          },
+          "tags": [
+            {
+              "id": "channel:stable",
+              "name": "Stable",
+              "group": "channel"
+            }
+          ],
+          "default_variants": {
+            "windows-x86_64": "stable",
+            "linux-amd64": "stable"
+          },
+          "variants": [
+            {
+              "id": "stable",
+              "tag_key": "channel:stable",
+              "name": "Stable",
+              "tags": [
+                {
+                  "id": "channel:stable",
+                  "name": "Stable",
+                  "group": "channel"
+                }
+              ],
+              "source": {
+                "release": "{version}"
+              },
+              "artifacts": {
+                "windows-x86_64": {
+                  "artifact": "selected-{version}.zip",
+                  "version": {
+                    "type": "remote",
+                    "version": {
+                      "resource": {
+                        "registry": "github-release",
+                        "artifact": "version.txt"
+                      },
+                      "parser": {
+                        "type": "text"
+                      }
+                    },
+                    "checksum": {
+                      "resource": {
+                        "registry": "github-release",
+                        "artifact": "checksums.txt"
+                      },
+                      "parser": {
+                        "type": "gnu",
+                        "algorithm": "sha256"
+                      }
+                    }
+                  }
+                },
+                "linux-amd64": {
+                  "artifact": "selected-{version}.gz",
+                  "version": {
+                    "type": "static",
+                    "latest": "v1.2.3",
+                    "releases": [
+                      {
+                        "version": "v1.2.3",
+                        "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    "expect": {
+      "ok": true
+    }
+  },
+  {
+    "name": "validate.static_history.latest_not_first",
+    "input": {
+      "manifest_version": "2.0",
+      "registries": {
+        "github-release": {
+          "name": "GitHub Releases",
+          "url_template": "https://github.com/{owner}/{repo}/releases/download/{release}/{artifact}"
+        }
+      },
+      "mirrors": {},
+      "resources": {
+        "sample": {
+          "name": "Sample",
+          "registry": "github-release",
+          "source": {
+            "owner": "example",
+            "repo": "project"
+          },
+          "tags": [
+            {
+              "id": "channel:stable",
+              "name": "Stable",
+              "group": "channel"
+            }
+          ],
+          "default_variants": {
+            "windows-x86_64": "stable",
+            "linux-amd64": "stable"
+          },
+          "variants": [
+            {
+              "id": "stable",
+              "tag_key": "channel:stable",
+              "name": "Stable",
+              "tags": [
+                {
+                  "id": "channel:stable",
+                  "name": "Stable",
+                  "group": "channel"
+                }
+              ],
+              "source": {
+                "release": "{version}"
+              },
+              "artifacts": {
+                "windows-x86_64": {
+                  "artifact": "selected-{version}.zip",
+                  "version": {
+                    "type": "static",
+                    "latest": "v1.2.3",
+                    "releases": [
+                      {
+                        "version": "old"
+                      },
+                      {
+                        "version": "v1.2.3",
+                        "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+                      }
+                    ]
+                  }
+                },
+                "linux-amd64": {
+                  "artifact": "selected-{version}.gz",
+                  "version": {
+                    "type": "static",
+                    "latest": "v1.2.3",
+                    "releases": [
+                      {
+                        "version": "v1.2.3",
+                        "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    "expect": {
+      "ok": true
+    }
+  },
+  {
+    "name": "validate.parser_compile.known",
+    "input": {
+      "manifest_version": "2.0",
+      "registries": {
+        "github-release": {
+          "name": "GitHub Releases",
+          "url_template": "https://github.com/{owner}/{repo}/releases/download/{release}/{artifact}"
+        }
+      },
+      "mirrors": {},
+      "resources": {
+        "sample": {
+          "name": "Sample",
+          "registry": "github-release",
+          "source": {
+            "owner": "example",
+            "repo": "project"
+          },
+          "tags": [
+            {
+              "id": "channel:stable",
+              "name": "Stable",
+              "group": "channel"
+            }
+          ],
+          "default_variants": {
+            "windows-x86_64": "stable",
+            "linux-amd64": "stable"
+          },
+          "variants": [
+            {
+              "id": "stable",
+              "tag_key": "channel:stable",
+              "name": "Stable",
+              "tags": [
+                {
+                  "id": "channel:stable",
+                  "name": "Stable",
+                  "group": "channel"
+                }
+              ],
+              "source": {
+                "release": "{version}"
+              },
+              "artifacts": {
+                "windows-x86_64": {
+                  "artifact": "selected-{version}.zip",
+                  "version": {
+                    "type": "remote",
+                    "version": {
+                      "resource": {
+                        "registry": "github-release",
+                        "artifact": "version.txt"
+                      },
+                      "parser": {
+                        "type": "regex",
+                        "pattern": "v([0-9]+)",
+                        "group": 1
+                      }
+                    },
+                    "checksum": {
+                      "resource": {
+                        "registry": "github-release",
+                        "artifact": "checksums.txt"
+                      },
+                      "parser": {
+                        "type": "header",
+                        "name": "X-Digest",
+                        "algorithm": "sha256",
+                        "encoding": "base64"
+                      }
+                    }
+                  }
+                },
+                "linux-amd64": {
+                  "artifact": "selected-{version}.gz",
+                  "version": {
+                    "type": "static",
+                    "latest": "v1.2.3",
+                    "releases": [
+                      {
+                        "version": "v1.2.3",
+                        "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    "expect": {
+      "ok": true
+    }
+  },
+  {
+    "name": "validate.template_variable.complete",
+    "input": {
+      "manifest_version": "2.0",
+      "registries": {
+        "github-release": {
+          "name": "GitHub Releases",
+          "url_template": "https://github.com/{owner}/{repo}/releases/download/{release}/{artifact}",
+          "variables": {
+            "bucket": "{owner}",
+            "ignored": "{missing}"
+          }
+        }
+      },
+      "mirrors": {
+        "accel": {
+          "name": "Accelerator",
+          "url_template": "https://mirror.test/{url_encoded}?owner={bucket}"
+        }
+      },
+      "resources": {
+        "sample": {
+          "name": "Sample",
+          "registry": "github-release",
+          "source": {
+            "owner": "example",
+            "repo": "project",
+            "ignored": "overridden"
+          },
+          "tags": [
+            {
+              "id": "channel:stable",
+              "name": "Stable",
+              "group": "channel"
+            }
+          ],
+          "default_variants": {
+            "windows-x86_64": "stable",
+            "linux-amd64": "stable"
+          },
+          "variants": [
+            {
+              "id": "stable",
+              "tag_key": "channel:stable",
+              "name": "Stable",
+              "tags": [
+                {
+                  "id": "channel:stable",
+                  "name": "Stable",
+                  "group": "channel"
+                }
+              ],
+              "source": {
+                "release": "{bucket}/{version}"
+              },
+              "artifacts": {
+                "windows-x86_64": {
+                  "artifact": "{asset}-{version}.zip",
+                  "version": {
+                    "type": "static",
+                    "latest": "v1.2.3",
+                    "releases": [
+                      {
+                        "version": "v1.2.3",
+                        "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+                      }
+                    ]
+                  },
+                  "source": {
+                    "asset": "{resource_id}-{variant_id}-{platform}-{tag_key}"
+                  }
+                },
+                "linux-amd64": {
+                  "artifact": "selected-{version}.gz",
+                  "version": {
+                    "type": "static",
+                    "latest": "v1.2.3",
+                    "releases": [
+                      {
+                        "version": "v1.2.3",
+                        "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    "expect": {
+      "ok": true
+    }
+  },
+  {
+    "name": "validate.default_variant.single_inferred",
+    "input": {
+      "manifest_version": "2.0",
+      "registries": {
+        "github-release": {
+          "name": "GitHub Releases",
+          "url_template": "https://github.com/{owner}/{repo}/releases/download/{release}/{artifact}"
+        }
+      },
+      "mirrors": {},
+      "resources": {
+        "sample": {
+          "name": "Sample",
+          "registry": "github-release",
+          "source": {
+            "owner": "example",
+            "repo": "project"
+          },
+          "tags": [
+            {
+              "id": "channel:stable",
+              "name": "Stable",
+              "group": "channel"
+            }
+          ],
+          "default_variants": {},
+          "variants": [
+            {
+              "id": "stable",
+              "tag_key": "channel:stable",
+              "name": "Stable",
+              "tags": [
+                {
+                  "id": "channel:stable",
+                  "name": "Stable",
+                  "group": "channel"
+                }
+              ],
+              "source": {
+                "release": "{version}"
+              },
+              "artifacts": {
+                "windows-x86_64": {
+                  "artifact": "selected-{version}.zip",
+                  "version": {
+                    "type": "static",
+                    "latest": "v1.2.3",
+                    "releases": [
+                      {
+                        "version": "v1.2.3",
+                        "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+                      }
+                    ]
+                  }
+                },
+                "linux-amd64": {
+                  "artifact": "selected-{version}.gz",
+                  "version": {
+                    "type": "static",
+                    "latest": "v1.2.3",
+                    "releases": [
+                      {
+                        "version": "v1.2.3",
+                        "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    "expect": {
+      "ok": true
+    }
+  },
+  {
+    "name": "validate.tag_key.empty",
+    "input": {
+      "manifest_version": "2.0",
+      "registries": {
+        "github-release": {
+          "name": "GitHub Releases",
+          "url_template": "https://github.com/{owner}/{repo}/releases/download/{release}/{artifact}"
+        }
+      },
+      "mirrors": {},
+      "resources": {
+        "sample": {
+          "name": "Sample",
+          "registry": "github-release",
+          "source": {
+            "owner": "example",
+            "repo": "project"
+          },
+          "tags": [
+            {
+              "id": "channel:stable",
+              "name": "Stable",
+              "group": "channel"
+            }
+          ],
+          "default_variants": {
+            "windows-x86_64": "stable",
+            "linux-amd64": "stable"
+          },
+          "variants": [
+            {
+              "id": "stable",
+              "tag_key": "",
+              "name": "Stable",
+              "tags": [],
+              "source": {
+                "release": "{version}"
+              },
+              "artifacts": {
+                "windows-x86_64": {
+                  "artifact": "selected-{version}.zip",
+                  "version": {
+                    "type": "static",
+                    "latest": "v1.2.3",
+                    "releases": [
+                      {
+                        "version": "v1.2.3",
+                        "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+                      }
+                    ]
+                  }
+                },
+                "linux-amd64": {
+                  "artifact": "selected-{version}.gz",
+                  "version": {
+                    "type": "static",
+                    "latest": "v1.2.3",
+                    "releases": [
+                      {
+                        "version": "v1.2.3",
+                        "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    "expect": {
+      "ok": true
+    }
+  },
+  {
+    "name": "validate.parser_compile.unsupported_accepted",
+    "input": {
+      "manifest_version": "2.0",
+      "registries": {
+        "github-release": {
+          "name": "GitHub Releases",
+          "url_template": "https://github.com/{owner}/{repo}/releases/download/{release}/{artifact}"
+        }
+      },
+      "mirrors": {},
+      "resources": {
+        "sample": {
+          "name": "Sample",
+          "registry": "github-release",
+          "source": {
+            "owner": "example",
+            "repo": "project"
+          },
+          "tags": [
+            {
+              "id": "channel:stable",
+              "name": "Stable",
+              "group": "channel"
+            }
+          ],
+          "default_variants": {
+            "windows-x86_64": "stable",
+            "linux-amd64": "stable"
+          },
+          "variants": [
+            {
+              "id": "stable",
+              "tag_key": "channel:stable",
+              "name": "Stable",
+              "tags": [
+                {
+                  "id": "channel:stable",
+                  "name": "Stable",
+                  "group": "channel"
+                }
+              ],
+              "source": {
+                "release": "{version}"
+              },
+              "artifacts": {
+                "windows-x86_64": {
+                  "artifact": "selected-{version}.zip",
+                  "version": {
+                    "type": "remote",
+                    "version": {
+                      "resource": {
+                        "registry": "github-release",
+                        "artifact": "version.txt"
+                      },
+                      "parser": {
+                        "type": "future-version"
+                      }
+                    },
+                    "checksum": {
+                      "resource": {
+                        "registry": "github-release",
+                        "artifact": "checksums.txt"
+                      },
+                      "parser": {
+                        "type": "future-checksum"
+                      }
+                    }
+                  }
+                },
+                "linux-amd64": {
+                  "artifact": "selected-{version}.gz",
+                  "version": {
+                    "type": "static",
+                    "latest": "v1.2.3",
+                    "releases": [
+                      {
+                        "version": "v1.2.3",
+                        "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    "expect": {
+      "ok": true
+    }
+  },
+  {
+    "name": "validate.template_variable.release_and_remote_scopes",
+    "input": {
+      "manifest_version": "2.0",
+      "registries": {
+        "github-release": {
+          "name": "GitHub Releases",
+          "url_template": "https://github.com/{owner}/{repo}/releases/download/{release}/{artifact}"
+        }
+      },
+      "mirrors": {},
+      "resources": {
+        "sample": {
+          "name": "Sample",
+          "registry": "github-release",
+          "source": {
+            "owner": "example",
+            "repo": "project"
+          },
+          "tags": [
+            {
+              "id": "channel:stable",
+              "name": "Stable",
+              "group": "channel"
+            }
+          ],
+          "default_variants": {
+            "windows-x86_64": "stable",
+            "linux-amd64": "stable"
+          },
+          "variants": [
+            {
+              "id": "stable",
+              "tag_key": "channel:stable",
+              "name": "Stable",
+              "tags": [
+                {
+                  "id": "channel:stable",
+                  "name": "Stable",
+                  "group": "channel"
+                }
+              ],
+              "source": {
+                "release": "{version}"
+              },
+              "artifacts": {
+                "windows-x86_64": {
+                  "artifact": "selected-{local}.zip",
+                  "version": {
+                    "type": "static",
+                    "latest": "v1.2.3",
+                    "releases": [
+                      {
+                        "version": "v1.2.3",
+                        "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+                        "source": {
+                          "local": "{version}"
+                        }
+                      }
+                    ]
+                  }
+                },
+                "linux-amd64": {
+                  "artifact": "selected-{version}.gz",
+                  "version": {
+                    "type": "remote",
+                    "fallback": {
+                      "version": "v1",
+                      "source": {
+                        "release": "{version}"
+                      }
+                    },
+                    "version": {
+                      "resource": {
+                        "registry": "github-release",
+                        "artifact": "{remote_name}",
+                        "source": {
+                          "remote_name": "version.txt"
+                        }
+                      },
+                      "parser": {
+                        "type": "text"
+                      }
+                    },
+                    "checksum": {
+                      "resource": {
+                        "registry": "github-release",
+                        "artifact": "checksums.txt",
+                        "source": {
+                          "release": "{version}"
+                        }
+                      },
+                      "parser": {
+                        "type": "checksum"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    "expect": {
+      "ok": true
+    }
+  },
+  {
+    "name": "validate.template_variable.cycle_deferred",
+    "input": {
+      "manifest_version": "2.0",
+      "registries": {
+        "github-release": {
+          "name": "GitHub Releases",
+          "url_template": "https://github.com/{owner}/{repo}/releases/download/{release}/{artifact}"
+        }
+      },
+      "mirrors": {},
+      "resources": {
+        "sample": {
+          "name": "Sample",
+          "registry": "github-release",
+          "source": {
+            "owner": "example",
+            "repo": "project",
+            "cycle": "{cycle}"
+          },
+          "tags": [
+            {
+              "id": "channel:stable",
+              "name": "Stable",
+              "group": "channel"
+            }
+          ],
+          "default_variants": {
+            "windows-x86_64": "stable",
+            "linux-amd64": "stable"
+          },
+          "variants": [
+            {
+              "id": "stable",
+              "tag_key": "channel:stable",
+              "name": "Stable",
+              "tags": [
+                {
+                  "id": "channel:stable",
+                  "name": "Stable",
+                  "group": "channel"
+                }
+              ],
+              "source": {
+                "release": "{version}"
+              },
+              "artifacts": {
+                "windows-x86_64": {
+                  "artifact": "selected-{version}.zip",
+                  "version": {
+                    "type": "static",
+                    "latest": "v1.2.3",
+                    "releases": [
+                      {
+                        "version": "v1.2.3",
+                        "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+                      }
+                    ]
+                  }
+                },
+                "linux-amd64": {
+                  "artifact": "selected-{version}.gz",
+                  "version": {
+                    "type": "static",
+                    "latest": "v1.2.3",
+                    "releases": [
+                      {
+                        "version": "v1.2.3",
+                        "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    "expect": {
+      "ok": true
+    }
+  },
+  {
+    "name": "validate.template_variable.unused_registry_contextual",
+    "input": {
+      "manifest_version": "2.0",
+      "registries": {
+        "github-release": {
+          "name": "GitHub Releases",
+          "url_template": "https://github.com/{owner}/{repo}/releases/download/{release}/{artifact}"
+        },
+        "unused": {
+          "name": "Unused",
+          "url_template": "https://{contextual}/{artifact}"
+        }
+      },
+      "mirrors": {},
+      "resources": {
+        "sample": {
+          "name": "Sample",
+          "registry": "github-release",
+          "source": {
+            "owner": "example",
+            "repo": "project"
+          },
+          "tags": [
+            {
+              "id": "channel:stable",
+              "name": "Stable",
+              "group": "channel"
+            }
+          ],
+          "default_variants": {
+            "windows-x86_64": "stable",
+            "linux-amd64": "stable"
+          },
+          "variants": [
+            {
+              "id": "stable",
+              "tag_key": "channel:stable",
+              "name": "Stable",
+              "tags": [
+                {
+                  "id": "channel:stable",
+                  "name": "Stable",
+                  "group": "channel"
+                }
+              ],
+              "source": {
+                "release": "{version}"
+              },
+              "artifacts": {
+                "windows-x86_64": {
+                  "artifact": "selected-{version}.zip",
+                  "version": {
+                    "type": "static",
+                    "latest": "v1.2.3",
+                    "releases": [
+                      {
+                        "version": "v1.2.3",
+                        "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+                      }
+                    ]
+                  }
+                },
+                "linux-amd64": {
+                  "artifact": "selected-{version}.gz",
+                  "version": {
+                    "type": "static",
+                    "latest": "v1.2.3",
+                    "releases": [
+                      {
+                        "version": "v1.2.3",
+                        "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    "expect": {
+      "ok": true
+    }
+  },
+  {
+    "name": "validate.ids.invalid_variant",
+    "input": {
+      "manifest_version": "2.0",
+      "registries": {
+        "github-release": {
+          "name": "GitHub Releases",
+          "url_template": "https://github.com/{owner}/{repo}/releases/download/{release}/{artifact}"
+        }
+      },
+      "mirrors": {},
+      "resources": {
+        "sample": {
+          "name": "Sample",
+          "registry": "github-release",
+          "source": {
+            "owner": "example",
+            "repo": "project"
+          },
+          "tags": [
+            {
+              "id": "channel:stable",
+              "name": "Stable",
+              "group": "channel"
+            }
+          ],
+          "default_variants": {
+            "windows-x86_64": " bad",
+            "linux-amd64": " bad"
+          },
+          "variants": [
+            {
+              "id": " bad",
+              "tag_key": "channel:stable",
+              "name": "Stable",
+              "tags": [
+                {
+                  "id": "channel:stable",
+                  "name": "Stable",
+                  "group": "channel"
+                }
+              ],
+              "source": {
+                "release": "{version}"
+              },
+              "artifacts": {
+                "windows-x86_64": {
+                  "artifact": "selected-{version}.zip",
+                  "version": {
+                    "type": "static",
+                    "latest": "v1.2.3",
+                    "releases": [
+                      {
+                        "version": "v1.2.3",
+                        "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+                      }
+                    ]
+                  }
+                },
+                "linux-amd64": {
+                  "artifact": "selected-{version}.gz",
+                  "version": {
+                    "type": "static",
+                    "latest": "v1.2.3",
+                    "releases": [
+                      {
+                        "version": "v1.2.3",
+                        "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    "expect": {
+      "error": {
+        "code": "validate.ids",
+        "path": "resources.sample.variants[0].id",
+        "fields": {
+          "kind": "variant",
+          "id": " bad",
+          "reason": "invalid"
+        }
+      }
+    }
+  },
+  {
+    "name": "validate.ids.invalid_tag",
+    "input": {
+      "manifest_version": "2.0",
+      "registries": {
+        "github-release": {
+          "name": "GitHub Releases",
+          "url_template": "https://github.com/{owner}/{repo}/releases/download/{release}/{artifact}"
+        }
+      },
+      "mirrors": {},
+      "resources": {
+        "sample": {
+          "name": "Sample",
+          "registry": "github-release",
+          "source": {
+            "owner": "example",
+            "repo": "project"
+          },
+          "tags": [
+            {
+              "id": "channel:stable",
+              "name": "Stable",
+              "group": "channel"
+            },
+            {
+              "id": "bad+tag",
+              "name": "Bad"
+            }
+          ],
+          "default_variants": {
+            "windows-x86_64": "stable",
+            "linux-amd64": "stable"
+          },
+          "variants": [
+            {
+              "id": "stable",
+              "tag_key": "channel:stable",
+              "name": "Stable",
+              "tags": [
+                {
+                  "id": "channel:stable",
+                  "name": "Stable",
+                  "group": "channel"
+                }
+              ],
+              "source": {
+                "release": "{version}"
+              },
+              "artifacts": {
+                "windows-x86_64": {
+                  "artifact": "selected-{version}.zip",
+                  "version": {
+                    "type": "static",
+                    "latest": "v1.2.3",
+                    "releases": [
+                      {
+                        "version": "v1.2.3",
+                        "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+                      }
+                    ]
+                  }
+                },
+                "linux-amd64": {
+                  "artifact": "selected-{version}.gz",
+                  "version": {
+                    "type": "static",
+                    "latest": "v1.2.3",
+                    "releases": [
+                      {
+                        "version": "v1.2.3",
+                        "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    "expect": {
+      "error": {
+        "code": "validate.ids",
+        "path": "resources.sample.tags[1].id",
+        "fields": {
+          "kind": "tag",
+          "id": "bad+tag",
+          "reason": "invalid"
+        }
+      }
+    }
+  },
+  {
+    "name": "validate.ids.empty_tag",
+    "input": {
+      "manifest_version": "2.0",
+      "registries": {
+        "github-release": {
+          "name": "GitHub Releases",
+          "url_template": "https://github.com/{owner}/{repo}/releases/download/{release}/{artifact}"
+        }
+      },
+      "mirrors": {},
+      "resources": {
+        "sample": {
+          "name": "Sample",
+          "registry": "github-release",
+          "source": {
+            "owner": "example",
+            "repo": "project"
+          },
+          "tags": [
+            {
+              "id": "channel:stable",
+              "name": "Stable",
+              "group": "channel"
+            },
+            {
+              "id": "",
+              "name": "Bad"
+            }
+          ],
+          "default_variants": {
+            "windows-x86_64": "stable",
+            "linux-amd64": "stable"
+          },
+          "variants": [
+            {
+              "id": "stable",
+              "tag_key": "channel:stable",
+              "name": "Stable",
+              "tags": [
+                {
+                  "id": "channel:stable",
+                  "name": "Stable",
+                  "group": "channel"
+                }
+              ],
+              "source": {
+                "release": "{version}"
+              },
+              "artifacts": {
+                "windows-x86_64": {
+                  "artifact": "selected-{version}.zip",
+                  "version": {
+                    "type": "static",
+                    "latest": "v1.2.3",
+                    "releases": [
+                      {
+                        "version": "v1.2.3",
+                        "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+                      }
+                    ]
+                  }
+                },
+                "linux-amd64": {
+                  "artifact": "selected-{version}.gz",
+                  "version": {
+                    "type": "static",
+                    "latest": "v1.2.3",
+                    "releases": [
+                      {
+                        "version": "v1.2.3",
+                        "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    "expect": {
+      "error": {
+        "code": "validate.ids",
+        "path": "resources.sample.tags[1].id",
+        "fields": {
+          "kind": "tag",
+          "id": "",
+          "reason": "invalid"
+        }
+      }
+    }
+  },
+  {
+    "name": "validate.ids.invalid_leading_punctuation",
+    "input": {
+      "manifest_version": "2.0",
+      "registries": {
+        "github-release": {
+          "name": "GitHub Releases",
+          "url_template": "https://github.com/{owner}/{repo}/releases/download/{release}/{artifact}"
+        }
+      },
+      "mirrors": {},
+      "resources": {
+        "sample": {
+          "name": "Sample",
+          "registry": "github-release",
+          "source": {
+            "owner": "example",
+            "repo": "project"
+          },
+          "tags": [
+            {
+              "id": "channel:stable",
+              "name": "Stable",
+              "group": "channel"
+            },
+            {
+              "id": ":tag",
+              "name": "Bad"
+            }
+          ],
+          "default_variants": {
+            "windows-x86_64": "stable",
+            "linux-amd64": "stable"
+          },
+          "variants": [
+            {
+              "id": "stable",
+              "tag_key": "channel:stable",
+              "name": "Stable",
+              "tags": [
+                {
+                  "id": "channel:stable",
+                  "name": "Stable",
+                  "group": "channel"
+                }
+              ],
+              "source": {
+                "release": "{version}"
+              },
+              "artifacts": {
+                "windows-x86_64": {
+                  "artifact": "selected-{version}.zip",
+                  "version": {
+                    "type": "static",
+                    "latest": "v1.2.3",
+                    "releases": [
+                      {
+                        "version": "v1.2.3",
+                        "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+                      }
+                    ]
+                  }
+                },
+                "linux-amd64": {
+                  "artifact": "selected-{version}.gz",
+                  "version": {
+                    "type": "static",
+                    "latest": "v1.2.3",
+                    "releases": [
+                      {
+                        "version": "v1.2.3",
+                        "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    "expect": {
+      "error": {
+        "code": "validate.ids",
+        "path": "resources.sample.tags[1].id",
+        "fields": {
+          "kind": "tag",
+          "id": ":tag",
+          "reason": "invalid"
+        }
+      }
+    }
+  },
+  {
+    "name": "validate.ids.duplicate_catalog",
+    "input": {
+      "manifest_version": "2.0",
+      "registries": {
+        "github-release": {
+          "name": "GitHub Releases",
+          "url_template": "https://github.com/{owner}/{repo}/releases/download/{release}/{artifact}"
+        }
+      },
+      "mirrors": {},
+      "resources": {
+        "sample": {
+          "name": "Sample",
+          "registry": "github-release",
+          "source": {
+            "owner": "example",
+            "repo": "project"
+          },
+          "tags": [
+            {
+              "id": "channel:stable",
+              "name": "Stable",
+              "group": "channel"
+            },
+            {
+              "id": "channel:stable",
+              "name": "Stable",
+              "group": "channel"
+            }
+          ],
+          "default_variants": {
+            "windows-x86_64": "stable",
+            "linux-amd64": "stable"
+          },
+          "variants": [
+            {
+              "id": "stable",
+              "tag_key": "channel:stable",
+              "name": "Stable",
+              "tags": [
+                {
+                  "id": "channel:stable",
+                  "name": "Stable",
+                  "group": "channel"
+                }
+              ],
+              "source": {
+                "release": "{version}"
+              },
+              "artifacts": {
+                "windows-x86_64": {
+                  "artifact": "selected-{version}.zip",
+                  "version": {
+                    "type": "static",
+                    "latest": "v1.2.3",
+                    "releases": [
+                      {
+                        "version": "v1.2.3",
+                        "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+                      }
+                    ]
+                  }
+                },
+                "linux-amd64": {
+                  "artifact": "selected-{version}.gz",
+                  "version": {
+                    "type": "static",
+                    "latest": "v1.2.3",
+                    "releases": [
+                      {
+                        "version": "v1.2.3",
+                        "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    "expect": {
+      "error": {
+        "code": "validate.ids",
+        "path": "resources.sample.tags[1].id",
+        "fields": {
+          "kind": "tag",
+          "id": "channel:stable",
+          "reason": "duplicate"
+        }
+      }
+    }
+  },
+  {
+    "name": "validate.ids.duplicate_variant_tag",
+    "input": {
+      "manifest_version": "2.0",
+      "registries": {
+        "github-release": {
+          "name": "GitHub Releases",
+          "url_template": "https://github.com/{owner}/{repo}/releases/download/{release}/{artifact}"
+        }
+      },
+      "mirrors": {},
+      "resources": {
+        "sample": {
+          "name": "Sample",
+          "registry": "github-release",
+          "source": {
+            "owner": "example",
+            "repo": "project"
+          },
+          "tags": [
+            {
+              "id": "channel:stable",
+              "name": "Stable",
+              "group": "channel"
+            }
+          ],
+          "default_variants": {
+            "windows-x86_64": "stable",
+            "linux-amd64": "stable"
+          },
+          "variants": [
+            {
+              "id": "stable",
+              "tag_key": "channel:stable",
+              "name": "Stable",
+              "tags": [
+                {
+                  "id": "channel:stable",
+                  "name": "Stable",
+                  "group": "channel"
+                },
+                {
+                  "id": "channel:stable",
+                  "name": "Stable",
+                  "group": "channel"
+                }
+              ],
+              "source": {
+                "release": "{version}"
+              },
+              "artifacts": {
+                "windows-x86_64": {
+                  "artifact": "selected-{version}.zip",
+                  "version": {
+                    "type": "static",
+                    "latest": "v1.2.3",
+                    "releases": [
+                      {
+                        "version": "v1.2.3",
+                        "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+                      }
+                    ]
+                  }
+                },
+                "linux-amd64": {
+                  "artifact": "selected-{version}.gz",
+                  "version": {
+                    "type": "static",
+                    "latest": "v1.2.3",
+                    "releases": [
+                      {
+                        "version": "v1.2.3",
+                        "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    "expect": {
+      "error": {
+        "code": "validate.ids",
+        "path": "resources.sample.variants[0].tags[1].id",
+        "fields": {
+          "kind": "tag",
+          "id": "channel:stable",
+          "reason": "duplicate"
+        }
+      },
+      "additional_errors": [
+        {
+          "code": "validate.tag_key",
+          "path": "resources.sample.variants[0].tag_key",
+          "fields": {
+            "expected": "channel:stable+channel:stable",
+            "actual": "channel:stable"
+          }
+        }
+      ]
+    }
+  },
+  {
+    "name": "validate.ids.duplicate_variant",
+    "input": {
+      "manifest_version": "2.0",
+      "registries": {
+        "github-release": {
+          "name": "GitHub Releases",
+          "url_template": "https://github.com/{owner}/{repo}/releases/download/{release}/{artifact}"
+        }
+      },
+      "mirrors": {},
+      "resources": {
+        "sample": {
+          "name": "Sample",
+          "registry": "github-release",
+          "source": {
+            "owner": "example",
+            "repo": "project"
+          },
+          "tags": [
+            {
+              "id": "channel:stable",
+              "name": "Stable",
+              "group": "channel"
+            }
+          ],
+          "default_variants": {
+            "windows-x86_64": "stable",
+            "linux-amd64": "stable"
+          },
+          "variants": [
+            {
+              "id": "stable",
+              "tag_key": "channel:stable",
+              "name": "Stable",
+              "tags": [
+                {
+                  "id": "channel:stable",
+                  "name": "Stable",
+                  "group": "channel"
+                }
+              ],
+              "source": {
+                "release": "{version}"
+              },
+              "artifacts": {
+                "windows-x86_64": {
+                  "artifact": "selected-{version}.zip",
+                  "version": {
+                    "type": "static",
+                    "latest": "v1.2.3",
+                    "releases": [
+                      {
+                        "version": "v1.2.3",
+                        "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+                      }
+                    ]
+                  }
+                },
+                "linux-amd64": {
+                  "artifact": "selected-{version}.gz",
+                  "version": {
+                    "type": "static",
+                    "latest": "v1.2.3",
+                    "releases": [
+                      {
+                        "version": "v1.2.3",
+                        "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+                      }
+                    ]
+                  }
+                }
+              }
+            },
+            {
+              "id": "stable",
+              "tag_key": "",
+              "name": "Stable",
+              "tags": [],
+              "source": {
+                "release": "{version}"
+              },
+              "artifacts": {
+                "windows-x86_64": {
+                  "artifact": "selected-{version}.zip",
+                  "version": {
+                    "type": "static",
+                    "latest": "v1.2.3",
+                    "releases": [
+                      {
+                        "version": "v1.2.3",
+                        "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+                      }
+                    ]
+                  }
+                },
+                "linux-amd64": {
+                  "artifact": "selected-{version}.gz",
+                  "version": {
+                    "type": "static",
+                    "latest": "v1.2.3",
+                    "releases": [
+                      {
+                        "version": "v1.2.3",
+                        "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    "expect": {
+      "error": {
+        "code": "validate.ids",
+        "path": "resources.sample.variants[1].id",
+        "fields": {
+          "kind": "variant",
+          "id": "stable",
+          "reason": "duplicate"
+        }
+      }
+    }
+  },
+  {
+    "name": "validate.tag_key.forged",
+    "input": {
+      "manifest_version": "2.0",
+      "registries": {
+        "github-release": {
+          "name": "GitHub Releases",
+          "url_template": "https://github.com/{owner}/{repo}/releases/download/{release}/{artifact}"
+        }
+      },
+      "mirrors": {},
+      "resources": {
+        "sample": {
+          "name": "Sample",
+          "registry": "github-release",
+          "source": {
+            "owner": "example",
+            "repo": "project"
+          },
+          "tags": [
+            {
+              "id": "channel:stable",
+              "name": "Stable",
+              "group": "channel"
+            }
+          ],
+          "default_variants": {
+            "windows-x86_64": "stable",
+            "linux-amd64": "stable"
+          },
+          "variants": [
+            {
+              "id": "stable",
+              "tag_key": "forged",
+              "name": "Stable",
+              "tags": [
+                {
+                  "id": "channel:stable",
+                  "name": "Stable",
+                  "group": "channel"
+                }
+              ],
+              "source": {
+                "release": "{version}"
+              },
+              "artifacts": {
+                "windows-x86_64": {
+                  "artifact": "selected-{version}.zip",
+                  "version": {
+                    "type": "static",
+                    "latest": "v1.2.3",
+                    "releases": [
+                      {
+                        "version": "v1.2.3",
+                        "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+                      }
+                    ]
+                  }
+                },
+                "linux-amd64": {
+                  "artifact": "selected-{version}.gz",
+                  "version": {
+                    "type": "static",
+                    "latest": "v1.2.3",
+                    "releases": [
+                      {
+                        "version": "v1.2.3",
+                        "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    "expect": {
+      "error": {
+        "code": "validate.tag_key",
+        "path": "resources.sample.variants[0].tag_key",
+        "fields": {
+          "expected": "channel:stable",
+          "actual": "forged"
+        }
+      }
+    }
+  },
+  {
+    "name": "validate.tag_key.unsorted",
+    "input": {
+      "manifest_version": "2.0",
+      "registries": {
+        "github-release": {
+          "name": "GitHub Releases",
+          "url_template": "https://github.com/{owner}/{repo}/releases/download/{release}/{artifact}"
+        }
+      },
+      "mirrors": {},
+      "resources": {
+        "sample": {
+          "name": "Sample",
+          "registry": "github-release",
+          "source": {
+            "owner": "example",
+            "repo": "project"
+          },
+          "tags": [
+            {
+              "id": "channel:stable",
+              "name": "Stable",
+              "group": "channel"
+            },
+            {
+              "id": "A:one",
+              "name": "A:one"
+            }
+          ],
+          "default_variants": {
+            "windows-x86_64": "stable",
+            "linux-amd64": "stable"
+          },
+          "variants": [
+            {
+              "id": "stable",
+              "tag_key": "channel:stable+A:one",
+              "name": "Stable",
+              "tags": [
+                {
+                  "id": "channel:stable",
+                  "name": "Stable",
+                  "group": "channel"
+                },
+                {
+                  "id": "A:one",
+                  "name": "A:one"
+                }
+              ],
+              "source": {
+                "release": "{version}"
+              },
+              "artifacts": {
+                "windows-x86_64": {
+                  "artifact": "selected-{version}.zip",
+                  "version": {
+                    "type": "static",
+                    "latest": "v1.2.3",
+                    "releases": [
+                      {
+                        "version": "v1.2.3",
+                        "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+                      }
+                    ]
+                  }
+                },
+                "linux-amd64": {
+                  "artifact": "selected-{version}.gz",
+                  "version": {
+                    "type": "static",
+                    "latest": "v1.2.3",
+                    "releases": [
+                      {
+                        "version": "v1.2.3",
+                        "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    "expect": {
+      "error": {
+        "code": "validate.tag_key",
+        "path": "resources.sample.variants[0].tag_key",
+        "fields": {
+          "expected": "A:one+channel:stable",
+          "actual": "channel:stable+A:one"
+        }
+      }
+    }
+  },
+  {
+    "name": "validate.expanded_tag.unknown",
+    "input": {
+      "manifest_version": "2.0",
+      "registries": {
+        "github-release": {
+          "name": "GitHub Releases",
+          "url_template": "https://github.com/{owner}/{repo}/releases/download/{release}/{artifact}"
+        }
+      },
+      "mirrors": {},
+      "resources": {
+        "sample": {
+          "name": "Sample",
+          "registry": "github-release",
+          "source": {
+            "owner": "example",
+            "repo": "project"
+          },
+          "tags": [
+            {
+              "id": "channel:stable",
+              "name": "Stable",
+              "group": "channel"
+            }
+          ],
+          "default_variants": {
+            "windows-x86_64": "stable",
+            "linux-amd64": "stable"
+          },
+          "variants": [
+            {
+              "id": "stable",
+              "tag_key": "channel:future",
+              "name": "Stable",
+              "tags": [
+                {
+                  "id": "channel:future",
+                  "name": "Stable",
+                  "group": "channel"
+                }
+              ],
+              "source": {
+                "release": "{version}"
+              },
+              "artifacts": {
+                "windows-x86_64": {
+                  "artifact": "selected-{version}.zip",
+                  "version": {
+                    "type": "static",
+                    "latest": "v1.2.3",
+                    "releases": [
+                      {
+                        "version": "v1.2.3",
+                        "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+                      }
+                    ]
+                  }
+                },
+                "linux-amd64": {
+                  "artifact": "selected-{version}.gz",
+                  "version": {
+                    "type": "static",
+                    "latest": "v1.2.3",
+                    "releases": [
+                      {
+                        "version": "v1.2.3",
+                        "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    "expect": {
+      "error": {
+        "code": "validate.expanded_tag",
+        "path": "resources.sample.variants[0].tags[0]",
+        "fields": {
+          "id": "channel:future",
+          "reason": "unknown"
+        }
+      }
+    }
+  },
+  {
+    "name": "validate.expanded_tag.mismatched_name",
+    "input": {
+      "manifest_version": "2.0",
+      "registries": {
+        "github-release": {
+          "name": "GitHub Releases",
+          "url_template": "https://github.com/{owner}/{repo}/releases/download/{release}/{artifact}"
+        }
+      },
+      "mirrors": {},
+      "resources": {
+        "sample": {
+          "name": "Sample",
+          "registry": "github-release",
+          "source": {
+            "owner": "example",
+            "repo": "project"
+          },
+          "tags": [
+            {
+              "id": "channel:stable",
+              "name": "Stable",
+              "group": "channel"
+            }
+          ],
+          "default_variants": {
+            "windows-x86_64": "stable",
+            "linux-amd64": "stable"
+          },
+          "variants": [
+            {
+              "id": "stable",
+              "tag_key": "channel:stable",
+              "name": "Stable",
+              "tags": [
+                {
+                  "id": "channel:stable",
+                  "name": "Forged",
+                  "group": "channel"
+                }
+              ],
+              "source": {
+                "release": "{version}"
+              },
+              "artifacts": {
+                "windows-x86_64": {
+                  "artifact": "selected-{version}.zip",
+                  "version": {
+                    "type": "static",
+                    "latest": "v1.2.3",
+                    "releases": [
+                      {
+                        "version": "v1.2.3",
+                        "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+                      }
+                    ]
+                  }
+                },
+                "linux-amd64": {
+                  "artifact": "selected-{version}.gz",
+                  "version": {
+                    "type": "static",
+                    "latest": "v1.2.3",
+                    "releases": [
+                      {
+                        "version": "v1.2.3",
+                        "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    "expect": {
+      "error": {
+        "code": "validate.expanded_tag",
+        "path": "resources.sample.variants[0].tags[0]",
+        "fields": {
+          "id": "channel:stable",
+          "reason": "mismatch"
+        }
+      }
+    }
+  },
+  {
+    "name": "validate.expanded_tag.mismatched_group",
+    "input": {
+      "manifest_version": "2.0",
+      "registries": {
+        "github-release": {
+          "name": "GitHub Releases",
+          "url_template": "https://github.com/{owner}/{repo}/releases/download/{release}/{artifact}"
+        }
+      },
+      "mirrors": {},
+      "resources": {
+        "sample": {
+          "name": "Sample",
+          "registry": "github-release",
+          "source": {
+            "owner": "example",
+            "repo": "project"
+          },
+          "tags": [
+            {
+              "id": "channel:stable",
+              "name": "Stable",
+              "group": "channel"
+            }
+          ],
+          "default_variants": {
+            "windows-x86_64": "stable",
+            "linux-amd64": "stable"
+          },
+          "variants": [
+            {
+              "id": "stable",
+              "tag_key": "channel:stable",
+              "name": "Stable",
+              "tags": [
+                {
+                  "id": "channel:stable",
+                  "name": "Stable",
+                  "group": "other"
+                }
+              ],
+              "source": {
+                "release": "{version}"
+              },
+              "artifacts": {
+                "windows-x86_64": {
+                  "artifact": "selected-{version}.zip",
+                  "version": {
+                    "type": "static",
+                    "latest": "v1.2.3",
+                    "releases": [
+                      {
+                        "version": "v1.2.3",
+                        "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+                      }
+                    ]
+                  }
+                },
+                "linux-amd64": {
+                  "artifact": "selected-{version}.gz",
+                  "version": {
+                    "type": "static",
+                    "latest": "v1.2.3",
+                    "releases": [
+                      {
+                        "version": "v1.2.3",
+                        "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    "expect": {
+      "error": {
+        "code": "validate.expanded_tag",
+        "path": "resources.sample.variants[0].tags[0]",
+        "fields": {
+          "id": "channel:stable",
+          "reason": "mismatch"
+        }
+      }
+    }
+  },
+  {
+    "name": "validate.expanded_tag.mismatched_description",
+    "input": {
+      "manifest_version": "2.0",
+      "registries": {
+        "github-release": {
+          "name": "GitHub Releases",
+          "url_template": "https://github.com/{owner}/{repo}/releases/download/{release}/{artifact}"
+        }
+      },
+      "mirrors": {},
+      "resources": {
+        "sample": {
+          "name": "Sample",
+          "registry": "github-release",
+          "source": {
+            "owner": "example",
+            "repo": "project"
+          },
+          "tags": [
+            {
+              "id": "channel:stable",
+              "name": "Stable",
+              "group": "channel"
+            }
+          ],
+          "default_variants": {
+            "windows-x86_64": "stable",
+            "linux-amd64": "stable"
+          },
+          "variants": [
+            {
+              "id": "stable",
+              "tag_key": "channel:stable",
+              "name": "Stable",
+              "tags": [
+                {
+                  "id": "channel:stable",
+                  "name": "Stable",
+                  "group": "channel",
+                  "description": "Forged"
+                }
+              ],
+              "source": {
+                "release": "{version}"
+              },
+              "artifacts": {
+                "windows-x86_64": {
+                  "artifact": "selected-{version}.zip",
+                  "version": {
+                    "type": "static",
+                    "latest": "v1.2.3",
+                    "releases": [
+                      {
+                        "version": "v1.2.3",
+                        "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+                      }
+                    ]
+                  }
+                },
+                "linux-amd64": {
+                  "artifact": "selected-{version}.gz",
+                  "version": {
+                    "type": "static",
+                    "latest": "v1.2.3",
+                    "releases": [
+                      {
+                        "version": "v1.2.3",
+                        "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    "expect": {
+      "error": {
+        "code": "validate.expanded_tag",
+        "path": "resources.sample.variants[0].tags[0]",
+        "fields": {
+          "id": "channel:stable",
+          "reason": "mismatch"
+        }
+      }
+    }
+  },
+  {
+    "name": "validate.tag_group.conflict",
+    "input": {
+      "manifest_version": "2.0",
+      "registries": {
+        "github-release": {
+          "name": "GitHub Releases",
+          "url_template": "https://github.com/{owner}/{repo}/releases/download/{release}/{artifact}"
+        }
+      },
+      "mirrors": {},
+      "resources": {
+        "sample": {
+          "name": "Sample",
+          "registry": "github-release",
+          "source": {
+            "owner": "example",
+            "repo": "project"
+          },
+          "tags": [
+            {
+              "id": "channel:stable",
+              "name": "Stable",
+              "group": "channel"
+            },
+            {
+              "id": "channel:alpha",
+              "name": "channel:alpha",
+              "group": "channel"
+            }
+          ],
+          "default_variants": {
+            "windows-x86_64": "stable",
+            "linux-amd64": "stable"
+          },
+          "variants": [
+            {
+              "id": "stable",
+              "tag_key": "channel:alpha+channel:stable",
+              "name": "Stable",
+              "tags": [
+                {
+                  "id": "channel:stable",
+                  "name": "Stable",
+                  "group": "channel"
+                },
+                {
+                  "id": "channel:alpha",
+                  "name": "channel:alpha",
+                  "group": "channel"
+                }
+              ],
+              "source": {
+                "release": "{version}"
+              },
+              "artifacts": {
+                "windows-x86_64": {
+                  "artifact": "selected-{version}.zip",
+                  "version": {
+                    "type": "static",
+                    "latest": "v1.2.3",
+                    "releases": [
+                      {
+                        "version": "v1.2.3",
+                        "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+                      }
+                    ]
+                  }
+                },
+                "linux-amd64": {
+                  "artifact": "selected-{version}.gz",
+                  "version": {
+                    "type": "static",
+                    "latest": "v1.2.3",
+                    "releases": [
+                      {
+                        "version": "v1.2.3",
+                        "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    "expect": {
+      "error": {
+        "code": "validate.tag_group",
+        "path": "resources.sample.variants[0].tags",
+        "fields": {
+          "group": "channel",
+          "tags": ["channel:alpha", "channel:stable"]
+        }
+      }
+    }
+  },
+  {
+    "name": "validate.tag_combination.duplicate",
+    "input": {
+      "manifest_version": "2.0",
+      "registries": {
+        "github-release": {
+          "name": "GitHub Releases",
+          "url_template": "https://github.com/{owner}/{repo}/releases/download/{release}/{artifact}"
+        }
+      },
+      "mirrors": {},
+      "resources": {
+        "sample": {
+          "name": "Sample",
+          "registry": "github-release",
+          "source": {
+            "owner": "example",
+            "repo": "project"
+          },
+          "tags": [
+            {
+              "id": "channel:stable",
+              "name": "Stable",
+              "group": "channel"
+            }
+          ],
+          "default_variants": {
+            "windows-x86_64": "stable",
+            "linux-amd64": "stable"
+          },
+          "variants": [
+            {
+              "id": "stable",
+              "tag_key": "channel:stable",
+              "name": "Stable",
+              "tags": [
+                {
+                  "id": "channel:stable",
+                  "name": "Stable",
+                  "group": "channel"
+                }
+              ],
+              "source": {
+                "release": "{version}"
+              },
+              "artifacts": {
+                "windows-x86_64": {
+                  "artifact": "selected-{version}.zip",
+                  "version": {
+                    "type": "static",
+                    "latest": "v1.2.3",
+                    "releases": [
+                      {
+                        "version": "v1.2.3",
+                        "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+                      }
+                    ]
+                  }
+                },
+                "linux-amd64": {
+                  "artifact": "selected-{version}.gz",
+                  "version": {
+                    "type": "static",
+                    "latest": "v1.2.3",
+                    "releases": [
+                      {
+                        "version": "v1.2.3",
+                        "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+                      }
+                    ]
+                  }
+                }
+              }
+            },
+            {
+              "id": "other",
+              "tag_key": "channel:stable",
+              "name": "Stable",
+              "tags": [
+                {
+                  "id": "channel:stable",
+                  "name": "Stable",
+                  "group": "channel"
+                }
+              ],
+              "source": {
+                "release": "{version}"
+              },
+              "artifacts": {
+                "windows-x86_64": {
+                  "artifact": "selected-{version}.zip",
+                  "version": {
+                    "type": "static",
+                    "latest": "v1.2.3",
+                    "releases": [
+                      {
+                        "version": "v1.2.3",
+                        "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+                      }
+                    ]
+                  }
+                },
+                "linux-amd64": {
+                  "artifact": "selected-{version}.gz",
+                  "version": {
+                    "type": "static",
+                    "latest": "v1.2.3",
+                    "releases": [
+                      {
+                        "version": "v1.2.3",
+                        "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    "expect": {
+      "error": {
+        "code": "validate.tag_combination",
+        "path": "resources.sample.variants[1].tags",
+        "fields": {
+          "tag_key": "channel:stable",
+          "first_variant": 0
+        }
+      }
+    }
+  },
+  {
+    "name": "validate.default_variant.missing",
+    "input": {
+      "manifest_version": "2.0",
+      "registries": {
+        "github-release": {
+          "name": "GitHub Releases",
+          "url_template": "https://github.com/{owner}/{repo}/releases/download/{release}/{artifact}"
+        }
+      },
+      "mirrors": {},
+      "resources": {
+        "sample": {
+          "name": "Sample",
+          "registry": "github-release",
+          "source": {
+            "owner": "example",
+            "repo": "project"
+          },
+          "tags": [
+            {
+              "id": "channel:stable",
+              "name": "Stable",
+              "group": "channel"
+            }
+          ],
+          "default_variants": {
+            "linux-amd64": "stable"
+          },
+          "variants": [
+            {
+              "id": "stable",
+              "tag_key": "channel:stable",
+              "name": "Stable",
+              "tags": [
+                {
+                  "id": "channel:stable",
+                  "name": "Stable",
+                  "group": "channel"
+                }
+              ],
+              "source": {
+                "release": "{version}"
+              },
+              "artifacts": {
+                "windows-x86_64": {
+                  "artifact": "selected-{version}.zip",
+                  "version": {
+                    "type": "static",
+                    "latest": "v1.2.3",
+                    "releases": [
+                      {
+                        "version": "v1.2.3",
+                        "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+                      }
+                    ]
+                  }
+                },
+                "linux-amd64": {
+                  "artifact": "selected-{version}.gz",
+                  "version": {
+                    "type": "static",
+                    "latest": "v1.2.3",
+                    "releases": [
+                      {
+                        "version": "v1.2.3",
+                        "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+                      }
+                    ]
+                  }
+                }
+              }
+            },
+            {
+              "id": "other",
+              "tag_key": "",
+              "name": "Stable",
+              "tags": [],
+              "source": {
+                "release": "{version}"
+              },
+              "artifacts": {
+                "windows-x86_64": {
+                  "artifact": "selected-{version}.zip",
+                  "version": {
+                    "type": "static",
+                    "latest": "v1.2.3",
+                    "releases": [
+                      {
+                        "version": "v1.2.3",
+                        "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+                      }
+                    ]
+                  }
+                },
+                "linux-amd64": {
+                  "artifact": "selected-{version}.gz",
+                  "version": {
+                    "type": "static",
+                    "latest": "v1.2.3",
+                    "releases": [
+                      {
+                        "version": "v1.2.3",
+                        "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    "expect": {
+      "error": {
+        "code": "validate.default_variant",
+        "path": "resources.sample.default_variants.windows-x86_64",
+        "fields": {
+          "platform": "windows-x86_64",
+          "variant": null,
+          "reason": "missing"
+        }
+      }
+    }
+  },
+  {
+    "name": "validate.default_variant.unknown",
+    "input": {
+      "manifest_version": "2.0",
+      "registries": {
+        "github-release": {
+          "name": "GitHub Releases",
+          "url_template": "https://github.com/{owner}/{repo}/releases/download/{release}/{artifact}"
+        }
+      },
+      "mirrors": {},
+      "resources": {
+        "sample": {
+          "name": "Sample",
+          "registry": "github-release",
+          "source": {
+            "owner": "example",
+            "repo": "project"
+          },
+          "tags": [
+            {
+              "id": "channel:stable",
+              "name": "Stable",
+              "group": "channel"
+            }
+          ],
+          "default_variants": {
+            "windows-x86_64": "ghost",
+            "linux-amd64": "stable"
+          },
+          "variants": [
+            {
+              "id": "stable",
+              "tag_key": "channel:stable",
+              "name": "Stable",
+              "tags": [
+                {
+                  "id": "channel:stable",
+                  "name": "Stable",
+                  "group": "channel"
+                }
+              ],
+              "source": {
+                "release": "{version}"
+              },
+              "artifacts": {
+                "windows-x86_64": {
+                  "artifact": "selected-{version}.zip",
+                  "version": {
+                    "type": "static",
+                    "latest": "v1.2.3",
+                    "releases": [
+                      {
+                        "version": "v1.2.3",
+                        "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+                      }
+                    ]
+                  }
+                },
+                "linux-amd64": {
+                  "artifact": "selected-{version}.gz",
+                  "version": {
+                    "type": "static",
+                    "latest": "v1.2.3",
+                    "releases": [
+                      {
+                        "version": "v1.2.3",
+                        "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    "expect": {
+      "error": {
+        "code": "validate.default_variant",
+        "path": "resources.sample.default_variants.windows-x86_64",
+        "fields": {
+          "platform": "windows-x86_64",
+          "variant": "ghost",
+          "reason": "unknown"
+        }
+      }
+    }
+  },
+  {
+    "name": "validate.default_variant.unsupported_platform",
+    "input": {
+      "manifest_version": "2.0",
+      "registries": {
+        "github-release": {
+          "name": "GitHub Releases",
+          "url_template": "https://github.com/{owner}/{repo}/releases/download/{release}/{artifact}"
+        }
+      },
+      "mirrors": {},
+      "resources": {
+        "sample": {
+          "name": "Sample",
+          "registry": "github-release",
+          "source": {
+            "owner": "example",
+            "repo": "project"
+          },
+          "tags": [
+            {
+              "id": "channel:stable",
+              "name": "Stable",
+              "group": "channel"
+            }
+          ],
+          "default_variants": {
+            "windows-x86_64": "stable",
+            "linux-amd64": "stable"
+          },
+          "variants": [
+            {
+              "id": "stable",
+              "tag_key": "channel:stable",
+              "name": "Stable",
+              "tags": [
+                {
+                  "id": "channel:stable",
+                  "name": "Stable",
+                  "group": "channel"
+                }
+              ],
+              "source": {
+                "release": "{version}"
+              },
+              "artifacts": {
+                "linux-amd64": {
+                  "artifact": "selected-{version}.gz",
+                  "version": {
+                    "type": "static",
+                    "latest": "v1.2.3",
+                    "releases": [
+                      {
+                        "version": "v1.2.3",
+                        "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    "expect": {
+      "error": {
+        "code": "validate.default_variant",
+        "path": "resources.sample.default_variants.windows-x86_64",
+        "fields": {
+          "platform": "windows-x86_64",
+          "variant": "stable",
+          "reason": "unsupported_platform"
+        }
+      }
+    }
+  },
+  {
+    "name": "validate.reference.resource_registry_missing",
+    "input": {
+      "manifest_version": "2.0",
+      "registries": {
+        "github-release": {
+          "name": "GitHub Releases",
+          "url_template": "https://github.com/{owner}/{repo}/releases/download/{release}/{artifact}"
+        }
+      },
+      "mirrors": {},
+      "resources": {
+        "sample": {
+          "name": "Sample",
+          "registry": "ghost",
+          "source": {
+            "owner": "example",
+            "repo": "project"
+          },
+          "tags": [
+            {
+              "id": "channel:stable",
+              "name": "Stable",
+              "group": "channel"
+            }
+          ],
+          "default_variants": {
+            "windows-x86_64": "stable",
+            "linux-amd64": "stable"
+          },
+          "variants": [
+            {
+              "id": "stable",
+              "tag_key": "channel:stable",
+              "name": "Stable",
+              "tags": [
+                {
+                  "id": "channel:stable",
+                  "name": "Stable",
+                  "group": "channel"
+                }
+              ],
+              "source": {
+                "release": "{version}"
+              },
+              "artifacts": {
+                "windows-x86_64": {
+                  "artifact": "selected-{version}.zip",
+                  "version": {
+                    "type": "static",
+                    "latest": "v1.2.3",
+                    "releases": [
+                      {
+                        "version": "v1.2.3",
+                        "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+                      }
+                    ]
+                  }
+                },
+                "linux-amd64": {
+                  "artifact": "selected-{version}.gz",
+                  "version": {
+                    "type": "static",
+                    "latest": "v1.2.3",
+                    "releases": [
+                      {
+                        "version": "v1.2.3",
+                        "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    "expect": {
+      "error": {
+        "code": "validate.reference",
+        "path": "resources.sample.registry",
+        "fields": {
+          "kind": "registry",
+          "id": "ghost"
+        }
+      }
+    }
+  },
+  {
+    "name": "validate.reference.remote_registries_missing",
+    "input": {
+      "manifest_version": "2.0",
+      "registries": {
+        "github-release": {
+          "name": "GitHub Releases",
+          "url_template": "https://github.com/{owner}/{repo}/releases/download/{release}/{artifact}"
+        }
+      },
+      "mirrors": {},
+      "resources": {
+        "sample": {
+          "name": "Sample",
+          "registry": "github-release",
+          "source": {
+            "owner": "example",
+            "repo": "project"
+          },
+          "tags": [
+            {
+              "id": "channel:stable",
+              "name": "Stable",
+              "group": "channel"
+            }
+          ],
+          "default_variants": {
+            "windows-x86_64": "stable",
+            "linux-amd64": "stable"
+          },
+          "variants": [
+            {
+              "id": "stable",
+              "tag_key": "channel:stable",
+              "name": "Stable",
+              "tags": [
+                {
+                  "id": "channel:stable",
+                  "name": "Stable",
+                  "group": "channel"
+                }
+              ],
+              "source": {
+                "release": "{version}"
+              },
+              "artifacts": {
+                "windows-x86_64": {
+                  "artifact": "selected-{version}.zip",
+                  "version": {
+                    "type": "remote",
+                    "version": {
+                      "resource": {
+                        "registry": "ghost-version",
+                        "artifact": "version.txt"
+                      },
+                      "parser": {
+                        "type": "text"
+                      }
+                    },
+                    "checksum": {
+                      "resource": {
+                        "registry": "ghost-checksum",
+                        "artifact": "checksums.txt"
+                      },
+                      "parser": {
+                        "type": "gnu",
+                        "algorithm": "sha256"
+                      }
+                    }
+                  }
+                },
+                "linux-amd64": {
+                  "artifact": "selected-{version}.gz",
+                  "version": {
+                    "type": "static",
+                    "latest": "v1.2.3",
+                    "releases": [
+                      {
+                        "version": "v1.2.3",
+                        "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    "expect": {
+      "error": {
+        "code": "validate.reference",
+        "path": "resources.sample.variants[0].artifacts.windows-x86_64.version.version.resource.registry",
+        "fields": {
+          "kind": "registry",
+          "id": "ghost-version"
+        }
+      },
+      "additional_errors": [
+        {
+          "code": "validate.reference",
+          "path": "resources.sample.variants[0].artifacts.windows-x86_64.version.checksum.resource.registry",
+          "fields": {
+            "kind": "registry",
+            "id": "ghost-checksum"
+          }
+        }
+      ]
+    }
+  },
+  {
+    "name": "validate.reference.mirror_registry_missing",
+    "input": {
+      "manifest_version": "2.0",
+      "registries": {
+        "github-release": {
+          "name": "GitHub Releases",
+          "url_template": "https://github.com/{owner}/{repo}/releases/download/{release}/{artifact}"
+        }
+      },
+      "mirrors": {
+        "accel": {
+          "name": "Accelerator",
+          "url_template": "https://mirror.test{path}",
+          "registries": ["ghost"]
+        }
+      },
+      "resources": {
+        "sample": {
+          "name": "Sample",
+          "registry": "github-release",
+          "source": {
+            "owner": "example",
+            "repo": "project"
+          },
+          "tags": [
+            {
+              "id": "channel:stable",
+              "name": "Stable",
+              "group": "channel"
+            }
+          ],
+          "default_variants": {
+            "windows-x86_64": "stable",
+            "linux-amd64": "stable"
+          },
+          "variants": [
+            {
+              "id": "stable",
+              "tag_key": "channel:stable",
+              "name": "Stable",
+              "tags": [
+                {
+                  "id": "channel:stable",
+                  "name": "Stable",
+                  "group": "channel"
+                }
+              ],
+              "source": {
+                "release": "{version}"
+              },
+              "artifacts": {
+                "windows-x86_64": {
+                  "artifact": "selected-{version}.zip",
+                  "version": {
+                    "type": "static",
+                    "latest": "v1.2.3",
+                    "releases": [
+                      {
+                        "version": "v1.2.3",
+                        "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+                      }
+                    ]
+                  }
+                },
+                "linux-amd64": {
+                  "artifact": "selected-{version}.gz",
+                  "version": {
+                    "type": "static",
+                    "latest": "v1.2.3",
+                    "releases": [
+                      {
+                        "version": "v1.2.3",
+                        "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    "expect": {
+      "error": {
+        "code": "validate.reference",
+        "path": "mirrors.accel.registries[0]",
+        "fields": {
+          "kind": "registry",
+          "id": "ghost"
+        }
+      }
+    }
+  },
+  {
+    "name": "validate.static_history.latest_missing",
+    "input": {
+      "manifest_version": "2.0",
+      "registries": {
+        "github-release": {
+          "name": "GitHub Releases",
+          "url_template": "https://github.com/{owner}/{repo}/releases/download/{release}/{artifact}"
+        }
+      },
+      "mirrors": {},
+      "resources": {
+        "sample": {
+          "name": "Sample",
+          "registry": "github-release",
+          "source": {
+            "owner": "example",
+            "repo": "project"
+          },
+          "tags": [
+            {
+              "id": "channel:stable",
+              "name": "Stable",
+              "group": "channel"
+            }
+          ],
+          "default_variants": {
+            "windows-x86_64": "stable",
+            "linux-amd64": "stable"
+          },
+          "variants": [
+            {
+              "id": "stable",
+              "tag_key": "channel:stable",
+              "name": "Stable",
+              "tags": [
+                {
+                  "id": "channel:stable",
+                  "name": "Stable",
+                  "group": "channel"
+                }
+              ],
+              "source": {
+                "release": "{version}"
+              },
+              "artifacts": {
+                "windows-x86_64": {
+                  "artifact": "selected-{version}.zip",
+                  "version": {
+                    "type": "static",
+                    "latest": "ghost",
+                    "releases": [
+                      {
+                        "version": "v1.2.3",
+                        "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+                      }
+                    ]
+                  }
+                },
+                "linux-amd64": {
+                  "artifact": "selected-{version}.gz",
+                  "version": {
+                    "type": "static",
+                    "latest": "v1.2.3",
+                    "releases": [
+                      {
+                        "version": "v1.2.3",
+                        "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    "expect": {
+      "error": {
+        "code": "validate.static_history",
+        "path": "resources.sample.variants[0].artifacts.windows-x86_64.version.latest",
+        "fields": {
+          "version": "ghost",
+          "reason": "latest_missing"
+        }
+      }
+    }
+  },
+  {
+    "name": "validate.static_history.duplicate",
+    "input": {
+      "manifest_version": "2.0",
+      "registries": {
+        "github-release": {
+          "name": "GitHub Releases",
+          "url_template": "https://github.com/{owner}/{repo}/releases/download/{release}/{artifact}"
+        }
+      },
+      "mirrors": {},
+      "resources": {
+        "sample": {
+          "name": "Sample",
+          "registry": "github-release",
+          "source": {
+            "owner": "example",
+            "repo": "project"
+          },
+          "tags": [
+            {
+              "id": "channel:stable",
+              "name": "Stable",
+              "group": "channel"
+            }
+          ],
+          "default_variants": {
+            "windows-x86_64": "stable",
+            "linux-amd64": "stable"
+          },
+          "variants": [
+            {
+              "id": "stable",
+              "tag_key": "channel:stable",
+              "name": "Stable",
+              "tags": [
+                {
+                  "id": "channel:stable",
+                  "name": "Stable",
+                  "group": "channel"
+                }
+              ],
+              "source": {
+                "release": "{version}"
+              },
+              "artifacts": {
+                "windows-x86_64": {
+                  "artifact": "selected-{version}.zip",
+                  "version": {
+                    "type": "static",
+                    "latest": "v1.2.3",
+                    "releases": [
+                      {
+                        "version": "v1.2.3",
+                        "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+                      },
+                      {
+                        "version": "v1.2.3",
+                        "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+                      }
+                    ]
+                  }
+                },
+                "linux-amd64": {
+                  "artifact": "selected-{version}.gz",
+                  "version": {
+                    "type": "static",
+                    "latest": "v1.2.3",
+                    "releases": [
+                      {
+                        "version": "v1.2.3",
+                        "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    "expect": {
+      "error": {
+        "code": "validate.static_history",
+        "path": "resources.sample.variants[0].artifacts.windows-x86_64.version.releases[1].version",
+        "fields": {
+          "version": "v1.2.3",
+          "reason": "duplicate"
+        }
+      }
+    }
+  },
+  {
+    "name": "validate.parser_compile.pattern",
+    "input": {
+      "manifest_version": "2.0",
+      "registries": {
+        "github-release": {
+          "name": "GitHub Releases",
+          "url_template": "https://github.com/{owner}/{repo}/releases/download/{release}/{artifact}"
+        }
+      },
+      "mirrors": {},
+      "resources": {
+        "sample": {
+          "name": "Sample",
+          "registry": "github-release",
+          "source": {
+            "owner": "example",
+            "repo": "project"
+          },
+          "tags": [
+            {
+              "id": "channel:stable",
+              "name": "Stable",
+              "group": "channel"
+            }
+          ],
+          "default_variants": {
+            "windows-x86_64": "stable",
+            "linux-amd64": "stable"
+          },
+          "variants": [
+            {
+              "id": "stable",
+              "tag_key": "channel:stable",
+              "name": "Stable",
+              "tags": [
+                {
+                  "id": "channel:stable",
+                  "name": "Stable",
+                  "group": "channel"
+                }
+              ],
+              "source": {
+                "release": "{version}"
+              },
+              "artifacts": {
+                "windows-x86_64": {
+                  "artifact": "selected-{version}.zip",
+                  "version": {
+                    "type": "remote",
+                    "version": {
+                      "resource": {
+                        "registry": "github-release",
+                        "artifact": "version.txt"
+                      },
+                      "parser": {
+                        "type": "regex",
+                        "pattern": "("
+                      }
+                    },
+                    "checksum": {
+                      "resource": {
+                        "registry": "github-release",
+                        "artifact": "checksums.txt"
+                      },
+                      "parser": {
+                        "type": "gnu",
+                        "algorithm": "sha256"
+                      }
+                    }
+                  }
+                },
+                "linux-amd64": {
+                  "artifact": "selected-{version}.gz",
+                  "version": {
+                    "type": "static",
+                    "latest": "v1.2.3",
+                    "releases": [
+                      {
+                        "version": "v1.2.3",
+                        "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    "expect": {
+      "error": {
+        "code": "validate.parser_compile",
+        "path": "resources.sample.variants[0].artifacts.windows-x86_64.version.version.parser.pattern",
+        "fields": {
+          "reason": "parser.invalid_pattern",
+          "details": {}
+        }
+      }
+    }
+  },
+  {
+    "name": "validate.parser_compile.group",
+    "input": {
+      "manifest_version": "2.0",
+      "registries": {
+        "github-release": {
+          "name": "GitHub Releases",
+          "url_template": "https://github.com/{owner}/{repo}/releases/download/{release}/{artifact}"
+        }
+      },
+      "mirrors": {},
+      "resources": {
+        "sample": {
+          "name": "Sample",
+          "registry": "github-release",
+          "source": {
+            "owner": "example",
+            "repo": "project"
+          },
+          "tags": [
+            {
+              "id": "channel:stable",
+              "name": "Stable",
+              "group": "channel"
+            }
+          ],
+          "default_variants": {
+            "windows-x86_64": "stable",
+            "linux-amd64": "stable"
+          },
+          "variants": [
+            {
+              "id": "stable",
+              "tag_key": "channel:stable",
+              "name": "Stable",
+              "tags": [
+                {
+                  "id": "channel:stable",
+                  "name": "Stable",
+                  "group": "channel"
+                }
+              ],
+              "source": {
+                "release": "{version}"
+              },
+              "artifacts": {
+                "windows-x86_64": {
+                  "artifact": "selected-{version}.zip",
+                  "version": {
+                    "type": "remote",
+                    "version": {
+                      "resource": {
+                        "registry": "github-release",
+                        "artifact": "version.txt"
+                      },
+                      "parser": {
+                        "type": "regex",
+                        "pattern": "v([0-9]+)",
+                        "group": 2
+                      }
+                    },
+                    "checksum": {
+                      "resource": {
+                        "registry": "github-release",
+                        "artifact": "checksums.txt"
+                      },
+                      "parser": {
+                        "type": "gnu",
+                        "algorithm": "sha256"
+                      }
+                    }
+                  }
+                },
+                "linux-amd64": {
+                  "artifact": "selected-{version}.gz",
+                  "version": {
+                    "type": "static",
+                    "latest": "v1.2.3",
+                    "releases": [
+                      {
+                        "version": "v1.2.3",
+                        "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    "expect": {
+      "error": {
+        "code": "validate.parser_compile",
+        "path": "resources.sample.variants[0].artifacts.windows-x86_64.version.version.parser.group",
+        "fields": {
+          "reason": "parser.group_out_of_range",
+          "details": {
+            "group": 2,
+            "groups": 2
+          }
+        }
+      }
+    }
+  },
+  {
+    "name": "validate.parser_compile.pattern_limit",
+    "input": {
+      "manifest_version": "2.0",
+      "registries": {
+        "github-release": {
+          "name": "GitHub Releases",
+          "url_template": "https://github.com/{owner}/{repo}/releases/download/{release}/{artifact}"
+        }
+      },
+      "mirrors": {},
+      "resources": {
+        "sample": {
+          "name": "Sample",
+          "registry": "github-release",
+          "source": {
+            "owner": "example",
+            "repo": "project"
+          },
+          "tags": [
+            {
+              "id": "channel:stable",
+              "name": "Stable",
+              "group": "channel"
+            }
+          ],
+          "default_variants": {
+            "windows-x86_64": "stable",
+            "linux-amd64": "stable"
+          },
+          "variants": [
+            {
+              "id": "stable",
+              "tag_key": "channel:stable",
+              "name": "Stable",
+              "tags": [
+                {
+                  "id": "channel:stable",
+                  "name": "Stable",
+                  "group": "channel"
+                }
+              ],
+              "source": {
+                "release": "{version}"
+              },
+              "artifacts": {
+                "windows-x86_64": {
+                  "artifact": "selected-{version}.zip",
+                  "version": {
+                    "type": "remote",
+                    "version": {
+                      "resource": {
+                        "registry": "github-release",
+                        "artifact": "version.txt"
+                      },
+                      "parser": {
+                        "type": "regex",
+                        "pattern": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                      }
+                    },
+                    "checksum": {
+                      "resource": {
+                        "registry": "github-release",
+                        "artifact": "checksums.txt"
+                      },
+                      "parser": {
+                        "type": "gnu",
+                        "algorithm": "sha256"
+                      }
+                    }
+                  }
+                },
+                "linux-amd64": {
+                  "artifact": "selected-{version}.gz",
+                  "version": {
+                    "type": "static",
+                    "latest": "v1.2.3",
+                    "releases": [
+                      {
+                        "version": "v1.2.3",
+                        "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    "expect": {
+      "error": {
+        "code": "validate.parser_compile",
+        "path": "resources.sample.variants[0].artifacts.windows-x86_64.version.version.parser.pattern",
+        "fields": {
+          "reason": "parser.invalid_pattern",
+          "details": {
+            "limit": 1024,
+            "actual": 1025
+          }
+        }
+      }
+    }
+  },
+  {
+    "name": "validate.parser_compile.header_name",
+    "input": {
+      "manifest_version": "2.0",
+      "registries": {
+        "github-release": {
+          "name": "GitHub Releases",
+          "url_template": "https://github.com/{owner}/{repo}/releases/download/{release}/{artifact}"
+        }
+      },
+      "mirrors": {},
+      "resources": {
+        "sample": {
+          "name": "Sample",
+          "registry": "github-release",
+          "source": {
+            "owner": "example",
+            "repo": "project"
+          },
+          "tags": [
+            {
+              "id": "channel:stable",
+              "name": "Stable",
+              "group": "channel"
+            }
+          ],
+          "default_variants": {
+            "windows-x86_64": "stable",
+            "linux-amd64": "stable"
+          },
+          "variants": [
+            {
+              "id": "stable",
+              "tag_key": "channel:stable",
+              "name": "Stable",
+              "tags": [
+                {
+                  "id": "channel:stable",
+                  "name": "Stable",
+                  "group": "channel"
+                }
+              ],
+              "source": {
+                "release": "{version}"
+              },
+              "artifacts": {
+                "windows-x86_64": {
+                  "artifact": "selected-{version}.zip",
+                  "version": {
+                    "type": "remote",
+                    "version": {
+                      "resource": {
+                        "registry": "github-release",
+                        "artifact": "version.txt"
+                      },
+                      "parser": {
+                        "type": "text"
+                      }
+                    },
+                    "checksum": {
+                      "resource": {
+                        "registry": "github-release",
+                        "artifact": "checksums.txt"
+                      },
+                      "parser": {
+                        "type": "header",
+                        "name": "Bad Header",
+                        "algorithm": "sha256",
+                        "encoding": "hex"
+                      }
+                    }
+                  }
+                },
+                "linux-amd64": {
+                  "artifact": "selected-{version}.gz",
+                  "version": {
+                    "type": "static",
+                    "latest": "v1.2.3",
+                    "releases": [
+                      {
+                        "version": "v1.2.3",
+                        "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    "expect": {
+      "error": {
+        "code": "validate.parser_compile",
+        "path": "resources.sample.variants[0].artifacts.windows-x86_64.version.checksum.parser.name",
+        "fields": {
+          "reason": "invalid_header_name",
+          "details": {
+            "name": "Bad Header"
+          }
+        }
+      }
+    }
+  },
+  {
+    "name": "validate.template_variable.artifact_missing",
+    "input": {
+      "manifest_version": "2.0",
+      "registries": {
+        "github-release": {
+          "name": "GitHub Releases",
+          "url_template": "https://github.com/{owner}/{repo}/releases/download/{release}/{artifact}"
+        }
+      },
+      "mirrors": {},
+      "resources": {
+        "sample": {
+          "name": "Sample",
+          "registry": "github-release",
+          "source": {
+            "owner": "example",
+            "repo": "project"
+          },
+          "tags": [
+            {
+              "id": "channel:stable",
+              "name": "Stable",
+              "group": "channel"
+            }
+          ],
+          "default_variants": {
+            "windows-x86_64": "stable",
+            "linux-amd64": "stable"
+          },
+          "variants": [
+            {
+              "id": "stable",
+              "tag_key": "channel:stable",
+              "name": "Stable",
+              "tags": [
+                {
+                  "id": "channel:stable",
+                  "name": "Stable",
+                  "group": "channel"
+                }
+              ],
+              "source": {
+                "release": "{version}"
+              },
+              "artifacts": {
+                "windows-x86_64": {
+                  "artifact": "{missing}.zip",
+                  "version": {
+                    "type": "static",
+                    "latest": "v1.2.3",
+                    "releases": [
+                      {
+                        "version": "v1.2.3",
+                        "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+                      }
+                    ]
+                  }
+                },
+                "linux-amd64": {
+                  "artifact": "selected-{version}.gz",
+                  "version": {
+                    "type": "static",
+                    "latest": "v1.2.3",
+                    "releases": [
+                      {
+                        "version": "v1.2.3",
+                        "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    "expect": {
+      "error": {
+        "code": "validate.template_variable",
+        "path": "resources.sample.variants[0].artifacts.windows-x86_64.artifact",
+        "fields": {
+          "variable": "missing"
+        }
+      }
+    }
+  },
+  {
+    "name": "validate.template_variable.registry_missing",
+    "input": {
+      "manifest_version": "2.0",
+      "registries": {
+        "github-release": {
+          "name": "GitHub Releases",
+          "url_template": "https://{missing}/{artifact}"
+        }
+      },
+      "mirrors": {},
+      "resources": {
+        "sample": {
+          "name": "Sample",
+          "registry": "github-release",
+          "source": {
+            "owner": "example",
+            "repo": "project"
+          },
+          "tags": [
+            {
+              "id": "channel:stable",
+              "name": "Stable",
+              "group": "channel"
+            }
+          ],
+          "default_variants": {
+            "windows-x86_64": "stable",
+            "linux-amd64": "stable"
+          },
+          "variants": [
+            {
+              "id": "stable",
+              "tag_key": "channel:stable",
+              "name": "Stable",
+              "tags": [
+                {
+                  "id": "channel:stable",
+                  "name": "Stable",
+                  "group": "channel"
+                }
+              ],
+              "source": {
+                "release": "{version}"
+              },
+              "artifacts": {
+                "windows-x86_64": {
+                  "artifact": "selected-{version}.zip",
+                  "version": {
+                    "type": "static",
+                    "latest": "v1.2.3",
+                    "releases": [
+                      {
+                        "version": "v1.2.3",
+                        "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+                      }
+                    ]
+                  }
+                },
+                "linux-amd64": {
+                  "artifact": "selected-{version}.gz",
+                  "version": {
+                    "type": "static",
+                    "latest": "v1.2.3",
+                    "releases": [
+                      {
+                        "version": "v1.2.3",
+                        "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    "expect": {
+      "error": {
+        "code": "validate.template_variable",
+        "path": "registries.github-release.url_template",
+        "fields": {
+          "variable": "missing"
+        }
+      }
+    }
+  },
+  {
+    "name": "validate.template_variable.nested_missing",
+    "input": {
+      "manifest_version": "2.0",
+      "registries": {
+        "github-release": {
+          "name": "GitHub Releases",
+          "url_template": "https://github.com/{owner}/{repo}/releases/download/{release}/{artifact}"
+        }
+      },
+      "mirrors": {},
+      "resources": {
+        "sample": {
+          "name": "Sample",
+          "registry": "github-release",
+          "source": {
+            "owner": "example",
+            "repo": "project"
+          },
+          "tags": [
+            {
+              "id": "channel:stable",
+              "name": "Stable",
+              "group": "channel"
+            }
+          ],
+          "default_variants": {
+            "windows-x86_64": "stable",
+            "linux-amd64": "stable"
+          },
+          "variants": [
+            {
+              "id": "stable",
+              "tag_key": "channel:stable",
+              "name": "Stable",
+              "tags": [
+                {
+                  "id": "channel:stable",
+                  "name": "Stable",
+                  "group": "channel"
+                }
+              ],
+              "source": {
+                "release": "{version}"
+              },
+              "artifacts": {
+                "windows-x86_64": {
+                  "artifact": "{nested}.zip",
+                  "version": {
+                    "type": "static",
+                    "latest": "v1.2.3",
+                    "releases": [
+                      {
+                        "version": "v1.2.3",
+                        "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+                      }
+                    ]
+                  },
+                  "source": {
+                    "nested": "{missing}"
+                  }
+                },
+                "linux-amd64": {
+                  "artifact": "selected-{version}.gz",
+                  "version": {
+                    "type": "static",
+                    "latest": "v1.2.3",
+                    "releases": [
+                      {
+                        "version": "v1.2.3",
+                        "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    "expect": {
+      "error": {
+        "code": "validate.template_variable",
+        "path": "resources.sample.variants[0].artifacts.windows-x86_64.source.nested",
+        "fields": {
+          "variable": "missing"
+        }
+      }
+    }
+  },
+  {
+    "name": "validate.template_variable.release_missing",
+    "input": {
+      "manifest_version": "2.0",
+      "registries": {
+        "github-release": {
+          "name": "GitHub Releases",
+          "url_template": "https://github.com/{owner}/{repo}/releases/download/{release}/{artifact}"
+        }
+      },
+      "mirrors": {},
+      "resources": {
+        "sample": {
+          "name": "Sample",
+          "registry": "github-release",
+          "source": {
+            "owner": "example",
+            "repo": "project"
+          },
+          "tags": [
+            {
+              "id": "channel:stable",
+              "name": "Stable",
+              "group": "channel"
+            }
+          ],
+          "default_variants": {
+            "windows-x86_64": "stable",
+            "linux-amd64": "stable"
+          },
+          "variants": [
+            {
+              "id": "stable",
+              "tag_key": "channel:stable",
+              "name": "Stable",
+              "tags": [
+                {
+                  "id": "channel:stable",
+                  "name": "Stable",
+                  "group": "channel"
+                }
+              ],
+              "source": {
+                "release": "{version}"
+              },
+              "artifacts": {
+                "windows-x86_64": {
+                  "artifact": "selected-{version}.zip",
+                  "version": {
+                    "type": "static",
+                    "latest": "v1.2.3",
+                    "releases": [
+                      {
+                        "version": "v1.2.3",
+                        "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+                        "source": {
+                          "nested": "{missing}"
+                        }
+                      }
+                    ]
+                  }
+                },
+                "linux-amd64": {
+                  "artifact": "selected-{version}.gz",
+                  "version": {
+                    "type": "static",
+                    "latest": "v1.2.3",
+                    "releases": [
+                      {
+                        "version": "v1.2.3",
+                        "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    "expect": {
+      "error": {
+        "code": "validate.template_variable",
+        "path": "resources.sample.variants[0].artifacts.windows-x86_64.version.releases[0].source.nested",
+        "fields": {
+          "variable": "missing"
+        }
+      }
+    }
+  },
+  {
+    "name": "validate.template_variable.remote_source_missing",
+    "input": {
+      "manifest_version": "2.0",
+      "registries": {
+        "github-release": {
+          "name": "GitHub Releases",
+          "url_template": "https://github.com/{owner}/{repo}/releases/download/{release}/{artifact}"
+        }
+      },
+      "mirrors": {},
+      "resources": {
+        "sample": {
+          "name": "Sample",
+          "registry": "github-release",
+          "source": {
+            "owner": "example",
+            "repo": "project"
+          },
+          "tags": [
+            {
+              "id": "channel:stable",
+              "name": "Stable",
+              "group": "channel"
+            }
+          ],
+          "default_variants": {
+            "windows-x86_64": "stable",
+            "linux-amd64": "stable"
+          },
+          "variants": [
+            {
+              "id": "stable",
+              "tag_key": "channel:stable",
+              "name": "Stable",
+              "tags": [
+                {
+                  "id": "channel:stable",
+                  "name": "Stable",
+                  "group": "channel"
+                }
+              ],
+              "source": {
+                "release": "{version}"
+              },
+              "artifacts": {
+                "windows-x86_64": {
+                  "artifact": "selected-{version}.zip",
+                  "version": {
+                    "type": "remote",
+                    "version": {
+                      "resource": {
+                        "registry": "github-release",
+                        "artifact": "version.txt",
+                        "source": {
+                          "nested": "{missing}"
+                        }
+                      },
+                      "parser": {
+                        "type": "text"
+                      }
+                    },
+                    "checksum": {
+                      "resource": {
+                        "registry": "github-release",
+                        "artifact": "checksums.txt"
+                      },
+                      "parser": {
+                        "type": "gnu",
+                        "algorithm": "sha256"
+                      }
+                    }
+                  }
+                },
+                "linux-amd64": {
+                  "artifact": "selected-{version}.gz",
+                  "version": {
+                    "type": "static",
+                    "latest": "v1.2.3",
+                    "releases": [
+                      {
+                        "version": "v1.2.3",
+                        "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    "expect": {
+      "error": {
+        "code": "validate.template_variable",
+        "path": "resources.sample.variants[0].artifacts.windows-x86_64.version.version.resource.source.nested",
+        "fields": {
+          "variable": "missing"
+        }
+      }
+    }
+  },
+  {
+    "name": "validate.template_variable.remote_artifact_missing",
+    "input": {
+      "manifest_version": "2.0",
+      "registries": {
+        "github-release": {
+          "name": "GitHub Releases",
+          "url_template": "https://github.com/{owner}/{repo}/releases/download/{release}/{artifact}"
+        }
+      },
+      "mirrors": {},
+      "resources": {
+        "sample": {
+          "name": "Sample",
+          "registry": "github-release",
+          "source": {
+            "owner": "example",
+            "repo": "project"
+          },
+          "tags": [
+            {
+              "id": "channel:stable",
+              "name": "Stable",
+              "group": "channel"
+            }
+          ],
+          "default_variants": {
+            "windows-x86_64": "stable",
+            "linux-amd64": "stable"
+          },
+          "variants": [
+            {
+              "id": "stable",
+              "tag_key": "channel:stable",
+              "name": "Stable",
+              "tags": [
+                {
+                  "id": "channel:stable",
+                  "name": "Stable",
+                  "group": "channel"
+                }
+              ],
+              "source": {
+                "release": "{version}"
+              },
+              "artifacts": {
+                "windows-x86_64": {
+                  "artifact": "selected-{version}.zip",
+                  "version": {
+                    "type": "remote",
+                    "version": {
+                      "resource": {
+                        "registry": "github-release",
+                        "artifact": "{missing}"
+                      },
+                      "parser": {
+                        "type": "text"
+                      }
+                    },
+                    "checksum": {
+                      "resource": {
+                        "registry": "github-release",
+                        "artifact": "checksums.txt"
+                      },
+                      "parser": {
+                        "type": "gnu",
+                        "algorithm": "sha256"
+                      }
+                    }
+                  }
+                },
+                "linux-amd64": {
+                  "artifact": "selected-{version}.gz",
+                  "version": {
+                    "type": "static",
+                    "latest": "v1.2.3",
+                    "releases": [
+                      {
+                        "version": "v1.2.3",
+                        "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    "expect": {
+      "error": {
+        "code": "validate.template_variable",
+        "path": "resources.sample.variants[0].artifacts.windows-x86_64.version.version.resource.artifact",
+        "fields": {
+          "variable": "missing"
+        }
+      }
+    }
+  },
+  {
+    "name": "validate.template_variable.remote_artifact_absent",
+    "input": {
+      "manifest_version": "2.0",
+      "registries": {
+        "github-release": {
+          "name": "GitHub Releases",
+          "url_template": "https://github.com/{owner}/{repo}/releases/download/{release}/{artifact}"
+        }
+      },
+      "mirrors": {},
+      "resources": {
+        "sample": {
+          "name": "Sample",
+          "registry": "github-release",
+          "source": {
+            "owner": "example",
+            "repo": "project"
+          },
+          "tags": [
+            {
+              "id": "channel:stable",
+              "name": "Stable",
+              "group": "channel"
+            }
+          ],
+          "default_variants": {
+            "windows-x86_64": "stable",
+            "linux-amd64": "stable"
+          },
+          "variants": [
+            {
+              "id": "stable",
+              "tag_key": "channel:stable",
+              "name": "Stable",
+              "tags": [
+                {
+                  "id": "channel:stable",
+                  "name": "Stable",
+                  "group": "channel"
+                }
+              ],
+              "source": {
+                "release": "{version}"
+              },
+              "artifacts": {
+                "windows-x86_64": {
+                  "artifact": "selected-{version}.zip",
+                  "version": {
+                    "type": "remote",
+                    "version": {
+                      "resource": {
+                        "registry": "github-release"
+                      },
+                      "parser": {
+                        "type": "text"
+                      }
+                    },
+                    "checksum": {
+                      "resource": {
+                        "registry": "github-release",
+                        "artifact": "checksums.txt"
+                      },
+                      "parser": {
+                        "type": "gnu",
+                        "algorithm": "sha256"
+                      }
+                    }
+                  }
+                },
+                "linux-amd64": {
+                  "artifact": "selected-{version}.gz",
+                  "version": {
+                    "type": "static",
+                    "latest": "v1.2.3",
+                    "releases": [
+                      {
+                        "version": "v1.2.3",
+                        "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    "expect": {
+      "error": {
+        "code": "validate.template_variable",
+        "path": "registries.github-release.url_template",
+        "fields": {
+          "variable": "artifact"
+        }
+      }
+    }
+  },
+  {
+    "name": "validate.template_variable.mirror_missing",
+    "input": {
+      "manifest_version": "2.0",
+      "registries": {
+        "github-release": {
+          "name": "GitHub Releases",
+          "url_template": "https://github.com/{owner}/{repo}/releases/download/{release}/{artifact}"
+        }
+      },
+      "mirrors": {
+        "accel": {
+          "name": "Accelerator",
+          "url_template": "https://mirror.test/{missing}"
+        }
+      },
+      "resources": {
+        "sample": {
+          "name": "Sample",
+          "registry": "github-release",
+          "source": {
+            "owner": "example",
+            "repo": "project"
+          },
+          "tags": [
+            {
+              "id": "channel:stable",
+              "name": "Stable",
+              "group": "channel"
+            }
+          ],
+          "default_variants": {
+            "windows-x86_64": "stable",
+            "linux-amd64": "stable"
+          },
+          "variants": [
+            {
+              "id": "stable",
+              "tag_key": "channel:stable",
+              "name": "Stable",
+              "tags": [
+                {
+                  "id": "channel:stable",
+                  "name": "Stable",
+                  "group": "channel"
+                }
+              ],
+              "source": {
+                "release": "{version}"
+              },
+              "artifacts": {
+                "windows-x86_64": {
+                  "artifact": "selected-{version}.zip",
+                  "version": {
+                    "type": "static",
+                    "latest": "v1.2.3",
+                    "releases": [
+                      {
+                        "version": "v1.2.3",
+                        "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+                      }
+                    ]
+                  }
+                },
+                "linux-amd64": {
+                  "artifact": "selected-{version}.gz",
+                  "version": {
+                    "type": "static",
+                    "latest": "v1.2.3",
+                    "releases": [
+                      {
+                        "version": "v1.2.3",
+                        "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    "expect": {
+      "error": {
+        "code": "validate.template_variable",
+        "path": "mirrors.accel.url_template",
+        "fields": {
+          "variable": "missing"
+        }
+      }
+    }
+  },
+  {
+    "name": "validate.all_violations.collected",
+    "input": {
+      "manifest_version": "2.0",
+      "registries": {
+        "github-release": {
+          "name": "GitHub Releases",
+          "url_template": "https://github.com/{owner}/{repo}/releases/download/{release}/{artifact}"
+        }
+      },
+      "mirrors": {},
+      "resources": {
+        "sample": {
+          "name": "Sample",
+          "registry": "github-release",
+          "source": {
+            "owner": "example",
+            "repo": "project"
+          },
+          "tags": [
+            {
+              "id": "channel:stable",
+              "name": "Stable",
+              "group": "channel"
+            }
+          ],
+          "default_variants": {
+            "windows-x86_64": "ghost",
+            "linux-amd64": " bad"
+          },
+          "variants": [
+            {
+              "id": " bad",
+              "tag_key": "forged",
+              "name": "Stable",
+              "tags": [
+                {
+                  "id": "channel:stable",
+                  "name": "Stable",
+                  "group": "channel"
+                }
+              ],
+              "source": {
+                "release": "{version}"
+              },
+              "artifacts": {
+                "windows-x86_64": {
+                  "artifact": "{missing}",
+                  "version": {
+                    "type": "remote",
+                    "version": {
+                      "resource": {
+                        "registry": "github-release",
+                        "artifact": "version.txt"
+                      },
+                      "parser": {
+                        "type": "regex",
+                        "pattern": "("
+                      }
+                    },
+                    "checksum": {
+                      "resource": {
+                        "registry": "ghost",
+                        "artifact": "checksums.txt"
+                      },
+                      "parser": {
+                        "type": "gnu",
+                        "algorithm": "sha256"
+                      }
+                    }
+                  }
+                },
+                "linux-amd64": {
+                  "artifact": "selected-{version}.gz",
+                  "version": {
+                    "type": "static",
+                    "latest": "ghost",
+                    "releases": [
+                      {
+                        "version": "v1.2.3",
+                        "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    "expect": {
+      "error": {
+        "code": "validate.ids",
+        "path": "resources.sample.variants[0].id",
+        "fields": {
+          "kind": "variant",
+          "id": " bad",
+          "reason": "invalid"
+        }
+      },
+      "additional_errors": [
+        {
+          "code": "validate.tag_key",
+          "path": "resources.sample.variants[0].tag_key",
+          "fields": {
+            "expected": "channel:stable",
+            "actual": "forged"
+          }
+        },
+        {
+          "code": "validate.parser_compile",
+          "path": "resources.sample.variants[0].artifacts.windows-x86_64.version.version.parser.pattern",
+          "fields": {
+            "reason": "parser.invalid_pattern",
+            "details": {}
+          }
+        },
+        {
+          "code": "validate.reference",
+          "path": "resources.sample.variants[0].artifacts.windows-x86_64.version.checksum.resource.registry",
+          "fields": {
+            "kind": "registry",
+            "id": "ghost"
+          }
+        },
+        {
+          "code": "validate.static_history",
+          "path": "resources.sample.variants[0].artifacts.linux-amd64.version.latest",
+          "fields": {
+            "version": "ghost",
+            "reason": "latest_missing"
+          }
+        },
+        {
+          "code": "validate.default_variant",
+          "path": "resources.sample.default_variants.windows-x86_64",
+          "fields": {
+            "platform": "windows-x86_64",
+            "variant": "ghost",
+            "reason": "unknown"
+          }
+        },
+        {
+          "code": "validate.template_variable",
+          "path": "resources.sample.variants[0].artifacts.windows-x86_64.artifact",
+          "fields": {
+            "variable": "missing"
+          }
+        }
+      ]
+    }
+  },
+  {
+    "name": "validate.template_variable.artifact_alias_complete",
+    "input": {
+      "manifest_version": "2.0",
+      "registries": {
+        "github-release": {
+          "name": "GitHub Releases",
+          "url_template": "https://example.test/{download}",
+          "variables": {
+            "download": "{artifact}"
+          }
+        }
+      },
+      "mirrors": {},
+      "resources": {
+        "sample": {
+          "name": "Sample",
+          "registry": "github-release",
+          "source": {
+            "owner": "example",
+            "repo": "project"
+          },
+          "tags": [
+            {
+              "id": "channel:stable",
+              "name": "Stable",
+              "group": "channel"
+            }
+          ],
+          "default_variants": {
+            "windows-x86_64": "stable",
+            "linux-amd64": "stable"
+          },
+          "variants": [
+            {
+              "id": "stable",
+              "tag_key": "channel:stable",
+              "name": "Stable",
+              "tags": [
+                {
+                  "id": "channel:stable",
+                  "name": "Stable",
+                  "group": "channel"
+                }
+              ],
+              "source": {
+                "release": "{version}"
+              },
+              "artifacts": {
+                "windows-x86_64": {
+                  "artifact": "selected-{version}.zip",
+                  "version": {
+                    "type": "static",
+                    "latest": "v1.2.3",
+                    "releases": [
+                      {
+                        "version": "v1.2.3",
+                        "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+                      }
+                    ]
+                  }
+                },
+                "linux-amd64": {
+                  "artifact": "selected-{version}.gz",
+                  "version": {
+                    "type": "static",
+                    "latest": "v1.2.3",
+                    "releases": [
+                      {
+                        "version": "v1.2.3",
+                        "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    "expect": {
+      "ok": true
+    }
+  },
+  {
+    "name": "validate.template_variable.remote_artifact_alias_complete",
+    "input": {
+      "manifest_version": "2.0",
+      "registries": {
+        "github-release": {
+          "name": "GitHub Releases",
+          "url_template": "https://example.test/{download}",
+          "variables": {
+            "download": "{artifact}"
+          }
+        }
+      },
+      "mirrors": {},
+      "resources": {
+        "sample": {
+          "name": "Sample",
+          "registry": "github-release",
+          "source": {
+            "owner": "example",
+            "repo": "project"
+          },
+          "tags": [
+            {
+              "id": "channel:stable",
+              "name": "Stable",
+              "group": "channel"
+            }
+          ],
+          "default_variants": {
+            "windows-x86_64": "stable",
+            "linux-amd64": "stable"
+          },
+          "variants": [
+            {
+              "id": "stable",
+              "tag_key": "channel:stable",
+              "name": "Stable",
+              "tags": [
+                {
+                  "id": "channel:stable",
+                  "name": "Stable",
+                  "group": "channel"
+                }
+              ],
+              "source": {
+                "release": "{version}"
+              },
+              "artifacts": {
+                "windows-x86_64": {
+                  "artifact": "selected-{version}.zip",
+                  "version": {
+                    "type": "remote",
+                    "version": {
+                      "resource": {
+                        "registry": "github-release",
+                        "artifact": "version.txt"
+                      },
+                      "parser": {
+                        "type": "text"
+                      }
+                    }
+                  }
+                },
+                "linux-amd64": {
+                  "artifact": "selected-{version}.gz",
+                  "version": {
+                    "type": "static",
+                    "latest": "v1.2.3",
+                    "releases": [
+                      {
+                        "version": "v1.2.3",
+                        "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    "expect": {
+      "ok": true
+    }
+  },
+  {
+    "name": "validate.template_variable.artifact_source_dependency_missing",
+    "input": {
+      "manifest_version": "2.0",
+      "registries": {
+        "github-release": {
+          "name": "GitHub Releases",
+          "url_template": "https://github.com/{owner}/{repo}/releases/download/{release}/{artifact}"
+        }
+      },
+      "mirrors": {},
+      "resources": {
+        "sample": {
+          "name": "Sample",
+          "registry": "github-release",
+          "source": {
+            "owner": "example",
+            "repo": "project"
+          },
+          "tags": [
+            {
+              "id": "channel:stable",
+              "name": "Stable",
+              "group": "channel"
+            }
+          ],
+          "default_variants": {
+            "windows-x86_64": "stable",
+            "linux-amd64": "stable"
+          },
+          "variants": [
+            {
+              "id": "stable",
+              "tag_key": "channel:stable",
+              "name": "Stable",
+              "tags": [
+                {
+                  "id": "channel:stable",
+                  "name": "Stable",
+                  "group": "channel"
+                }
+              ],
+              "source": {
+                "release": "{version}"
+              },
+              "artifacts": {
+                "windows-x86_64": {
+                  "artifact": "{artifact}",
+                  "version": {
+                    "type": "static",
+                    "latest": "v1.2.3",
+                    "releases": [
+                      {
+                        "version": "v1.2.3",
+                        "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+                      }
+                    ]
+                  },
+                  "source": {
+                    "artifact": "{missing}"
+                  }
+                },
+                "linux-amd64": {
+                  "artifact": "selected-{version}.gz",
+                  "version": {
+                    "type": "static",
+                    "latest": "v1.2.3",
+                    "releases": [
+                      {
+                        "version": "v1.2.3",
+                        "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    "expect": {
+      "error": {
+        "code": "validate.template_variable",
+        "path": "resources.sample.variants[0].artifacts.windows-x86_64.source.artifact",
+        "fields": {
+          "variable": "missing"
+        }
+      }
+    }
+  },
+  {
+    "name": "validate.template_variable.registry_not_in_artifact_scope",
+    "input": {
+      "manifest_version": "2.0",
+      "registries": {
+        "github-release": {
+          "name": "GitHub Releases",
+          "url_template": "https://github.com/{owner}/{repo}/releases/download/{release}/{artifact}",
+          "variables": {
+            "asset": "selected"
+          }
+        }
+      },
+      "mirrors": {},
+      "resources": {
+        "sample": {
+          "name": "Sample",
+          "registry": "github-release",
+          "source": {
+            "owner": "example",
+            "repo": "project"
+          },
+          "tags": [
+            {
+              "id": "channel:stable",
+              "name": "Stable",
+              "group": "channel"
+            }
+          ],
+          "default_variants": {
+            "windows-x86_64": "Stable+v2",
+            "linux-amd64": "Stable+v2"
+          },
+          "variants": [
+            {
+              "id": "Stable+v2",
+              "tag_key": "channel:stable",
+              "name": "Stable",
+              "tags": [
+                {
+                  "id": "channel:stable",
+                  "name": "Stable",
+                  "group": "channel"
+                }
+              ],
+              "source": {
+                "release": "{version}"
+              },
+              "artifacts": {
+                "windows-x86_64": {
+                  "artifact": "{asset}-{version}.zip",
+                  "version": {
+                    "type": "static",
+                    "latest": "v1.2.3",
+                    "releases": [
+                      {
+                        "version": "v1.2.3",
+                        "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+                      }
+                    ]
+                  }
+                },
+                "linux-amd64": {
+                  "artifact": "selected-{version}.gz",
+                  "version": {
+                    "type": "static",
+                    "latest": "v1.2.3",
+                    "releases": [
+                      {
+                        "version": "v1.2.3",
+                        "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    "expect": {
+      "error": {
+        "code": "validate.template_variable",
+        "path": "resources.sample.variants[0].artifacts.windows-x86_64.artifact",
+        "fields": {
+          "variable": "asset"
+        }
+      }
+    }
+  },
+  {
+    "name": "validate.template_variable.builtins_override_remote_source",
+    "input": {
+      "manifest_version": "2.0",
+      "registries": {
+        "github-release": {
+          "name": "GitHub Releases",
+          "url_template": "https://github.com/{owner}/{repo}/releases/download/{release}/{artifact}"
+        }
+      },
+      "mirrors": {},
+      "resources": {
+        "sample": {
+          "name": "Sample",
+          "registry": "github-release",
+          "source": {
+            "owner": "example",
+            "repo": "project"
+          },
+          "tags": [
+            {
+              "id": "channel:stable",
+              "name": "Stable",
+              "group": "channel"
+            }
+          ],
+          "default_variants": {
+            "windows-x86_64": "Stable+v2",
+            "linux-amd64": "Stable+v2"
+          },
+          "variants": [
+            {
+              "id": "Stable+v2",
+              "tag_key": "channel:stable",
+              "name": "Stable",
+              "tags": [
+                {
+                  "id": "channel:stable",
+                  "name": "Stable",
+                  "group": "channel"
+                }
+              ],
+              "source": {
+                "release": "{version}"
+              },
+              "artifacts": {
+                "windows-x86_64": {
+                  "artifact": "selected-{version}.zip",
+                  "version": {
+                    "type": "remote",
+                    "version": {
+                      "resource": {
+                        "registry": "github-release",
+                        "artifact": "version.txt",
+                        "source": {
+                          "resource": "{missing}",
+                          "resource_id": "{missing}",
+                          "variant": "{missing}",
+                          "variant_id": "{missing}",
+                          "tag_key": "{missing}",
+                          "platform": "{missing}",
+                          "version": "{missing}"
+                        }
+                      },
+                      "parser": {
+                        "type": "text"
+                      }
+                    }
+                  }
+                },
+                "linux-amd64": {
+                  "artifact": "selected-{version}.gz",
+                  "version": {
+                    "type": "static",
+                    "latest": "v1.2.3",
+                    "releases": [
+                      {
+                        "version": "v1.2.3",
+                        "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    "expect": {
+      "ok": true
+    }
+  },
+  {
+    "name": "validate.template_variable.fallback_not_in_version_request",
+    "input": {
+      "manifest_version": "2.0",
+      "registries": {
+        "github-release": {
+          "name": "GitHub Releases",
+          "url_template": "https://github.com/{owner}/{repo}/releases/download/{release}/{artifact}"
+        }
+      },
+      "mirrors": {},
+      "resources": {
+        "sample": {
+          "name": "Sample",
+          "registry": "github-release",
+          "source": {
+            "owner": "example",
+            "repo": "project"
+          },
+          "tags": [
+            {
+              "id": "channel:stable",
+              "name": "Stable",
+              "group": "channel"
+            }
+          ],
+          "default_variants": {
+            "windows-x86_64": "Stable+v2",
+            "linux-amd64": "Stable+v2"
+          },
+          "variants": [
+            {
+              "id": "Stable+v2",
+              "tag_key": "channel:stable",
+              "name": "Stable",
+              "tags": [
+                {
+                  "id": "channel:stable",
+                  "name": "Stable",
+                  "group": "channel"
+                }
+              ],
+              "source": {
+                "release": "{version}"
+              },
+              "artifacts": {
+                "windows-x86_64": {
+                  "artifact": "selected-{version}.zip",
+                  "version": {
+                    "type": "remote",
+                    "fallback": {
+                      "version": "v1.2.3",
+                      "source": {
+                        "fallback_only": "snapshot"
+                      }
+                    },
+                    "version": {
+                      "resource": {
+                        "registry": "github-release",
+                        "artifact": "{fallback_only}.txt"
+                      },
+                      "parser": {
+                        "type": "text"
+                      }
+                    }
+                  }
+                },
+                "linux-amd64": {
+                  "artifact": "selected-{version}.gz",
+                  "version": {
+                    "type": "static",
+                    "latest": "v1.2.3",
+                    "releases": [
+                      {
+                        "version": "v1.2.3",
+                        "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    "expect": {
+      "error": {
+        "code": "validate.template_variable",
+        "path": "resources.sample.variants[0].artifacts.windows-x86_64.version.version.resource.artifact",
+        "fields": {
+          "variable": "fallback_only"
+        }
+      }
+    }
+  },
+  {
+    "name": "validate.template_variable.fallback_not_in_runtime_scope",
+    "input": {
+      "manifest_version": "2.0",
+      "registries": {
+        "github-release": {
+          "name": "GitHub Releases",
+          "url_template": "https://github.com/{owner}/{repo}/releases/download/{release}/{artifact}"
+        }
+      },
+      "mirrors": {},
+      "resources": {
+        "sample": {
+          "name": "Sample",
+          "registry": "github-release",
+          "source": {
+            "owner": "example",
+            "repo": "project"
+          },
+          "tags": [
+            {
+              "id": "channel:stable",
+              "name": "Stable",
+              "group": "channel"
+            }
+          ],
+          "default_variants": {
+            "windows-x86_64": "Stable+v2",
+            "linux-amd64": "Stable+v2"
+          },
+          "variants": [
+            {
+              "id": "Stable+v2",
+              "tag_key": "channel:stable",
+              "name": "Stable",
+              "tags": [
+                {
+                  "id": "channel:stable",
+                  "name": "Stable",
+                  "group": "channel"
+                }
+              ],
+              "source": {
+                "release": "{version}"
+              },
+              "artifacts": {
+                "windows-x86_64": {
+                  "artifact": "{fallback_only}-{version}.zip",
+                  "version": {
+                    "type": "remote",
+                    "fallback": {
+                      "version": "v1.2.3",
+                      "source": {
+                        "fallback_only": "snapshot"
+                      }
+                    },
+                    "version": {
+                      "resource": {
+                        "registry": "github-release",
+                        "artifact": "version.txt"
+                      },
+                      "parser": {
+                        "type": "text"
+                      }
+                    }
+                  }
+                },
+                "linux-amd64": {
+                  "artifact": "selected-{version}.gz",
+                  "version": {
+                    "type": "static",
+                    "latest": "v1.2.3",
+                    "releases": [
+                      {
+                        "version": "v1.2.3",
+                        "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    "expect": {
+      "error": {
+        "code": "validate.template_variable",
+        "path": "resources.sample.variants[0].artifacts.windows-x86_64.artifact",
+        "fields": {
+          "variable": "fallback_only"
+        }
+      }
+    }
+  },
+  {
+    "name": "validate.tag_combination.forged_key_and_duplicate_tag",
+    "input": {
+      "manifest_version": "2.0",
+      "registries": {
+        "github-release": {
+          "name": "GitHub Releases",
+          "url_template": "https://github.com/{owner}/{repo}/releases/download/{release}/{artifact}"
+        }
+      },
+      "mirrors": {},
+      "resources": {
+        "sample": {
+          "name": "Sample",
+          "registry": "github-release",
+          "source": {
+            "owner": "example",
+            "repo": "project"
+          },
+          "tags": [
+            {
+              "id": "channel:stable",
+              "name": "Stable",
+              "group": "channel"
+            }
+          ],
+          "default_variants": {
+            "windows-x86_64": "stable",
+            "linux-amd64": "stable"
+          },
+          "variants": [
+            {
+              "id": "stable",
+              "tag_key": "channel:stable",
+              "name": "Stable",
+              "tags": [
+                {
+                  "id": "channel:stable",
+                  "name": "Stable",
+                  "group": "channel"
+                }
+              ],
+              "source": {
+                "release": "{version}"
+              },
+              "artifacts": {
+                "windows-x86_64": {
+                  "artifact": "selected-{version}.zip",
+                  "version": {
+                    "type": "static",
+                    "latest": "v1.2.3",
+                    "releases": [
+                      {
+                        "version": "v1.2.3",
+                        "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+                      }
+                    ]
+                  }
+                },
+                "linux-amd64": {
+                  "artifact": "selected-{version}.gz",
+                  "version": {
+                    "type": "static",
+                    "latest": "v1.2.3",
+                    "releases": [
+                      {
+                        "version": "v1.2.3",
+                        "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+                      }
+                    ]
+                  }
+                }
+              }
+            },
+            {
+              "id": "other",
+              "tag_key": "forged",
+              "name": "Stable",
+              "tags": [
+                {
+                  "id": "channel:stable",
+                  "name": "Stable",
+                  "group": "channel"
+                },
+                {
+                  "id": "channel:stable",
+                  "name": "Stable",
+                  "group": "channel"
+                }
+              ],
+              "source": {
+                "release": "{version}"
+              },
+              "artifacts": {
+                "windows-x86_64": {
+                  "artifact": "selected-{version}.zip",
+                  "version": {
+                    "type": "static",
+                    "latest": "v1.2.3",
+                    "releases": [
+                      {
+                        "version": "v1.2.3",
+                        "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+                      }
+                    ]
+                  }
+                },
+                "linux-amd64": {
+                  "artifact": "selected-{version}.gz",
+                  "version": {
+                    "type": "static",
+                    "latest": "v1.2.3",
+                    "releases": [
+                      {
+                        "version": "v1.2.3",
+                        "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    "expect": {
+      "error": {
+        "code": "validate.tag_combination",
+        "path": "resources.sample.variants[1].tags",
+        "fields": {
+          "tag_key": "channel:stable",
+          "first_variant": 0
+        }
+      },
+      "additional_errors": [
+        {
+          "code": "validate.ids",
+          "path": "resources.sample.variants[1].tags[1].id",
+          "fields": {
+            "kind": "tag",
+            "id": "channel:stable",
+            "reason": "duplicate"
+          }
+        },
+        {
+          "code": "validate.tag_key",
+          "path": "resources.sample.variants[1].tag_key",
+          "fields": {
+            "expected": "channel:stable+channel:stable",
+            "actual": "forged"
+          }
+        }
+      ]
+    }
+  },
+  {
+    "name": "validate.default_variant.single_supporter_among_variants",
+    "input": {
+      "manifest_version": "2.0",
+      "registries": {
+        "github-release": {
+          "name": "GitHub Releases",
+          "url_template": "https://github.com/{owner}/{repo}/releases/download/{release}/{artifact}"
+        }
+      },
+      "mirrors": {},
+      "resources": {
+        "sample": {
+          "name": "Sample",
+          "registry": "github-release",
+          "source": {
+            "owner": "example",
+            "repo": "project"
+          },
+          "tags": [
+            {
+              "id": "channel:stable",
+              "name": "Stable",
+              "group": "channel"
+            }
+          ],
+          "default_variants": {},
+          "variants": [
+            {
+              "id": "stable",
+              "tag_key": "channel:stable",
+              "name": "Stable",
+              "tags": [
+                {
+                  "id": "channel:stable",
+                  "name": "Stable",
+                  "group": "channel"
+                }
+              ],
+              "source": {
+                "release": "{version}"
+              },
+              "artifacts": {
+                "windows-x86_64": {
+                  "artifact": "selected-{version}.zip",
+                  "version": {
+                    "type": "static",
+                    "latest": "v1.2.3",
+                    "releases": [
+                      {
+                        "version": "v1.2.3",
+                        "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+                      }
+                    ]
+                  }
+                }
+              }
+            },
+            {
+              "id": "other",
+              "tag_key": "",
+              "name": "Stable",
+              "tags": [],
+              "source": {
+                "release": "{version}"
+              },
+              "artifacts": {
+                "linux-amd64": {
+                  "artifact": "selected-{version}.gz",
+                  "version": {
+                    "type": "static",
+                    "latest": "v1.2.3",
+                    "releases": [
+                      {
+                        "version": "v1.2.3",
+                        "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    "expect": {
+      "ok": true
+    }
+  }
+]

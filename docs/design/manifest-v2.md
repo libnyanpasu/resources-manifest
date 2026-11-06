@@ -149,6 +149,15 @@ order-independent. Tag IDs in `tag_key` are sorted by Unicode code point, not by
 locale. The UI uses `tag.id` and the resource key as translation keys, with
 `name` only as a fallback.
 
+Tag IDs match `^[A-Za-z0-9][A-Za-z0-9._:-]*$`; variant IDs match
+`^[A-Za-z0-9][A-Za-z0-9._:+-]*$`. IDs are case-sensitive and are never trimmed.
+The `+` separator is reserved in tag IDs. Catalog tag IDs are unique per resource,
+variant tag IDs are unique within each variant, and variant IDs are unique per
+resource. A canonical `tag_key` joins sorted tag IDs with `+`; an empty tag list
+has key `""`. Exact combinations compare sets independently of the supplied key.
+Only absent or empty (`""`) groups are exempt from mutual exclusion; whitespace
+is a non-empty group.
+
 ## Static version history
 
 A stable artifact can carry several releases and their artifact-specific
@@ -551,22 +560,22 @@ runner compares a declared `path` exactly.
 For `parser.ambiguous`, `name` is the requested artifact filename or the declared
 header name. For `parser.group_out_of_range`, `groups` includes group 0.
 
-| Prefix      | Codes                                                                                                                      | Fields                                              |
-| ----------- | -------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------- |
-| `manifest.` | `unsupported_major`                                                                                                        | `{ major }`                                         |
-| `manifest.` | `invalid_version_format`                                                                                                   | `{}`                                                |
-| `parser.`   | `body_too_large`                                                                                                           | `{ limit, actual }`                                 |
-| `parser.`   | `ambiguous`                                                                                                                | `{ name }`                                          |
-| `parser.`   | `group_out_of_range`                                                                                                       | `{ group, groups }`                                 |
-| `parser.`   | `not_found`, `digest_missing`, `invalid_version`, `invalid_checksum`, `invalid_encoding`, `invalid_pattern`                | Structured fields deferred to the implementing card |
-| `template.` | `unknown_variable`, `cycle`, `depth_exceeded`, `output_too_large`, `invalid_literal`                                       | Structured fields deferred to the implementing card |
-| `url.`      | `invalid`, `unsupported_scheme`, `forbidden_component`                                                                     | Structured fields deferred to the implementing card |
-| `select.`   | `unknown_resource`, `unsupported_platform`, `unknown_variant`, `no_exact_tags`, `conflicting_selection`, `default_missing` | Structured fields deferred to the implementing card |
-| `resolve.`  | `unsupported_parser`                                                                                                       | `{ parser_type }`                                   |
-| `resolve.`  | `version_required`, `version_not_in_history`, `mirror_not_allowed`, `unknown_registry`, `unknown_mirror`                   | Structured fields deferred to the implementing card |
-| `verify.`   | `kind_rejected`                                                                                                            | `{ kind }`                                          |
-| `verify.`   | `digest_mismatch`                                                                                                          | `{ algorithm, expected, actual }`                   |
-| `validate.` | One code per invariant                                                                                                     | Codes and fields deferred to B1                     |
+| Prefix      | Codes                                                                                                                      | Fields                                                                                                    |
+| ----------- | -------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| `manifest.` | `unsupported_major`                                                                                                        | `{ major }`                                                                                               |
+| `manifest.` | `invalid_version_format`                                                                                                   | `{}`                                                                                                      |
+| `parser.`   | `body_too_large`                                                                                                           | `{ limit, actual }`                                                                                       |
+| `parser.`   | `ambiguous`                                                                                                                | `{ name }`                                                                                                |
+| `parser.`   | `group_out_of_range`                                                                                                       | `{ group, groups }`                                                                                       |
+| `parser.`   | `not_found`, `digest_missing`, `invalid_version`, `invalid_checksum`, `invalid_encoding`, `invalid_pattern`                | Structured fields deferred to the implementing card                                                       |
+| `template.` | `unknown_variable`, `cycle`, `depth_exceeded`, `output_too_large`, `invalid_literal`                                       | Structured fields deferred to the implementing card                                                       |
+| `url.`      | `invalid`, `unsupported_scheme`, `forbidden_component`                                                                     | Structured fields deferred to the implementing card                                                       |
+| `select.`   | `unknown_resource`, `unsupported_platform`, `unknown_variant`, `no_exact_tags`, `conflicting_selection`, `default_missing` | Structured fields deferred to the implementing card                                                       |
+| `resolve.`  | `unsupported_parser`                                                                                                       | `{ parser_type }`                                                                                         |
+| `resolve.`  | `version_required`, `version_not_in_history`, `mirror_not_allowed`, `unknown_registry`, `unknown_mirror`                   | Structured fields deferred to the implementing card                                                       |
+| `verify.`   | `kind_rejected`                                                                                                            | `{ kind }`                                                                                                |
+| `verify.`   | `digest_mismatch`                                                                                                          | `{ algorithm, expected, actual }`                                                                         |
+| `validate.` | One code per invariant                                                                                                     | See [B1 specification §5.6 "B1 校验错误"](../spec/2026-11-06-manifest-core-parsers/design.md#b1-校验错误) |
 
 ## Validation invariants
 

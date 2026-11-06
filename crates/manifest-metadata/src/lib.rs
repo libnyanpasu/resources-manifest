@@ -203,6 +203,20 @@ pub enum SupportedPlatform {
     DarwinX64,
 }
 
+impl SupportedPlatform {
+    #[must_use]
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::WindowsX86_64 => "windows-x86_64",
+            Self::WindowsArm64 => "windows-arm64",
+            Self::LinuxAarch64 => "linux-aarch64",
+            Self::LinuxAmd64 => "linux-amd64",
+            Self::DarwinArm64 => "darwin-arm64",
+            Self::DarwinX64 => "darwin-x64",
+        }
+    }
+}
+
 /// URL template variables, for example owner/repository identity or a release
 /// tag that differs from the version.
 pub type SourceVariables = BTreeMap<String, String>;
@@ -595,6 +609,33 @@ pub struct ResourceManifest {
 mod tests {
     use super::*;
     use serde_json::{Value, json};
+
+    #[test]
+    fn platform_as_str_matches_serde_names() {
+        let all = [
+            SupportedPlatform::WindowsX86_64,
+            SupportedPlatform::WindowsArm64,
+            SupportedPlatform::LinuxAarch64,
+            SupportedPlatform::LinuxAmd64,
+            SupportedPlatform::DarwinArm64,
+            SupportedPlatform::DarwinX64,
+        ];
+        for platform in all {
+            // Exhaustive match: adding a platform fails to compile until it is listed above.
+            match platform {
+                SupportedPlatform::WindowsX86_64
+                | SupportedPlatform::WindowsArm64
+                | SupportedPlatform::LinuxAarch64
+                | SupportedPlatform::LinuxAmd64
+                | SupportedPlatform::DarwinArm64
+                | SupportedPlatform::DarwinX64 => {}
+            }
+            assert_eq!(
+                serde_json::to_value(platform).unwrap(),
+                json!(platform.as_str())
+            );
+        }
+    }
 
     fn sample_manifest_json() -> Value {
         json!({
