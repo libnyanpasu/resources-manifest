@@ -538,11 +538,14 @@ Errors are typed snafu enums with structured fields and a stable `code()` for
 each variant. Across languages, consumers identify errors by `code` and fields,
 not by parsing `message`. Every error carries a `path` using a single dotted
 locator rooted at the input document, at `arg` for host-supplied arguments,
-or at `response` for parser errors: join fields or object keys with `.`, and
+at `response` for parser response errors, or at `parser` for parser rule errors:
+join fields or object keys with `.`, and
 write array indices as `[<i>]`, for example `manifest_version` or
 `resources.<id>.variants[<i>].tags`. Host-supplied arguments use `arg.<name>`,
-for example `arg.version`, rather than a bare argument name. Parser errors
-use `response.body` or `response.headers.<lowercase-name>`. The conformance
+for example `arg.version`, rather than a bare argument name. Parser response errors
+use `response.body` or `response.headers.<lowercase-name>`. Rule errors use
+`parser.pattern` for `parser.invalid_pattern`, `parser.group` for
+`parser.group_out_of_range`, and `parser.type` for `resolve.unsupported_parser`. The conformance
 runner compares a declared `path` exactly.
 
 For `parser.ambiguous`, `name` is the requested artifact filename or the declared

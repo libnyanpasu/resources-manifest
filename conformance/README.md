@@ -16,15 +16,23 @@
     "parser": { "type": "text", "trim": false },
     "response": { "body": "v1.2.3\n", "headers": [] }
   },
-  "expect": { "error": { "code": "parser.invalid_version" } }
+  "expect": {
+    "error": {
+      "code": "parser.invalid_version",
+      "path": "response.body",
+      "fields": {}
+    }
+  }
 }
 ```
 
 - `name` 在所有目录、所有 JSON 文件中全局唯一，使用 dotted prefix；运行器以完整名称标识用例。
+  Rust 的 `corpus_case_names_are_globally_unique` 递归检查整个 `conformance/` 的 corpus JSON，
+  包括尚未接入执行的目录；`fixtures/` 中的 HTML 期望清单不是 corpus，不参与名称检查。
 - `input` 总是对象，各目录的形状和操作见下表。
 - `expect` 恰有一个分支：`{ "ok": <结果> }` 或 `{ "error": { "code": "...", "path": "...", "fields": {} } }`。
-  `path` 和 `fields` 可省略；省略表示不约束，有值时精确比较。消费者按稳定的 `code` 与结构字段进行程序化匹配，不解析消息文本。运行器比较 `code`、声明的 `fields`（完整对象结构相等）和声明的 `path`（精确字符串相等）。
-  `path` 统一为从输入文档根开始的 dotted locator：以 `.` 连接字段或对象键，数组下标写作 `[<i>]`，如 `manifest_version`、`resources.<id>.variants[<i>].tags`。宿主传入参数使用 `arg.<name>`，例如 `arg.version`，parser 错误使用 `response.body` 或 `response.headers.<小写名称>`。不使用裸参数名或其他路径语法。
+  所有错误期望都必须声明 `path` 和完整的 `fields`，即使字段对象为空也不省略。消费者按稳定的 `code` 与结构字段进行程序化匹配，不解析消息文本。运行器比较 `code`、声明的 `fields`（完整对象结构相等）和声明的 `path`（精确字符串相等）。
+  `path` 统一为从输入文档根开始的 dotted locator：以 `.` 连接字段或对象键，数组下标写作 `[<i>]`，如 `manifest_version`、`resources.<id>.variants[<i>].tags`。宿主传入参数使用 `arg.<name>`，例如 `arg.version`，parser 响应错误使用 `response.body` 或 `response.headers.<小写名称>`，规则错误按输入的 `parser` 对象定位：`parser.invalid_pattern` → `parser.pattern`、`parser.group_out_of_range` → `parser.group`、`resolve.unsupported_parser` → `parser.type`。不使用裸参数名或其他路径语法。
 - 结果按 JSON 结构相等比较，对象键顺序无关，数组顺序保留。不得先 trim、规范化输入或丢弃重复 header。
 - checksum 成功结果是 `ResourceChecksum` 的序列化字符串：`<algorithm>:<lowercase-hex>`。
   SHA-256 digest 使用 64 个十六进制字符（32 字节），base64 输入表示同样的 32 字节。
@@ -51,6 +59,137 @@ checksum 的 `artifact` 是具体文件名，不是带 `{version}` 的模板。
 非 hex 字符、奇数个 hex 字符和 digest 长度不符都属于 `parser.invalid_checksum`。
 单个 header 值超过单值上限（默认 8 KiB，宿主调低后以生效值为准）使用 `parser.body_too_large`，同 body 超限一样携带
 `{ limit, actual }`（UTF-8 字节数）；上限一致性用例由 A2 / A5 补充。
+
+### Parser 上限覆盖（A2）
+
+parser 用例可以增加可选的 `input.limits` 对象。未声明的项采用默认值；
+所有值都是非负整数，名称为 `body_bytes`、`header_value_bytes`、
+`regex_pattern_bytes`、`regex_size_bytes`、`template_depth`、`render_output_bytes`。
+运行器通过 `Limits::with_*` 调低对应上限；请求值高于当前上限时夹到当前值，
+不能提高默认值。未知字段应被拒绝。此扩展也供 A3 / A5 的 checksum 用例复用。
+
+例如 `"limits": { "body_bytes": 3 }` 配合 `"body": " v1\n"`，
+应得到 `parser.body_too_large`，完整字段为 `{ "limit": 3, "actual": 4 }`，
+路径为 `response.body`。这样无需在 corpus 中写入 2 MiB 的 body。
+`version.text.body_limit_utf8` 还覆盖多字节字符计量；默认 2 MiB 的边界由 Rust 回归测试覆盖。
+
+`checksum.header.raised_limits_clamped` 将 `body_bytes` 和 `header_value_bytes`
+都请求为 33,554,432，搭配 8,193 字节的字面 header 值，仍须报
+`parser.body_too_large`，字段为 `{ "limit": 8192, "actual": 8193 }`。
+它用较小的 header 证明调高请求被夹到默认值；body 默认 2 MiB 的不可调高语义
+由 Rust 的 `limits_can_only_be_lowered` 验证，无需新增 corpus 生成语法或大 body。
+
+`version.regex.pattern_limit` 与 `version.regex.pattern_limit_utf8` 覆盖 pattern
+的 UTF-8 字节数；超限使用 `parser.invalid_pattern`，字段为 `{ limit, actual }`。
+`version.regex.compiled_size_limit` 用短 pattern 触发默认 1 MiB 编译上限；
+`version.regex.compiled_size_lowered` 验证宿主调低的上限也生效。
+regex 语法或编译大小错误的 `fields` 为 `{}`，不比较依赖库的错误消息。
+版本未找到或无效时的 `fields` 也为 `{}`。
+
+version parser 不支持 header，不把 header helper 当作 version parser 类型。
+`version.text.ignores_conflicting_headers` 确认它忽略 headers；header helper 的
+大小写、相同值去重、冲突、缺失及 `response.headers.<小写名称>` 路径由 Rust
+集成测试验证。A5 再在 checksum corpus 中为 header parser 声明路径。
+
+### Checksum 的阶段边界与错误字段（A3 / A4 / A5）
+
+Rust 运行器读取整个 `parsers/checksum.json`，执行 `checksum`、`gnu`、`bsd`、
+`github-release-assets`、`header` 和未知 parser type 用例，不跳过任何用例。
+查看完整名称可运行 `cargo test -p manifest-parser --test conformance -- --nocapture`。
+
+`RemoteChecksumParser::parse` 对非 `header` 规则在分派之前检查 body 的 UTF-8 字节数，
+超过上限时优先返回 `parser.body_too_large`。`checksum`、`gnu`、`bsd` 都只读 body，
+忽略 headers 的值、冲突和大小，不会在 body 缺失或无效时回退到 header。
+
+`header` 只读取规则显式声明的 header，不读取或限制 body，也忽略其他 header 的大小。
+按 ASCII 大小写不敏感的名称查找，先检查每个匹配值的 UTF-8 字节数，
+任一值超限优先报 `parser.body_too_large`，包括重复值有冲突或编码非法的情况。
+只有原始字符串完全相同的重复值才合并；大小写不同的 hex 值也视为冲突。
+base64 使用 RFC 4648 标准字母表（`+`、`/`），要求规范的 `=` padding（需要时）
+和零填充位；拒绝 URL-safe 字母表、缺失 padding、首尾或内部空白。
+hex 同样不 trim；HTTP 宿主应在构造 `RemoteResponse` 前去除传输层首尾空白。
+`not_found` 和 `ambiguous` 的 fields 为 `{ name }`，保留规则声明的名称；
+`invalid_encoding` 和 `invalid_checksum` 的 fields 为 `{}`。
+所有 header 错误的 path 都是 `response.headers.<ASCII 小写名称>`。
+corpus 覆盖调低的上限、UTF-8 计量、编码错误和路径；Rust 回归还覆盖默认 8 KiB
+header 边界与超过默认 2 MiB 的 body 不影响合法 header。
+
+header 名称在 metadata 的 `ResourceVariantTemplate` artifacts 解码边界校验：
+非空且只能含 RFC 9110 token 字符，即 ASCII 字母、数字及 ``!#$%&'*+-.^_`|~``。
+编译产物保持宽松解码，A5 不因非法名称而拒绝整个 manifest；B1 可进一步语义校验。
+共用 parser 类型的 Schema 不增加名称 pattern，以保持模板专属校验边界，
+生成物仅新增 header 变体和 `HeaderEncoding`。
+
+GNU 和 BSD 按 `\n` 分行，每行只移除一个末尾 `\r`。
+GNU 使用 `<hex>[ \t]+[* ]?<name>[ \t]*`，按完整 artifact 名称匹配，
+保留名称内部的空格、特殊字符，以及 artifact 自身的首尾空格。
+名称起点最多比较两处：无标记时按 artifact 的前导空白长度回退，有 `*` 标记时从其后开始；
+空格标记等价于分隔空白的一部分。全空白名称在分隔空白中线性定位。
+每个候选必须以完整 artifact 开头，余下只能是空格或制表符；不会先 trim 名称或枚举所有出现位置，
+整行解析为线性时间。
+BSD 使用固定分隔符 `<LABEL> (<name>) = <hex>`，名称完全相等，
+算法标签按 ASCII 大小写不敏感比较，不符合配置算法的行直接跳过。
+两种列表都会跳过格式不符、非 hex 或 digest 长度不符的行，即使名称相同；
+这与参考实现以定长 hex 正则筛选行的行为一致。
+只有找到格式和长度都正确的候选行后才参与重复值比较；
+归一化后相同的 digest 合并，不同的 digest 报 `parser.ambiguous`。
+没有有效候选行报 `parser.not_found`。
+两种列表均不接受空 artifact 名称：即使输入为 `<hex>  ` 或 `SHA256 () = <hex>`，
+请求 `artifact: ""` 仍返回 `parser.not_found`（`fields: { name: "" }`）；
+仅含空格或制表符的非空名称仍按完整名称匹配。
+
+列表的 `parser.not_found` 和 `parser.ambiguous` 字段都是 `{ name }`，
+其中 `name` 为调用者请求的 artifact 原值；`checksum` 的 `parser.invalid_checksum`
+字段为 `{}`。上述错误路径统一为 `response.body`。
+GitHub parser 使用轻量 `tl` 解析 HTML 的 `li` 资产条目，
+下载链接 href 先解码一次 HTML 字符引用，再去掉 query / fragment，
+提取最后路径段并百分号解码一次后精确匹配；不看显示文本，字面 `+` 保持原样。
+字符引用采用明确的子集，以控制 wasm 体积，不引入完整 WHATWG 命名引用表。
+支持的引用遵循 [WHATWG 属性值规则](https://html.spec.whatwg.org/multipage/parsing.html#named-character-reference-state)：
+
+- 十进制 `&#N;` 与十六进制 `&#xH;` / `&#XH;` 消费连续有效数字，末尾分号可省略。
+  按 [数字引用规则](https://html.spec.whatwg.org/multipage/parsing.html#numeric-character-reference-end-state)
+  应用 0x80–0x9F 的 C1 替换表（例如 `&#128;` → `€`，表中未列出的值保持原码点）；
+  0、代理码点及大于 U+10FFFF 的值（含整数溢出）替换为 U+FFFD。
+- 带分号的命名引用支持 `amp`、`lt`、`gt`、`quot`、`apos`、`nbsp`，以及 ASCII 标点引用
+  `num`、`sol`、`colon`、`quest`、`equals`、`period`、`plus`、`percnt`、`excl`、`commat`、
+  `lpar`、`rpar`、`lsqb`、`rsqb`、`lowbar`、`Hat`、`grave`、`verbar`、`tilde`；
+  另支持 `AMP`、`LT`、`GT`、`QUOT`。
+- 仅 `amp`、`lt`、`gt`、`quot` 及其上述大写形式支持省略分号，且紧随字符必须不是
+  ASCII 字母、数字或 `=`（属性值结束也可）。因此 `a&amp.zip` 解码为 `a&.zip`，
+  `a&ampx` 和 `a&amp=b` 保持原文。
+
+其余引用（如 `&copy;`）保留原文；单次线性扫描，不递归解码。
+解码后先从完整 href 去掉 query / fragment，再要求路径包含 `/releases/download/`；
+仅在 query / fragment 中出现该片段不算下载链接，`&sol;` 则可改变实际路径边界。
+从根遍历资产条目时剪除 script / style / 注释；digest 读取同一条目内的
+`.Truncate-text`，文本收集同样跳过 li / script / style / 注释。
+若 digest 容器只含被排除的内容，视为当前条目缺少 digest。
+若 `.Truncate-text` 内有效 digest 文本与注释或 script 等被排除内容并列，
+仍读取保留的文本并返回 digest。
+未找到名称报 `parser.not_found`；匹配条目没有 digest 报 `parser.digest_missing`；
+同名条目（或同一条目）有不同 digest 报 `parser.ambiguous`，三者 fields 都是 `{ name }`。
+相同 digest 在算法名和 hex 归一化后去重。任意匹配条目没有 digest 都拒绝，
+即使另一个同名条目有 digest。不支持的算法、非法 hex、长度错误或空 digest
+报 `parser.invalid_checksum`，fields 为 `{}`；不校验未匹配条目的 digest。
+这些错误路径均为 `response.body`；body 上限仍在 HTML 解析前检查。
+若 `tl::parse` 无法解析页面，同样映射为 `parser.invalid_checksum`，
+fields 为 `{}`、path 为 `response.body`；不根据 tokenizer 的消息新增错误码。
+临时 `ParseError::Unsupported` 已删除；未知 type 继续使用
+`ResolveParser { parser_type }`，返回 `resolve.unsupported_parser` 和保留原始 tag 的
+`{ parser_type }`，路径为 `parser.type`。
+
+真实页面、采集 URL/UTC 时间、独立期望清单及 O-3 体积比较见
+[GitHub fixture README](fixtures/github-expanded-assets/README.md)。
+`github_expanded_assets_fixtures` 自动遍历每份 HTML，按旁边固定的
+`*.expected.json` 检查每个有 digest 的资产，并确认旧页面的无 digest 资产报错；
+覆盖 4 份 fixture、219 个资产（191 个 digest）。百分号编码 fixture 明确标为合成，
+真实 HTML 保持原样。运行 `cargo test -p manifest-parser --test conformance` 即可复核。
+
+A3 再次直接调用只读参考函数，24 个正常路径成功结果与 corpus 相同。
+有意差异为 S0b 已记录的 GNU 同名冲突、BSD 错误算法标签；
+新增 `checksum.bsd.skips_other_algorithm` 进一步验证跳过错误标签后返回后续正确算法的 digest，
+参考实现会误取第一行。已有 18 个 checksum 用例的名称、输入和期望均保持不变。
 
 ### Validate 的阶段边界
 
@@ -133,8 +272,8 @@ static 用例只有一个 release，且等于 `latest`，不引入历史版本�
   compat manifest 按它的 registry、resource、展开 tag、variant 和 artifact 布局手写缩小。
 - 上游只读参考：`files/scripts/resource-template.ts` 的 `parseRemoteVersion`
   和 `parseRemoteChecksum`（约 1211–1280 行）。`files/` 不入库，运行器不依赖它。
-- parser body、digest 和 GitHub HTML 均为确定性的合成输入；HTML 使用独立 `<li>` 资产条目和
-  download 链接，不声称为抓取的真实页面。A4 再收集真实 expanded-assets fixtures 并记录来源和时间。
+- `parsers/checksum.json` 中的内嵌 GitHub HTML 是确定性的合成输入；A4 的真实页面另存于
+  `fixtures/github-expanded-assets/`，来源、独立期望值和唯一合成 fixture 的说明见其 README。
 
 创建时通过 Node 原生 TS stripping 直接 import 只读参考模块，逐项比较了以下正常路径：
 

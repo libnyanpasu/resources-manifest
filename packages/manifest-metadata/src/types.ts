@@ -2,6 +2,13 @@
 /**  Supported checksum algorithms. */
 export type ChecksumAlgorithm = "md5" | "sha256" | "sha512";
 
+/**  How a `header` checksum parser decodes the header value. */
+export type HeaderEncoding =
+  /**  Hexadecimal digest, any case. */
+  | "hex"
+  /**  Standard base64 (`+/`, padded) of the raw digest bytes. */
+  | "base64";
+
 /**  A mirror transforms a canonical URL into an accelerated/alternative URL. */
 export type MirrorDefinition = {
   name: string;
@@ -40,7 +47,14 @@ export type RemoteChecksumParser =
   /**  BSD checksum list: `SHA512 (<artifact>) = <hex>`. */
   | { type: "bsd"; algorithm: ChecksumAlgorithm }
   /**  GitHub `/releases/expanded_assets/<tag>` HTML with asset digests. */
-  | { type: "github-release-assets" };
+  | { type: "github-release-assets" }
+  /**  The digest is read from the named response header (case-insensitive). */
+  | {
+      type: "header";
+      name: string;
+      algorithm: ChecksumAlgorithm;
+      encoding: HeaderEncoding;
+    };
 
 export type RemoteChecksumResourceTemplate = {
   resource: RemoteResourceTemplate;

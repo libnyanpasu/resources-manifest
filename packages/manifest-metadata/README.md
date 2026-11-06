@@ -2,7 +2,8 @@
 
 Resource manifest 的元数据包：TS 类型定义、版本常量与 JSON Schema，均由
 `crates/manifest-schema-generator` 从 `crates/manifest-metadata` 的 Rust
-元类型生成。
+元类型生成。parser / checksum 类型位于 `crates/manifest-parser`，
+通过 metadata 的类型图传递给生成器。
 
 **不要手工编辑** `src/types.ts`、`src/version.ts` 或 `schema/`。重新生成：
 

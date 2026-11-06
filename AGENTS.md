@@ -7,12 +7,17 @@
 - `crates/manifest-metadata`：资源元类型定义，以 serde、schemars、specta 标注。
   强约束内建在类型里：`ManifestVersion`（接受 major 为 2、minor 为无前导零的 u32 的版本字符串，如 `"2.0"`）、`ResourceChecksum`
   （`<algorithm>:<hex>` 校验并归一化）、`FiniteF64`（拒绝 NaN/无穷）。
+- `crates/manifest-parser`：checksum / parser 的 wire 类型与无 IO 实现，以及
+  `Limits`、`RemoteResponse`、`ParseError`；不引入 IO / async 依赖。
+  metadata 依赖 parser，禁止反向依赖；`ResourceChecksum` 的实现也位于此 crate。
 - `crates/manifest-schema-generator`：从元类型生成 TypeScript 类型定义、版本常量与 JSON
   Schema，写入 `packages/manifest-metadata`。
 - `packages/manifest-metadata`：纯 TypeScript 库，存放生成的类型与 schema
   （`src/types.ts`、`src/version.ts`、`schema/` 均为生成物，禁止手改）。契约层级说明见其 README。
 - `packages/manifest-generator`：生成完整 manifest 的 Node.js 可执行包。
 - `packages/manifest-downloader`：解析 manifest 并按需下载的 Node.js 可执行包。
+- `conformance/`：语言无关的一致性语料，Rust 运行器位于
+  `crates/manifest-parser/tests/conformance.rs`。
 - `files/`：上游参考实现与设计文档（只读参考，不参与 lint/fmt/test）。
 - `docs/design/`：设计文档。
 

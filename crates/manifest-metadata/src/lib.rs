@@ -32,6 +32,7 @@ use std::fmt;
 use std::marker::PhantomData;
 use std::str::FromStr;
 
+use manifest_parser::{RemoteChecksumParser, RemoteVersionParser, ResourceChecksum};
 use schemars::{JsonSchema, Schema};
 use serde::de::{IgnoredAny, MapAccess, Visitor, value::StringDeserializer};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
@@ -202,146 +203,6 @@ pub enum SupportedPlatform {
     DarwinX64,
 }
 
-/// Supported checksum algorithms.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, JsonSchema, Type)]
-#[serde(rename_all = "lowercase")]
-pub enum ChecksumAlgorithm {
-    Md5,
-    Sha256,
-    Sha512,
-}
-
-impl ChecksumAlgorithm {
-    pub fn as_str(self) -> &'static str {
-        match self {
-            ChecksumAlgorithm::Md5 => "md5",
-            ChecksumAlgorithm::Sha256 => "sha256",
-            ChecksumAlgorithm::Sha512 => "sha512",
-        }
-    }
-
-    /// Length of the lowercase hexadecimal digest.
-    pub fn hex_len(self) -> usize {
-        match self {
-            ChecksumAlgorithm::Md5 => 32,
-            ChecksumAlgorithm::Sha256 => 64,
-            ChecksumAlgorithm::Sha512 => 128,
-        }
-    }
-}
-
-/// Error returned when a checksum is not a valid `<algorithm>:<hex>` pair.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct ParseChecksumError(pub String);
-
-impl fmt::Display for ParseChecksumError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str(&self.0)
-    }
-}
-
-impl std::error::Error for ParseChecksumError {}
-
-/// Serialized as `<algorithm>:<lowercase hex>`, for example `sha512:abcd...`.
-///
-/// Construction and deserialization validate the algorithm and the hex length
-/// (`md5` 32, `sha256` 64, `sha512` 128) and normalize both parts to
-/// lowercase, mirroring `parseResourceChecksum` in the reference scripts.
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Type)]
-pub struct ResourceChecksum(String);
-
-impl ResourceChecksum {
-    pub fn new(checksum: impl Into<String>) -> Result<Self, ParseChecksumError> {
-        let checksum = checksum.into();
-        let fail = |message: String| {
-            ParseChecksumError(format!("invalid checksum {checksum:?}: {message}"))
-        };
-
-        let separator = checksum.find(':');
-        if separator.is_none() || separator != checksum.rfind(':') {
-            return Err(fail("must use <algorithm>:<hex>".into()));
-        }
-        let separator = separator.expect("checked above");
-
-        let algorithm = checksum[..separator].to_lowercase();
-        let value = checksum[separator + 1..].to_lowercase();
-        let algorithm = match algorithm.as_str() {
-            "md5" => ChecksumAlgorithm::Md5,
-            "sha256" => ChecksumAlgorithm::Sha256,
-            "sha512" => ChecksumAlgorithm::Sha512,
-            _ => return Err(fail(format!("unsupported algorithm {algorithm}"))),
-        };
-
-        let expected = algorithm.hex_len();
-        if value.len() != expected || !value.bytes().all(|b| b.is_ascii_hexdigit()) {
-            return Err(fail(format!(
-                "{} must be a {expected}-character hex string",
-                algorithm.as_str()
-            )));
-        }
-
-        Ok(ResourceChecksum(format!("{}:{value}", algorithm.as_str())))
-    }
-
-    pub fn algorithm(&self) -> ChecksumAlgorithm {
-        // Invariant upheld by `new`.
-        match &self.0[..self.0.find(':').expect("separator")] {
-            "md5" => ChecksumAlgorithm::Md5,
-            "sha256" => ChecksumAlgorithm::Sha256,
-            _ => ChecksumAlgorithm::Sha512,
-        }
-    }
-
-    /// The lowercase hexadecimal digest, without the algorithm prefix.
-    pub fn value(&self) -> &str {
-        &self.0[self.0.find(':').expect("separator") + 1..]
-    }
-
-    /// The full `<algorithm>:<hex>` serialization.
-    pub fn as_str(&self) -> &str {
-        &self.0
-    }
-}
-
-impl fmt::Display for ResourceChecksum {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str(&self.0)
-    }
-}
-
-impl std::str::FromStr for ResourceChecksum {
-    type Err = ParseChecksumError;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        ResourceChecksum::new(s)
-    }
-}
-
-impl Serialize for ResourceChecksum {
-    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        serializer.serialize_str(&self.0)
-    }
-}
-
-impl<'de> Deserialize<'de> for ResourceChecksum {
-    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
-        ResourceChecksum::new(String::deserialize(deserializer)?).map_err(serde::de::Error::custom)
-    }
-}
-
-impl JsonSchema for ResourceChecksum {
-    fn schema_name() -> Cow<'static, str> {
-        "ResourceChecksum".into()
-    }
-
-    fn json_schema(_generator: &mut schemars::SchemaGenerator) -> Schema {
-        schemars::json_schema!({
-            "type": "string",
-            "pattern": "^(md5:[a-f0-9]{32}|sha256:[a-f0-9]{64}|sha512:[a-f0-9]{128})$",
-        })
-    }
-}
-
 /// URL template variables, for example owner/repository identity or a release
 /// tag that differs from the version.
 pub type SourceVariables = BTreeMap<String, String>;
@@ -375,144 +236,6 @@ pub struct RemoteResourceTemplate {
     #[serde(skip_serializing_if = "Option::is_none")]
     #[specta(optional)]
     pub source: Option<SourceVariables>,
-}
-
-fn deserialize_parser_object<'de, D: Deserializer<'de>>(
-    deserializer: D,
-) -> Result<serde_json::Value, D::Error> {
-    struct ParserObjectVisitor;
-
-    impl<'de> Visitor<'de> for ParserObjectVisitor {
-        type Value = serde_json::Value;
-
-        fn expecting(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-            formatter.write_str("a parser object")
-        }
-
-        fn visit_map<A: MapAccess<'de>>(self, mut map: A) -> Result<Self::Value, A::Error> {
-            let mut fields = serde_json::Map::new();
-            while let Some(key) = map.next_key::<String>()? {
-                if fields.contains_key(&key) {
-                    return Err(serde::de::Error::custom(format!("duplicate field `{key}`")));
-                }
-                fields.insert(key, map.next_value()?);
-            }
-            Ok(serde_json::Value::Object(fields))
-        }
-    }
-
-    deserializer.deserialize_map(ParserObjectVisitor)
-}
-
-/// How to parse a remote version response.
-#[derive(Debug, Clone, PartialEq, Serialize, JsonSchema, Type)]
-#[serde(tag = "type", rename_all = "snake_case")]
-pub enum RemoteVersionParser {
-    /// Use the response body, optionally trimming whitespace.
-    Text {
-        /// Defaults to true.
-        #[serde(skip_serializing_if = "Option::is_none")]
-        #[specta(optional)]
-        trim: Option<bool>,
-    },
-    /// Apply a regular expression and return a capture group.
-    Regex {
-        pattern: String,
-        /// Capture group containing the version. Defaults to 1. Deserializing
-        /// negative or fractional values fails, matching the reference
-        /// validator's non-negative integer rule.
-        #[serde(skip_serializing_if = "Option::is_none")]
-        #[specta(optional)]
-        #[schemars(range(max = 4_294_967_295_u32))]
-        group: Option<u32>,
-    },
-    #[schemars(skip, !untagged)]
-    #[specta(skip)]
-    #[serde(untagged)]
-    Unsupported {
-        #[serde(rename = "type")]
-        parser_type: String,
-    },
-}
-
-impl<'de> Deserialize<'de> for RemoteVersionParser {
-    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
-        #[derive(Deserialize)]
-        #[serde(tag = "type", rename_all = "snake_case")]
-        enum Known {
-            Text { trim: Option<bool> },
-            Regex { pattern: String, group: Option<u32> },
-        }
-
-        let value = deserialize_parser_object(deserializer)?;
-        let parser_type = value
-            .get("type")
-            .and_then(serde_json::Value::as_str)
-            .ok_or_else(|| serde::de::Error::custom("parser type must be a string"))?;
-        if !matches!(parser_type, "text" | "regex") {
-            return Ok(Self::Unsupported {
-                parser_type: parser_type.to_owned(),
-            });
-        }
-        match Known::deserialize(value).map_err(serde::de::Error::custom)? {
-            Known::Text { trim } => Ok(Self::Text { trim }),
-            Known::Regex { pattern, group } => Ok(Self::Regex { pattern, group }),
-        }
-    }
-}
-
-/// How to parse a remote checksum response.
-#[derive(Debug, Clone, PartialEq, Serialize, JsonSchema, Type)]
-#[serde(tag = "type", rename_all = "kebab-case")]
-pub enum RemoteChecksumParser {
-    /// The response body itself is `<algorithm>:<hex>`.
-    Checksum,
-    /// GNU checksum list: `<hex>  <artifact>`.
-    Gnu { algorithm: ChecksumAlgorithm },
-    /// BSD checksum list: `SHA512 (<artifact>) = <hex>`.
-    Bsd { algorithm: ChecksumAlgorithm },
-    /// GitHub `/releases/expanded_assets/<tag>` HTML with asset digests.
-    GithubReleaseAssets,
-    #[schemars(skip, !untagged)]
-    #[specta(skip)]
-    #[serde(untagged)]
-    Unsupported {
-        #[serde(rename = "type")]
-        parser_type: String,
-    },
-}
-
-impl<'de> Deserialize<'de> for RemoteChecksumParser {
-    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
-        #[derive(Deserialize)]
-        #[serde(tag = "type", rename_all = "kebab-case")]
-        enum Known {
-            Checksum,
-            Gnu { algorithm: ChecksumAlgorithm },
-            Bsd { algorithm: ChecksumAlgorithm },
-            GithubReleaseAssets,
-        }
-
-        let value = deserialize_parser_object(deserializer)?;
-        let parser_type = value
-            .get("type")
-            .and_then(serde_json::Value::as_str)
-            .ok_or_else(|| serde::de::Error::custom("parser type must be a string"))?;
-        if !matches!(
-            parser_type,
-            "checksum" | "gnu" | "bsd" | "github-release-assets"
-        ) {
-            return Ok(Self::Unsupported {
-                parser_type: parser_type.to_owned(),
-            });
-        }
-        match Known::deserialize(value).map_err(serde::de::Error::custom)? {
-            Known::Checksum => Ok(Self::Checksum),
-            Known::Gnu { algorithm } => Ok(Self::Gnu { algorithm }),
-            Known::Bsd { algorithm } => Ok(Self::Bsd { algorithm }),
-            Known::GithubReleaseAssets => Ok(Self::GithubReleaseAssets),
-        }
-    }
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema, Type)]
@@ -649,6 +372,17 @@ fn deserialize_template_artifacts<'de, D: Deserializer<'de>>(
             {
                 return Err(serde::de::Error::custom(format!(
                     "unsupported checksum parser type {parser_type:?} in template"
+                )));
+            }
+            if let Some(checksum) = checksum
+                && let RemoteChecksumParser::Header { name, .. } = &checksum.parser
+                && (name.is_empty()
+                    || !name.bytes().all(|byte| {
+                        byte.is_ascii_alphanumeric() || b"!#$%&'*+-.^_`|~".contains(&byte)
+                    }))
+            {
+                return Err(serde::de::Error::custom(format!(
+                    "invalid checksum header name {name:?} in template"
                 )));
             }
         }
@@ -1199,44 +933,6 @@ mod tests {
     }
 
     #[test]
-    fn checksum_validates_and_normalizes() {
-        let checksum = ResourceChecksum::new(
-            "SHA256:0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF",
-        )
-        .expect("valid checksum");
-        assert_eq!(checksum.algorithm(), ChecksumAlgorithm::Sha256);
-        assert_eq!(checksum.value().len(), 64);
-        assert_eq!(
-            checksum.as_str(),
-            "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
-        );
-        assert_eq!(
-            serde_json::to_value(&checksum).unwrap(),
-            json!(checksum.as_str())
-        );
-    }
-
-    #[test]
-    fn checksum_rejects_malformed_values() {
-        for invalid in [
-            "sha256:abcd",                                                      // wrong hex length
-            "sha1:0123456789abcdef0123456789abcdef01234567", // unsupported algorithm
-            "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef", // missing algorithm
-            "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcg", // non-hex
-            "sha256:0123456789abcdef:extra",                 // two separators
-        ] {
-            assert!(
-                ResourceChecksum::new(invalid).is_err(),
-                "{invalid} must be rejected"
-            );
-            assert!(
-                serde_json::from_value::<ResourceChecksum>(json!(invalid)).is_err(),
-                "{invalid} must fail deserialization"
-            );
-        }
-    }
-
-    #[test]
     fn priority_behaves_like_a_javascript_number() {
         let mirror = |priority: Option<FiniteF64>| MirrorDefinition {
             name: "m".into(),
@@ -1484,39 +1180,6 @@ mod tests {
     }
 
     #[test]
-    fn unknown_parser_tags_roundtrip_and_ignore_other_fields() {
-        for tag in ["future-parser", "Future.Parser", "", "unsupported"] {
-            let input =
-                json!({"type": tag, "pattern": null, "trim": [], "algorithm": {"future": true}});
-            let version: RemoteVersionParser = serde_json::from_value(input.clone()).unwrap();
-            let checksum: RemoteChecksumParser = serde_json::from_value(input).unwrap();
-            assert_eq!(
-                version,
-                RemoteVersionParser::Unsupported {
-                    parser_type: tag.into()
-                }
-            );
-            assert_eq!(
-                checksum,
-                RemoteChecksumParser::Unsupported {
-                    parser_type: tag.into()
-                }
-            );
-            let expected = json!({"type": tag});
-            assert_eq!(serde_json::to_value(&version).unwrap(), expected);
-            assert_eq!(serde_json::to_value(&checksum).unwrap(), expected);
-            assert_eq!(
-                serde_json::from_value::<RemoteVersionParser>(expected.clone()).unwrap(),
-                version
-            );
-            assert_eq!(
-                serde_json::from_value::<RemoteChecksumParser>(expected).unwrap(),
-                checksum
-            );
-        }
-    }
-
-    #[test]
     fn parser_decoding_rejects_duplicate_keys_in_compiled_manifests_and_templates() {
         let compiled = sample_manifest_json();
         let artifact =
@@ -1540,7 +1203,7 @@ mod tests {
             for (kind, cases) in [
                 (
                     "version",
-                    [
+                    vec![
                         (r#"{"type":"text","type":"future-parser"}"#, "type"),
                         (r#"{"type":"text","trim":"invalid","trim":true}"#, "trim"),
                         (r#"{"type":"text","extra":1,"extra":2}"#, "extra"),
@@ -1549,7 +1212,7 @@ mod tests {
                 ),
                 (
                     "checksum",
-                    [
+                    vec![
                         (
                             r#"{"type":"gnu","algorithm":"sha256","type":"future-parser"}"#,
                             "type",
@@ -1563,6 +1226,26 @@ mod tests {
                             "extra",
                         ),
                         (r#"{"type":"future-parser","extra":1,"extra":2}"#, "extra"),
+                        (
+                            r#"{"type":"header","type":"future-parser","name":"X-Digest","algorithm":"md5","encoding":"hex"}"#,
+                            "type",
+                        ),
+                        (
+                            r#"{"type":"header","name":"X-Digest","name":"X-Other","algorithm":"md5","encoding":"hex"}"#,
+                            "name",
+                        ),
+                        (
+                            r#"{"type":"header","name":"X-Digest","algorithm":"md5","algorithm":"sha256","encoding":"hex"}"#,
+                            "algorithm",
+                        ),
+                        (
+                            r#"{"type":"header","name":"X-Digest","algorithm":"md5","encoding":"hex","encoding":"base64"}"#,
+                            "encoding",
+                        ),
+                        (
+                            r#"{"type":"header","name":"X-Digest","algorithm":"md5","encoding":"hex","extra":1,"extra":2}"#,
+                            "extra",
+                        ),
                     ],
                 ),
             ] {
@@ -1591,66 +1274,93 @@ mod tests {
     }
 
     #[test]
-    fn parser_decoding_rejects_missing_tags_and_malformed_known_types() {
-        for input in [
-            json!({}),
-            json!({"type": null}),
-            json!({"type": 2}),
-            json!({"type": []}),
-            json!(null),
-            json!([]),
+    fn header_parser_names_are_validated_only_in_templates() {
+        let compiled = sample_manifest_json();
+        let artifact =
+            compiled["resources"]["mihomo"]["variants"][0]["artifacts"]["windows-x86_64"].clone();
+        let template = json!({
+            "manifest_version": "2.0",
+            "registries": {},
+            "resources": {"mihomo": {
+                "name": "Mihomo", "registry": "github-release", "tags": {},
+                "variants": [{"name": "Alpha", "tags": [], "artifacts": {"windows-x86_64": artifact}}]
+            }}
+        });
+        let path = "/resources/mihomo/variants/0/artifacts/windows-x86_64/version/checksum/parser";
+        for name in ["X-Checksum-Sha256", "aZ09!#$%&'*+-.^_`|~"] {
+            for encoding in ["hex", "base64"] {
+                let parser = json!({
+                    "type": "header", "name": name, "algorithm": "sha256", "encoding": encoding
+                });
+                let mut input = compiled.clone();
+                *input.pointer_mut(path).unwrap() = parser.clone();
+                let manifest: ResourceManifest = serde_json::from_value(input).unwrap();
+                assert_eq!(
+                    serde_json::to_value(manifest).unwrap().pointer(path),
+                    Some(&parser)
+                );
+                let mut input = template.clone();
+                *input.pointer_mut(path).unwrap() = parser.clone();
+                let manifest: ResourceManifestTemplate = serde_json::from_value(input).unwrap();
+                assert_eq!(
+                    serde_json::to_value(manifest).unwrap().pointer(path),
+                    Some(&parser)
+                );
+            }
+        }
+        for name in [
+            "",
+            "X Digest",
+            "X:Digest",
+            "X\tDigest",
+            "X\r\nDigest",
+            "X/Digest",
+            "X(Digest)",
+            "X[Digest]",
+            "X\"Digest",
+            "X\\Digest",
+            "摘要",
+            "X\0Digest",
+            "X\u{7f}Digest",
         ] {
+            let parser = json!({
+                "type": "header", "name": name, "algorithm": "sha256", "encoding": "hex"
+            });
+            let mut input = compiled.clone();
+            *input.pointer_mut(path).unwrap() = parser.clone();
+            serde_json::from_value::<ResourceManifest>(input).unwrap();
+            let mut input = template.clone();
+            *input.pointer_mut(path).unwrap() = parser;
+            let error = serde_json::from_value::<ResourceManifestTemplate>(input).unwrap_err();
             assert!(
-                serde_json::from_value::<RemoteVersionParser>(input.clone()).is_err(),
-                "{input}"
-            );
-            assert!(
-                serde_json::from_value::<RemoteChecksumParser>(input.clone()).is_err(),
-                "{input}"
+                error.to_string().contains("invalid checksum header name"),
+                "{name:?}: {error}"
             );
         }
-        for input in [
-            json!({"type": "text", "trim": "true"}),
-            json!({"type": "regex"}),
-            json!({"type": "regex", "pattern": 42}),
-            json!({"type": "regex", "pattern": "(.*)", "group": -1}),
-            json!({"type": "regex", "pattern": "(.*)", "group": 0.5}),
-            json!({"type": "regex", "pattern": "(.*)", "group": 4_294_967_296_u64}),
-        ] {
-            assert!(
-                serde_json::from_value::<RemoteVersionParser>(input.clone()).is_err(),
-                "{input}"
-            );
+        let parser = json!({
+            "type": "header", "name": "X-Digest", "algorithm": "sha256", "encoding": "hex"
+        });
+        for field in ["name", "algorithm", "encoding"] {
+            for invalid in [None, Some(json!(null)), Some(json!(42))] {
+                let mut malformed = parser.clone();
+                if let Some(value) = invalid {
+                    malformed[field] = value;
+                } else {
+                    malformed.as_object_mut().unwrap().remove(field);
+                }
+                assert!(
+                    serde_json::from_value::<RemoteChecksumParser>(malformed.clone()).is_err(),
+                    "{malformed}"
+                );
+            }
         }
-        for input in [
-            json!({"type": "gnu"}),
-            json!({"type": "bsd"}),
-            json!({"type": "gnu", "algorithm": "sha1"}),
-            json!({"type": "bsd", "algorithm": 42}),
-        ] {
+        for field in ["algorithm", "encoding"] {
+            let mut malformed = parser.clone();
+            malformed[field] = json!("unsupported");
             assert!(
-                serde_json::from_value::<RemoteChecksumParser>(input.clone()).is_err(),
-                "{input}"
+                serde_json::from_value::<RemoteChecksumParser>(malformed.clone()).is_err(),
+                "{malformed}"
             );
-        }
-        for input in [
-            json!({"type": "text"}),
-            json!({"type": "text", "trim": false}),
-            json!({"type": "regex", "pattern": "(.*)", "group": 0}),
-        ] {
-            assert!(
-                serde_json::from_value::<RemoteVersionParser>(input.clone()).is_ok(),
-                "{input}"
-            );
-        }
-        for input in [
-            json!({"type": "checksum"}),
-            json!({"type": "github-release-assets"}),
-            json!({"type": "gnu", "algorithm": "sha256"}),
-            json!({"type": "bsd", "algorithm": "sha512"}),
-        ] {
-            let parsed: RemoteChecksumParser = serde_json::from_value(input.clone()).unwrap();
-            assert_eq!(serde_json::to_value(parsed).unwrap(), input);
         }
     }
 
