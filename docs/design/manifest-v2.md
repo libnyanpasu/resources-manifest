@@ -25,6 +25,58 @@ while updater consumers migrate.
 7. Registries and mirrors are named templates and may also be injected at
    runtime for user-defined download sources.
 
+## Versioning
+
+`manifest_version` is a `"<major>.<minor>"` string:
+
+```json
+{
+  "manifest_version": "2.0"
+}
+```
+
+The current major is 2. Rust represents the version as
+`ManifestVersion { minor: u32 }`, with a fixed major; the generated TypeScript
+type is `` `2.${number}` `` and the JSON Schema pattern is
+`^2\.(0|[1-9][0-9]*)$`. Producers write `CURRENT_MINOR`.
+
+Consumers reject a non-string or malformed version with
+`manifest.invalid_version_format`, and a different major with
+`manifest.unsupported_major`. They accept any minor within major 2, reporting
+`newer_minor: true` when the minor exceeds the known value.
+
+After the first release, compatible changes increment only the minor:
+
+- new optional fields are ignored by older consumers;
+- new platform keys are skipped by older consumers in compiled artifacts and
+  platform defaults;
+- new version or checksum parser types decode as unsupported. Only resolving
+  the affected artifact fails with `resolve.unsupported_parser`; other artifacts
+  remain usable. Older consumers derive `ChecksumKind::None` for artifacts with
+  unsupported parsers, so the default policy rejects them.
+
+Changes that require a new major are:
+
+- adding required fields;
+- changing the semantics of an existing field or parser;
+- removing fields;
+- switching an existing artifact to a parser type unknown to older consumers,
+  which removes an existing capability from those consumers.
+
+A major upgrade follows the dual-file transition described in
+[Migration from manifest v1](#migration-from-manifest-v1).
+
+Permissive decoding applies only to compiled manifests. Templates are strict
+(`deny_unknown_fields`) to catch authoring mistakes. Generated TypeScript and
+JSON Schema describe the exact current-minor contract without unknown variants;
+each Schema `$id` includes `major.minor`. A consumer must not reject a newer
+minor solely because validation against an older Schema fails; consumer
+validation uses `validate_manifest`.
+
+Before the first release of any `@manifest/*` package or crate, the version stays
+at `"2.0"`. All contract changes before that release are included in 2.0 without
+incrementing the minor. The minor and major rules above apply after release.
+
 ## Resource identity and channel variants
 
 The v1 manifest exposes separate keys such as `mihomo` and `mihomo_alpha`. The
@@ -89,7 +141,9 @@ The compiler expands each tag and adds an order-independent `tag_key`:
 ```
 
 A UI should render `variant.tags` directly. Selecting by exact tags remains
-order-independent.
+order-independent. Tag IDs in `tag_key` are sorted by Unicode code point, not by
+locale. The UI uses `tag.id` and the resource key as translation keys, with
+`name` only as a fallback.
 
 ## Static version history
 
@@ -185,51 +239,141 @@ https://github.com/MetaCubeX/mihomo/releases/expanded_assets/Prerelease-Alpha
 ```
 
 The first response supplies the latest mutable version. The second response
-contains GitHub's artifact digest; the parser selects the digest adjacent to the
-rendered artifact name.
+contains GitHub's artifact digest; the parser selects the digest from the asset
+entry whose name exactly matches the rendered artifact name.
 
 `fallback` is the snapshot observed when the manifest was generated. When the
 GitHub release API exposes the current asset digest, the generator also embeds
 that artifact-specific checksum in the fallback. It is still not authoritative
-latest state. The resolver exposes it as `fallback_checksum`, never as the
-normal authoritative `checksum`, while also returning `checksum_remote`.
-`resolveResourceDownload` deliberately requires an explicit version for a remote
-artifact, so a consumer cannot silently skip the remote version request. A
-backend may explicitly use the fallback only after applying its own
-offline/failure policy.
+latest state. The separate reference-result fields `fallback_checksum` and
+`checksum_remote` become kind-bearing checksum results and request plans:
+`fallback.checksum` is a `Snapshot`, usable only under an explicit offline policy
+and only when the resolved version exactly equals `fallback.version`; the remote
+checksum resource and its parser belong to the download plan, and parsing that
+response produces a checksum with kind `Parsed`. A remote download plan requires
+an explicit version, so a consumer cannot silently skip the remote version
+request.
+
+All parsers take a `RemoteResponse { body: &str, headers: &[(String, String)] }`.
+Header names are case-insensitive. A body exceeding the limit in
+[Limits](#limits) fails with `parser.body_too_large`. Body parsers do not read
+headers; only an explicitly declared `header` checksum parser does so.
 
 ### Supported remote version parsers
 
-- `text`: use the response body, optionally trimming whitespace;
-- `regex`: apply a regular expression and return a configured capture group.
+- `text`: `trim` defaults to `true`, removing leading and trailing whitespace
+  before validation. With `trim: false`, validate the body unchanged. The result
+  must satisfy `VersionLabel`; for example, an unchanged trailing newline is
+  invalid.
+- `regex`: use the Rust `regex` crate dialect, with no external flags; inline
+  flags such as `(?i)` are allowed. Take the configured capture `group` from the
+  first match, trim its leading and trailing whitespace, then validate it as a
+  `VersionLabel`. `group` defaults to 1; 0 selects the entire match. Validation
+  compiles the pattern, enforces the compilation size limit, and checks that
+  `group` is less than the capture count, including group 0.
+
+Version parsers do not read headers. A future version-header parser would be a
+minor addition after release.
 
 ### Supported remote checksum parsers
 
-- `checksum`: the complete body is `<algorithm>:<hex>`;
-- `gnu`: find `<hex>  <artifact>`, with the algorithm declared in the manifest;
-- `bsd`: find `ALGORITHM (<artifact>) = <hex>`;
-- `github-release-assets`: find the selected artifact and its adjacent `md5:`,
-  `sha256:` or `sha512:` digest in GitHub release-assets metadata.
+- `checksum`: trim leading and trailing whitespace from the body, then parse
+  the complete result as a `ResourceChecksum` (`<algorithm>:<hex>`).
+- `gnu`: split lines on `\n` or `\r\n`. Each line has the format
+  `<hex>[ \t]+[* ]?<name>[ \t]*`. The name must exactly equal the artifact name,
+  and the hex length must match the configured algorithm. Duplicate matching
+  lines with identical digests collapse to one result; conflicting digests fail
+  with `parser.ambiguous`. No matching name fails with `parser.not_found`.
+- `bsd`: parse lines of the form `<LABEL> (<name>) = <hex>`. Compare `LABEL`
+  case-insensitively with the configured algorithm and skip lines with a
+  different label. The artifact name must match exactly. Conflicting matching
+  digests fail with `parser.ambiguous`.
+- `github-release-assets`: split the HTML into asset entries. Take each name
+  from the final path segment of its download link's `href`, percent-decoded,
+  and read a digest only from that same entry. Names must match exactly, so
+  `selected.zip` does not match `prefix-selected.zip`. No matching entry fails
+  with `parser.not_found`; a matching entry without a digest fails with
+  `parser.digest_missing`; conflicting digests in entries with the same name
+  fail with `parser.ambiguous`. Never search a nearby character window or borrow
+  an adjacent entry's digest.
+- `header`: declare
+  `{ type: "header", name, algorithm, encoding: "hex" | "base64" }`. `name` must
+  be a non-empty valid HTTP header token. Read only that response header,
+  comparing names case-insensitively. A missing header fails with
+  `parser.not_found`; repeated headers with different values fail with
+  `parser.ambiguous`. With `hex`, parse the hex value; with `base64`, decode the
+  value and convert the bytes to lowercase hex. The decoded digest length must
+  match the configured algorithm.
 
-These parser names are protocol between the manifest generator and backend. A
-Rust consumer should implement the same deterministic semantics rather than
-running arbitrary scripts from the manifest.
+These parser names are protocol between the manifest generator and backend.
+Rust consumers depend on `manifest-core`, which uses `manifest-parser` for the
+shared parser implementation.
+
+## Checksum kinds
+
+The trust anchor is a signed manifest. The signature covers only the manifest
+itself; the signing scheme and workflow are defined separately. Only checksums
+embedded in static release history are `Authoritative` for normal resolution.
+
+| `ChecksumKind`  | Source                                                                                                     | Default policy                     |
+| --------------- | ---------------------------------------------------------------------------------------------------------- | ---------------------------------- |
+| `Authoritative` | A static release's embedded `checksum`, covered by the manifest signature                                  | Accept                             |
+| `Parsed`        | A remote response parsed by a declared checksum rule, whether body or header, through canonical or mirror  | Reject; requires explicit opt-in   |
+| `Snapshot`      | A remote artifact's embedded `fallback.checksum`, only when the resolved version equals `fallback.version` | Reject; requires an offline opt-in |
+| `None`          | No checksum                                                                                                | Always reject; no opt-in           |
+
+`artifact_checksum_kind(&ResourceArtifactTemplate) -> ChecksumKind` derives the
+normal resolution kind without network access:
+
+- static release with a checksum: `Authoritative`;
+- static release without a checksum: `None`;
+- remote artifact with a declared checksum rule: `Parsed`;
+- remote artifact without a checksum rule: `None`.
+
+An embedded fallback does not change this static classification. `Snapshot`
+applies only when the host explicitly chooses that fallback under its offline
+policy and the versions match. Plans and resolved results carry the applicable
+kind. The UI receives kind through the Rust backend before the user selects or
+updates a core, including alpha variants, so it can show the policy implications
+in advance.
+
+Only a declared parser rule can produce `Parsed`. Hosts must not infer
+checksums from undeclared `Digest`, `Repr-Digest`, `ETag`, `x-*-checksum` or any
+other response header or source. Reading a header requires a `header` parser in
+the manifest. A canonical transport does not promote a parsed checksum to
+`Authoritative`; a mirror does not change kind either. The actual transport
+channel is returned to core only for diagnostics and logging.
+
+The default host policy accepts only `Authoritative`. `--allow-parsed` and
+`--allow-snapshot` explicitly enable the corresponding kind and emit a warning;
+`None` always fails. An md5 checksum does not change kind, but a host may also
+reject algorithms independently. A digest mismatch always stops the operation
+before decompression or replacement.
 
 ## Backend resolution flow
 
 For a selected resource, platform and tag combination:
 
-1. Select the variant by `variant.id`, exact tags, or the platform default.
-2. Call the equivalent of `resolveResourceVersion`.
-3. For a static artifact, choose `latest` or another entry from `releases`.
-4. For a remote artifact, request the returned mirror-aware version URL and
-   parse the response. Pass the resulting version explicitly to artifact
-   resolution.
-5. Render the artifact URL.
-6. For a static artifact, use its embedded authoritative `checksum`. For a
-   remote artifact, request and parse `checksum_remote` for the rendered
-   artifact name. Use `fallback_checksum` only under an explicit offline policy.
-7. Download and verify before decompression/replacement.
+1. Run `validate_manifest` and select the variant by `variant.id`, exact tags, or
+   the platform default. Expose the statically derived kind to the UI before
+   selection or update, and apply the host's verification policy.
+2. Obtain a version plan from `plan_version`. For a static artifact, choose
+   `latest` or another entry from `releases`; a version outside that history is
+   rejected.
+3. For a remote artifact, request the planned canonical or mirror version URL
+   and pass the response body and headers to its version parser. Pass the
+   resulting version explicitly to `plan_download`.
+4. Render the concrete artifact name and URL. The download plan carries
+   `canonical_url`, optional `mirror_url`, its compiled parser where applicable,
+   and `ChecksumKind`.
+5. Use the embedded checksum for a static release (`Authoritative`). For a
+   remote artifact, fetch its declared checksum resource and pass the plan and
+   `RemoteResponse` to `finish_checksum`, yielding `Parsed` for the concrete
+   artifact named by the plan. An explicitly selected offline fallback checksum
+   is `Snapshot` only if its version matches exactly. Missing checksums are
+   `None` and fail.
+6. Check the applicable kind against the host policy. Download and compare the
+   digest before decompression or replacement; a mismatch aborts the operation.
 
 The manifest does not ask the backend to trust version text as a checksum. The
 checksum always belongs to the concrete rendered artifact.
@@ -285,14 +429,18 @@ The selected mirror is applied consistently to:
 - a remote `version.txt` or equivalent resource;
 - a remote checksum list or GitHub release metadata page.
 
+Mirrors affect transport only. Plans preserve `canonical_url` and optionally
+provide `mirror_url`; checksum kind is unchanged by which URL the host uses.
+Remote version and checksum responses remain parser input, and neither a
+canonical URL nor a mirror supplies an implicit checksum or signature coverage.
 `priority` is a strategy hint only; the pure resolver does not perform network
 probing or speed tests.
 
 ## Runtime custom artifact sources
 
-`resolveResourceDownload` still accepts either a named artifact registry or an
-inline runtime registry/mirror. User-defined delivery configuration therefore
-stays outside the generated manifest:
+The reference `resolveResourceDownload` API accepts either a named artifact
+registry or an inline runtime registry/mirror. User-defined delivery
+configuration therefore stays outside the generated manifest:
 
 ```ts
 resolveResourceDownload(manifest, "mihomo", {
@@ -310,29 +458,122 @@ resolveResourceDownload(manifest, "mihomo", {
 });
 ```
 
-The result contains both `canonical_url` and `download_url`, allowing callers to
-log the source and retry without acceleration.
+The shared core's download plan preserves `canonical_url` and optional
+`mirror_url`, allowing callers to log the source and retry without acceleration.
+
+## Template value classes
+
+The wire format is unchanged; rendering distinguishes two value classes:
+
+| Class      | Sources                                                                               | Expansion and constraints                                                                                                               |
+| ---------- | ------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| `Authored` | Manifest `source`, registry `variables`, remote `source`                              | Recursively expand values such as `release: "{version}"`; reject cycles, unknown variables, excessive nesting and excessive output size |
+| `Literal`  | Parsed remote versions, host-supplied `source` and `version`, URL component variables | Never recursively expand; versions and host variables must satisfy `VersionLabel`; URL components are used only in mirror templates     |
+
+`VersionLabel` matches `^[A-Za-z0-9][A-Za-z0-9._+-]{0,127}$`. A value such as
+`alpha?x=1#f` is invalid and cannot alter the URL query or fragment. Literal
+values are never reinterpreted as templates.
+
+Rendering does not add percent encoding. Valid artifact URLs remain byte-for-byte
+equal to the reference implementation. Parse the final URL with the Rust `url`
+crate's WHATWG semantics: only http(s) is allowed, and userinfo and fragments are
+forbidden.
+
+## Limits
+
+These limits are core constants. Hosts may lower them, but may not raise them.
+
+| Item                                                | Maximum |
+| --------------------------------------------------- | ------- |
+| Parser body                                         | 2 MiB   |
+| A single header value                               | 8 KiB   |
+| Regex pattern length                                | 1 KiB   |
+| Regex compilation size (`RegexBuilder::size_limit`) | 1 MiB   |
+| Template nesting depth                              | 8       |
+| Output from a single render                         | 8 KiB   |
+
+The A2 implementation checks these values against real page sizes; any revision
+is recorded in the protocol decisions in the associated design spec.
+
+## Error codes
+
+Errors are typed snafu enums with structured fields and a stable `code()` for
+each variant. Across languages, consumers identify errors by `code` and fields,
+not by parsing `message`. Every error carries a `path`, either a JSON path such
+as `resources.<id>.variants[<i>]...` or an argument name.
+
+| Prefix      | Codes                                                                                                                                                            |
+| ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `manifest.` | `unsupported_major`, `invalid_version_format`                                                                                                                    |
+| `parser.`   | `body_too_large`, `not_found`, `ambiguous`, `digest_missing`, `invalid_version`, `invalid_checksum`, `invalid_encoding`, `invalid_pattern`, `group_out_of_range` |
+| `template.` | `unknown_variable`, `cycle`, `depth_exceeded`, `output_too_large`, `invalid_literal`                                                                             |
+| `url.`      | `invalid`, `unsupported_scheme`, `forbidden_component`                                                                                                           |
+| `select.`   | `unknown_resource`, `unsupported_platform`, `unknown_variant`, `no_exact_tags`, `conflicting_selection`, `default_missing`                                       |
+| `resolve.`  | `version_required`, `version_not_in_history`, `mirror_not_allowed`, `unknown_registry`, `unknown_mirror`, `unsupported_parser`                                   |
+| `verify.`   | `kind_rejected` (with `kind`), `digest_mismatch`                                                                                                                 |
+| `validate.` | One code per invariant; the B1 implementation supplies the complete list                                                                                         |
 
 ## Validation invariants
 
-The compiler rejects templates when:
+`validate_manifest` checks compiled manifests and collects all violations;
+compile also rejects invalid templates and generated release data. Each item
+identifies its checking boundary:
 
 - a tag or variant ID is invalid or duplicated (`+` is reserved as the tag-key
-  separator);
-- two variants have the same exact tag combination;
-- a variant references an unknown tag;
-- a variant has two tags from the same non-empty group;
-- multiple variants support a platform but no platform default is configured;
-- a default variant does not provide an artifact for that platform;
-- a static `latest` version is absent from the artifact history;
-- a history contains duplicate versions;
-- a generated latest release snapshot does not contain the advertised artifact;
-- a checksum does not use a supported `<algorithm>:<hex>` representation;
-- a remote resource references an unknown registry;
-- a remote parser is invalid;
-- a registry, mirror or template variable cannot be resolved.
+  separator) — `validate_manifest`;
+- a `tag_key` differs from the canonical concatenation of sorted tag IDs —
+  `validate_manifest`;
+- two variants have the same exact tag combination — `validate_manifest`;
+- a variant references an unknown tag or its expanded tag differs from the
+  resource-level catalog — `validate_manifest`;
+- a variant has two tags from the same non-empty group — `validate_manifest`;
+- multiple variants support a platform but no platform default is configured —
+  `validate_manifest`;
+- a default variant does not exist or does not provide an artifact for that
+  platform — `validate_manifest`;
+- a static `latest` version is absent from the artifact history —
+  `validate_manifest`;
+- a history contains duplicate versions — `validate_manifest`;
+- a generated latest release snapshot does not contain the advertised artifact —
+  compile;
+- a checksum does not use a supported `<algorithm>:<hex>` representation —
+  compile (compiled decoding also enforces `ResourceChecksum`);
+- a registry or mirror reference does not exist — `validate_manifest`;
+- a known remote parser cannot compile — `validate_manifest` (an unknown parser
+  is deferred to artifact resolution as `resolve.unsupported_parser`);
+- template variable dependencies are incomplete — `validate_manifest`;
+- a template cannot be rendered during compiler preflight — compile.
+
+Compiler preflight is a staged boundary: B1 checks only whether variable
+dependencies are complete in `validate_manifest`; D2 checks template
+resolvability at compile time. The reference compiler does not currently perform
+that preflight, so this is not a claim that it already rejects every unresolved
+variable.
 
 If only one variant supports a platform, its default is inferred.
+
+The compiler sorts keys and IDs by Unicode code point rather than
+`localeCompare`, so ordering does not depend on runtime locale.
+
+## Consumers
+
+| Consumer                                   | Integration                                                                                            |
+| ------------------------------------------ | ------------------------------------------------------------------------------------------------------ |
+| Rust host (clash-nyanpasu backend)         | Direct dependency on `manifest-core`; host implements HTTP and sends `ChecksumKind` to the UI over IPC |
+| Node build scripts (downloader, generator) | `@manifest/runtime` through wasm                                                                       |
+| Tauri webview                              | Displays backend results and kind; does not load wasm                                                  |
+| Pure browser                               | Unsupported                                                                                            |
+
+`manifest-core` and `manifest-parser` perform no IO and depend on no HTTP client
+or async runtime. The host performs requests, handles credentials, redirects,
+timeouts and response size limits, and supplies body and headers to parsers.
+Digest computation and comparison are host responsibilities; a mismatch uses
+`verify.digest_mismatch`.
+
+specta is the single source for exported TypeScript domain types. The wasm
+boundary uses `serde-wasm-bindgen` with JSON-compatible serialization, reusing
+the generated types without tsify. Wasm is intended only for the Node build
+scripts in this protocol.
 
 ## Migration from manifest v1
 
@@ -349,9 +590,11 @@ Once every consumer resolves resources through v2, the legacy `latest`,
 
 ## Current integration boundary
 
-This change implements the template compiler, release-history generator,
-mirror-aware remote resolution plan and parsing reference functions. Existing
-Rust updater and build consumers continue to read `manifest/version.json` until
-they are migrated. A consumer migration should expose compatible variants
-through IPC, persist the selected exact tag combination, implement the remote
-parser protocol, and verify the resolved checksum before decompression.
+The template compiler, release-history generator, mirror-aware remote resolver
+and parser functions currently exist as reference implementations. The shared
+core, parser and wasm integration described here are implemented in stages.
+Existing Rust updater and build consumers continue to read
+`manifest/version.json` until they are migrated. A Rust consumer migration
+depends on `manifest-core`, exposes compatible variants and their checksum kind
+through IPC, persists the selected exact tag combination, and verifies the
+resolved checksum before decompression.
