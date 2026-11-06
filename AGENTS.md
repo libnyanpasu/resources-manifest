@@ -7,10 +7,10 @@
 - `crates/manifest-metadata`：资源元类型定义，以 serde、schemars、specta 标注。
   强约束内建在类型里：`ManifestVersion`（只接受字面量 2）、`ResourceChecksum`
   （`<algorithm>:<hex>` 校验并归一化）、`FiniteF64`（拒绝 NaN/无穷）。
-- `crates/manifest-schema-generator`：从元类型生成 TypeScript 类型定义与 JSON
+- `crates/manifest-schema-generator`：从元类型生成 TypeScript 类型定义、版本常量与 JSON
   Schema，写入 `packages/manifest-metadata`。
 - `packages/manifest-metadata`：纯 TypeScript 库，存放生成的类型与 schema
-  （`src/types.ts`、`schema/` 均为生成物，禁止手改）。契约层级说明见其 README。
+  （`src/types.ts`、`src/version.ts`、`schema/` 均为生成物，禁止手改）。契约层级说明见其 README。
 - `packages/manifest-generator`：生成完整 manifest 的 Node.js 可执行包。
 - `packages/manifest-downloader`：解析 manifest 并按需下载的 Node.js 可执行包。
 - `files/`：上游参考实现与设计文档（只读参考，不参与 lint/fmt/test）。
@@ -28,7 +28,7 @@
 ## 常用命令
 
 - `pnpm install`：安装依赖。
-- `pnpm generate:schema`：重新生成 TS 类型与 JSON Schema（cargo 运行后自动
+- `pnpm generate:schema`：重新生成 TS 类型、版本常量与 JSON Schema（cargo 运行后自动
   `prettier --write` 产物）。
 - `pnpm check:generated`：重新生成并与已提交产物比对（`git diff`），用于 CI
   防漂移。

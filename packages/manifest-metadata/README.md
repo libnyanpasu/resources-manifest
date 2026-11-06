@@ -1,10 +1,10 @@
 # @manifest/metadata
 
-Resource manifest 的元数据包：TS 类型定义与 JSON Schema，均由
+Resource manifest 的元数据包：TS 类型定义、版本常量与 JSON Schema，均由
 `crates/manifest-schema-generator` 从 `crates/manifest-metadata` 的 Rust
 元类型生成。
 
-**不要手工编辑** `src/types.ts` 或 `schema/`。重新生成：
+**不要手工编辑** `src/types.ts`、`src/version.ts` 或 `schema/`。重新生成：
 
 ```sh
 pnpm generate:schema
