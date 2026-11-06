@@ -6,7 +6,7 @@
   "license": "GPL-3.0-only",
   "scripts": {
     "generate:schema": "cargo run -p manifest-schema-generator && prettier --write packages/manifest-metadata/src/types.ts packages/manifest-metadata/src/version.ts packages/manifest-metadata/schema",
-    "check:generated": "pnpm generate:schema && git diff --exit-code -- packages/manifest-metadata",
+    "check:generated": "pnpm generate:schema && node scripts/check-generated-clean.ts packages/manifest-metadata",
     "check": "pnpm fmt:check && pnpm lint && pnpm typecheck",
     "fmt": "prettier --write .",
     "fmt:check": "prettier --check .",

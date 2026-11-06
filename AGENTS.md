@@ -30,8 +30,8 @@
 - `pnpm install`：安装依赖。
 - `pnpm generate:schema`：重新生成 TS 类型、版本常量与 JSON Schema（cargo 运行后自动
   `prettier --write` 产物）。
-- `pnpm check:generated`：重新生成并与已提交产物比对（`git diff`），用于 CI
-  防漂移。
+- `pnpm check:generated`：重新生成后检查目标目录的 Git 状态（包含未跟踪文件），
+  用于 CI 防漂移。
 - `pnpm check`：`prettier --check` + `oxlint` + `tsc --noEmit`。
 - `pnpm fmt`：`prettier --write .`。
 - `pnpm test`：`node --test` 运行 `packages/*/*_test.ts`。

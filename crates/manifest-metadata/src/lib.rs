@@ -471,7 +471,8 @@ impl std::error::Error for NonFiniteF64Error {}
 /// A finite `f64`, serialized like a JavaScript number: integral values
 /// without a fraction (matching `JSON.stringify`), and NaN/infinity are
 /// rejected instead of silently becoming `null`.
-#[derive(Debug, Clone, Copy, PartialEq, PartialOrd)]
+#[derive(Debug, Clone, Copy, PartialEq, PartialOrd, Type)]
+#[specta(inline)]
 pub struct FiniteF64(f64);
 
 impl FiniteF64 {
@@ -522,13 +523,6 @@ impl JsonSchema for FiniteF64 {
 
     fn inline_schema() -> bool {
         true
-    }
-}
-
-impl Type for FiniteF64 {
-    fn definition(types: &mut Types) -> DataType {
-        // Inline plain number, matching the reference `priority?: number`.
-        f64::definition(types)
     }
 }
 
@@ -900,6 +894,80 @@ mod tests {
         assert!(FiniteF64::new(f64::NAN).is_err());
         assert!(FiniteF64::new(f64::INFINITY).is_err());
         assert!(serde_json::from_str::<FiniteF64>("1e400").is_err());
+    }
+
+    #[test]
+    fn compiled_manifest_ignores_unknown_fields() {
+        let reference: Value =
+            serde_json::from_str(include_str!("../tests/fixtures/resources.json"))
+                .expect("deserialize reference JSON");
+        let expected: ResourceManifest =
+            serde_json::from_value(reference.clone()).expect("deserialize reference manifest");
+        for path in [
+            "",
+            "/resources/clash_premium",
+            "/resources/clash_premium/variants/0",
+            "/resources/clash_premium/variants/0/artifacts/windows-x86_64",
+            "/registries/github-release",
+            "/mirrors/direct",
+        ] {
+            let mut extended = reference.clone();
+            extended
+                .pointer_mut(path)
+                .expect("fixture node exists")
+                .as_object_mut()
+                .expect("fixture node is an object")
+                .insert("unknown_field".into(), json!(true));
+            let parsed: ResourceManifest = serde_json::from_value(extended)
+                .unwrap_or_else(|error| panic!("unknown field at {path} must be ignored: {error}"));
+            assert_eq!(parsed, expected, "known fields at {path} must be preserved");
+        }
+    }
+
+    #[test]
+    fn template_shared_types_ignore_unknown_fields() {
+        let template = json!({
+            "manifest_version": 2,
+            "registries": { "example": { "name": "Example", "url_template": "https://example.com/{artifact}" } },
+            "mirrors": { "direct": { "name": "Direct", "url_template": "{url}" } },
+            "resources": {
+                "example": {
+                    "name": "Example",
+                    "registry": "example",
+                    "tags": {},
+                    "variants": [{
+                        "name": "Default",
+                        "tags": [],
+                        "artifacts": { "windows-x86_64": {
+                            "artifact": "example.zip",
+                            "version": { "type": "static", "latest": "v1", "releases": [{ "version": "v1" }] }
+                        } }
+                    }]
+                }
+            }
+        });
+        let expected: ResourceManifestTemplate =
+            serde_json::from_value(template.clone()).expect("deserialize valid template");
+        for path in [
+            "/registries/example",
+            "/mirrors/direct",
+            "/resources/example/variants/0/artifacts/windows-x86_64",
+            "/resources/example/variants/0/artifacts/windows-x86_64/version",
+            "/resources/example/variants/0/artifacts/windows-x86_64/version/releases/0",
+        ] {
+            let mut extended = template.clone();
+            extended
+                .pointer_mut(path)
+                .expect("template node exists")
+                .as_object_mut()
+                .expect("template node is an object")
+                .insert("unknown_field".into(), json!(true));
+            let parsed: ResourceManifestTemplate =
+                serde_json::from_value(extended).unwrap_or_else(|error| {
+                    panic!("unknown shared field at {path} must be ignored: {error}")
+                });
+            assert_eq!(parsed, expected, "known fields at {path} must be preserved");
+        }
     }
 
     #[test]

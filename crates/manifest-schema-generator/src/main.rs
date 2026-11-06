@@ -8,8 +8,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use manifest_metadata::{
-    FiniteF64, MirrorDefinition, RESOURCE_MANIFEST_VERSION, ResourceManifest,
-    ResourceManifestTemplate,
+    FiniteF64, RESOURCE_MANIFEST_VERSION, ResourceManifest, ResourceManifestTemplate,
 };
 use serde_json::Value;
 use specta::datatype::{DataType, Field, Fields, NamedReferenceType, Primitive, Reference};
@@ -161,63 +160,53 @@ impl Format for SerdeShape {
 }
 
 fn validate_f64(types: &Types) -> Result<(), FormatError> {
-    let _: fn(&MirrorDefinition) -> Option<FiniteF64> = |mirror| mirror.priority;
-    let finite = <Option<FiniteF64>>::definition(&mut Types::default());
-    let mut occurrences = 0;
+    let finite = FiniteF64::definition(&mut Types::default());
     for named in types.into_sorted_iter() {
-        let count = named.ty.as_ref().map(count_f64).unwrap_or_default()
+        let count = named
+            .ty
+            .as_ref()
+            .map(|ty| count_f64(ty, &finite))
+            .unwrap_or_default()
             + named
                 .generics
                 .iter()
                 .filter_map(|generic| generic.default.as_ref())
-                .map(count_f64)
+                .map(|ty| count_f64(ty, &finite))
                 .sum::<usize>();
-        if count == 0 {
-            continue;
-        }
-        let valid = named.name == "MirrorDefinition"
-            && named.module_path == "manifest_metadata"
-            && count == 1
-            && matches!(&named.ty, Some(DataType::Struct(strct))
-                if matches!(&strct.fields, Fields::Named(fields)
-                    if fields.fields.iter().any(|(name, field)| name == "priority" && field.ty.as_ref() == Some(&finite))));
-        if !valid {
+        if count != 0 {
             return Err(format!(
-                "unexpected f64 in {}::{}; only the inline FiniteF64 at MirrorDefinition.priority is allowed",
+                "unexpected bare f64 in {}::{}; f64 is only allowed inside FiniteF64",
                 named.module_path, named.name
-            ).into());
+            )
+            .into());
         }
-        occurrences += count;
-    }
-    if occurrences != 1 {
-        return Err(format!(
-            "expected exactly one inline FiniteF64 in the type graph, found {occurrences}"
-        )
-        .into());
     }
     Ok(())
 }
 
 #[must_use]
-fn count_f64(ty: &DataType) -> usize {
+fn count_f64(ty: &DataType, finite: &DataType) -> usize {
+    if ty == finite {
+        return 0;
+    }
     match ty {
         DataType::Primitive(Primitive::f64) => 1,
         DataType::Primitive(_) | DataType::Generic(_) => 0,
-        DataType::List(list) => count_f64(&list.ty),
-        DataType::Map(map) => count_f64(map.key_ty()) + count_f64(map.value_ty()),
-        DataType::Struct(strct) => count_f64_fields(&strct.fields),
+        DataType::List(list) => count_f64(&list.ty, finite),
+        DataType::Map(map) => count_f64(map.key_ty(), finite) + count_f64(map.value_ty(), finite),
+        DataType::Struct(strct) => count_f64_fields(&strct.fields, finite),
         DataType::Enum(enm) => enm
             .variants
             .iter()
-            .map(|(_, variant)| count_f64_fields(&variant.fields))
+            .map(|(_, variant)| count_f64_fields(&variant.fields, finite))
             .sum(),
-        DataType::Tuple(tuple) => tuple.elements.iter().map(count_f64).sum(),
-        DataType::Nullable(inner) => count_f64(inner),
-        DataType::Intersection(types) => types.iter().map(count_f64).sum(),
+        DataType::Tuple(tuple) => tuple.elements.iter().map(|ty| count_f64(ty, finite)).sum(),
+        DataType::Nullable(inner) => count_f64(inner, finite),
+        DataType::Intersection(types) => types.iter().map(|ty| count_f64(ty, finite)).sum(),
         DataType::Reference(Reference::Named(reference)) => match &reference.inner {
-            NamedReferenceType::Inline { dt, .. } => count_f64(dt),
+            NamedReferenceType::Inline { dt, .. } => count_f64(dt, finite),
             NamedReferenceType::Reference { generics, .. } => {
-                generics.iter().map(|(_, ty)| count_f64(ty)).sum()
+                generics.iter().map(|(_, ty)| count_f64(ty, finite)).sum()
             }
             NamedReferenceType::Recursive(_) => 0,
         },
@@ -226,19 +215,19 @@ fn count_f64(ty: &DataType) -> usize {
 }
 
 #[must_use]
-fn count_f64_fields(fields: &Fields) -> usize {
+fn count_f64_fields(fields: &Fields, finite: &DataType) -> usize {
     match fields {
         Fields::Named(named) => named
             .fields
             .iter()
             .filter_map(|(_, field)| field.ty.as_ref())
-            .map(count_f64)
+            .map(|ty| count_f64(ty, finite))
             .sum(),
         Fields::Unnamed(unnamed) => unnamed
             .fields
             .iter()
             .filter_map(|field| field.ty.as_ref())
-            .map(count_f64)
+            .map(|ty| count_f64(ty, finite))
             .sum(),
         Fields::Unit => 0,
     }
@@ -654,22 +643,33 @@ mod tests {
     }
 
     #[test]
-    fn f64_is_only_allowed_at_the_inline_finite_f64_before_remapping() {
+    fn f64_is_only_allowed_inside_finite_f64_before_remapping() {
         use specta::datatype::{Enum, Generic, GenericDefinition, List, Map, Tuple, Variant};
 
-        let types = Types::default()
+        let mut types = Types::default()
             .register::<ResourceManifest>()
             .register::<ResourceManifestTemplate>();
         let shape = SerdeShape::new();
         shape
             .map_types(&types)
-            .expect("current graph has one FiniteF64");
-        assert_eq!(
-            validate_f64(&Types::default())
-                .expect_err("missing FiniteF64 must fail")
-                .to_string(),
-            "expected exactly one inline FiniteF64 in the type graph, found 0"
-        );
+            .expect("current graph only uses FiniteF64");
+        validate_f64(&Types::default()).expect("a graph without f64 is valid");
+        NamedDataType::new("ExtraFinite", &mut types, |types, named| {
+            named.ty = Some(
+                Struct::named()
+                    .field("value", Field::new(FiniteF64::definition(types)))
+                    .field(
+                        "optional",
+                        Field::new(<Option<FiniteF64>>::definition(types)),
+                    )
+                    .field("list", Field::new(<Vec<FiniteF64>>::definition(types)))
+                    .build(),
+            );
+        });
+        let bindings = Typescript::default()
+            .export(&types, SerdeShape::new())
+            .expect("additional FiniteF64 usage sites are valid");
+        assert!(bindings.contains("value: number"), "{bindings}");
 
         let float = DataType::Primitive(Primitive::f64);
         let mut enm = Enum::default();
@@ -677,7 +677,7 @@ mod tests {
             "Value".into(),
             Variant::unnamed().field(Field::new(float.clone())).build(),
         ));
-        let generic = NamedDataType::new("GenericContainer", &mut types.clone(), |_, named| {
+        let generic = NamedDataType::new("GenericContainer", &mut types, |_, named| {
             named.ty = Some(Primitive::str.into());
         })
         .reference(vec![(Generic::new("T".into()), float.clone())]);
@@ -702,24 +702,16 @@ mod tests {
             let error = shape
                 .map_types(&invalid)
                 .expect_err("extra f64 must fail before lossless remapping");
-            assert!(error.to_string().contains("unexpected f64"), "{error}");
+            assert!(error.to_string().contains("unexpected bare f64"), "{error}");
         }
-        let mut invalid = types.clone();
-        invalid.iter_mut(|named| {
-            if named.name == "MirrorDefinition"
-                && let Some(DataType::Struct(strct)) = &mut named.ty
-                && let Fields::Named(fields) = &mut strct.fields
-            {
-                for (name, _) in &mut fields.fields {
-                    if name == "priority" {
-                        *name = "other".into();
-                    }
-                }
-            }
+        let mut impostor = types.clone();
+        NamedDataType::new("FiniteF64", &mut impostor, |_, named| {
+            named.module_path = "manifest_metadata".into();
+            named.ty = Some(float.clone());
         });
         assert!(
-            validate_f64(&invalid).is_err(),
-            "a single f64 at the wrong location must fail"
+            validate_f64(&impostor).is_err(),
+            "the boundary must be identified by type identity"
         );
         let mut invalid = types;
         NamedDataType::new("DefaultFloat", &mut invalid, |_, named| {
