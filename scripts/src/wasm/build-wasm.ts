@@ -1,9 +1,7 @@
 import { spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { fileURLToPath } from "node:url";
-
-const root = fileURLToPath(new URL("../", import.meta.url));
+import { root } from "../shared/repo-paths.ts";
 
 function fail(message: string): never {
   console.error(`build:wasm: ${message}`);

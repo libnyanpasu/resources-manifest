@@ -5,16 +5,16 @@
   "type": "module",
   "license": "GPL-3.0-only",
   "scripts": {
-    "build:wasm": "node scripts/build-wasm.ts",
+    "build:wasm": "node scripts/src/wasm/build-wasm.ts",
     "generate:schema": "cargo run -p manifest-schema-generator && prettier --write packages/manifest-metadata/src/types.ts packages/manifest-metadata/src/version.ts packages/manifest-metadata/schema packages/manifest-runtime/src/types.ts",
-    "check:generated": "pnpm generate:schema && node scripts/check-generated-clean.ts packages/manifest-metadata packages/manifest-runtime/src/types.ts",
-    "check:conformance": "pnpm build:wasm && node scripts/check-conformance.ts",
-    "check": "pnpm fmt:check && pnpm lint && pnpm typecheck",
+    "check:generated": "pnpm run generate:schema && node scripts/src/generate/check-generated-clean.ts packages/manifest-metadata packages/manifest-runtime/src/types.ts",
+    "check:conformance": "pnpm run build:wasm && node scripts/src/conformance/check-conformance.ts",
+    "check": "pnpm run fmt:check && pnpm run lint && pnpm run typecheck",
     "fmt": "prettier --write .",
     "fmt:check": "prettier --check .",
     "lint": "oxlint",
     "typecheck": "tsc --noEmit -p tsconfig.json",
-    "test": "pnpm build:wasm && node --test \"packages/*/*_test.ts\""
+    "test": "pnpm run build:wasm && node --test \"packages/*/*_test.ts\""
   },
   "devDependencies": {
     "@types/node": "26.6.6",

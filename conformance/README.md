@@ -561,7 +561,7 @@ cargo test -p manifest-core --test conformance --test resolve --test reference_g
 node --test packages/manifest-runtime/conformance_test.ts
 ```
 
-`scripts/check-conformance.ts` 继承调用者环境（包括 `RUSTUP_TOOLCHAIN`），
+`scripts/src/conformance/check-conformance.ts` 继承调用者环境（包括 `RUSTUP_TOOLCHAIN`），
 为 Rust 和 Node 分别创建独立的空临时清单，通过 `MANIFEST_CONFORMANCE_LIST`
 传给运行器。两端只在用例断言通过后追加一行 JSON 字符串，完整保留用例名；
 fixture 名称为 `fixtures.github-expanded-assets.<fixture stem>.<asset name>`。
