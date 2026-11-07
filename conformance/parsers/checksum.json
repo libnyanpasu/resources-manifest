@@ -2236,9 +2236,11 @@
     },
     "expect": {
       "error": {
-        "code": "parser.invalid_checksum",
+        "code": "parser.not_found",
         "path": "response.headers.x-checksum-sha256",
-        "fields": {}
+        "fields": {
+          "name": "X-Checksum-Sha256"
+        }
       }
     }
   },
@@ -2364,11 +2366,7 @@
       "artifact": "selected.zip"
     },
     "expect": {
-      "error": {
-        "code": "parser.invalid_encoding",
-        "path": "response.headers.x-checksum-sha256",
-        "fields": {}
-      }
+      "ok": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
     }
   },
   {
@@ -2445,11 +2443,7 @@
       "artifact": "selected.zip"
     },
     "expect": {
-      "error": {
-        "code": "parser.invalid_checksum",
-        "path": "response.headers.x-checksum-sha256",
-        "fields": {}
-      }
+      "ok": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
     }
   },
   {
@@ -3176,6 +3170,440 @@
           "limit": 8192,
           "actual": 8193
         }
+      }
+    }
+  },
+  {
+    "name": "checksum.header.combined_identical",
+    "input": {
+      "parser": {
+        "type": "header",
+        "name": "X-Checksum-Sha256",
+        "algorithm": "sha256",
+        "encoding": "hex"
+      },
+      "response": {
+        "body": "",
+        "headers": [
+          [
+            "X-Checksum-Sha256",
+            "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef, 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+          ]
+        ]
+      },
+      "artifact": "selected.zip"
+    },
+    "expect": {
+      "ok": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+    }
+  },
+  {
+    "name": "checksum.header.combined_conflicting",
+    "input": {
+      "parser": {
+        "type": "header",
+        "name": "X-Checksum-Sha256",
+        "algorithm": "sha256",
+        "encoding": "hex"
+      },
+      "response": {
+        "body": "",
+        "headers": [
+          [
+            "X-Checksum-Sha256",
+            "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef,fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210"
+          ]
+        ]
+      },
+      "artifact": "selected.zip"
+    },
+    "expect": {
+      "error": {
+        "code": "parser.ambiguous",
+        "path": "response.headers.x-checksum-sha256",
+        "fields": {
+          "name": "X-Checksum-Sha256"
+        }
+      }
+    }
+  },
+  {
+    "name": "checksum.header.separate_and_combined",
+    "input": {
+      "parser": {
+        "type": "header",
+        "name": "X-Checksum-Sha256",
+        "algorithm": "sha256",
+        "encoding": "hex"
+      },
+      "response": {
+        "body": "",
+        "headers": [
+          [
+            "X-Checksum-Sha256",
+            "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+          ],
+          [
+            "x-checksum-sha256",
+            "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef, 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+          ]
+        ]
+      },
+      "artifact": "selected.zip"
+    },
+    "expect": {
+      "ok": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+    }
+  },
+  {
+    "name": "checksum.header.combined_ows",
+    "input": {
+      "parser": {
+        "type": "header",
+        "name": "X-Checksum-Sha256",
+        "algorithm": "sha256",
+        "encoding": "hex"
+      },
+      "response": {
+        "body": "",
+        "headers": [
+          [
+            "X-Checksum-Sha256",
+            " \t0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\t ,\t 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef \t"
+          ]
+        ]
+      },
+      "artifact": "selected.zip"
+    },
+    "expect": {
+      "ok": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+    }
+  },
+  {
+    "name": "checksum.header.combined_empty_middle",
+    "input": {
+      "parser": {
+        "type": "header",
+        "name": "X-Checksum-Sha256",
+        "algorithm": "sha256",
+        "encoding": "hex"
+      },
+      "response": {
+        "body": "",
+        "headers": [
+          [
+            "X-Checksum-Sha256",
+            "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef,,0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+          ]
+        ]
+      },
+      "artifact": "selected.zip"
+    },
+    "expect": {
+      "ok": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+    }
+  },
+  {
+    "name": "checksum.header.combined_empty_leading",
+    "input": {
+      "parser": {
+        "type": "header",
+        "name": "X-Checksum-Sha256",
+        "algorithm": "sha256",
+        "encoding": "hex"
+      },
+      "response": {
+        "body": "",
+        "headers": [
+          [
+            "X-Checksum-Sha256",
+            ", 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+          ]
+        ]
+      },
+      "artifact": "selected.zip"
+    },
+    "expect": {
+      "ok": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+    }
+  },
+  {
+    "name": "checksum.header.combined_only_empty",
+    "input": {
+      "parser": {
+        "type": "header",
+        "name": "X-Checksum-Sha256",
+        "algorithm": "sha256",
+        "encoding": "hex"
+      },
+      "response": {
+        "body": "",
+        "headers": [["X-Checksum-Sha256", ", \t, ,\t"]]
+      },
+      "artifact": "selected.zip"
+    },
+    "expect": {
+      "error": {
+        "code": "parser.not_found",
+        "path": "response.headers.x-checksum-sha256",
+        "fields": {
+          "name": "X-Checksum-Sha256"
+        }
+      }
+    }
+  },
+  {
+    "name": "checksum.header.empty_value",
+    "input": {
+      "parser": {
+        "type": "header",
+        "name": "X-Checksum-Sha256",
+        "algorithm": "sha256",
+        "encoding": "hex"
+      },
+      "response": {
+        "body": "",
+        "headers": [["X-Checksum-Sha256", ""]]
+      },
+      "artifact": "selected.zip"
+    },
+    "expect": {
+      "error": {
+        "code": "parser.not_found",
+        "path": "response.headers.x-checksum-sha256",
+        "fields": {
+          "name": "X-Checksum-Sha256"
+        }
+      }
+    }
+  },
+  {
+    "name": "checksum.header.combined_invalid_hex",
+    "input": {
+      "parser": {
+        "type": "header",
+        "name": "X-Checksum-Sha256",
+        "algorithm": "sha256",
+        "encoding": "hex"
+      },
+      "response": {
+        "body": "",
+        "headers": [["X-Checksum-Sha256", "zz, zz"]]
+      },
+      "artifact": "selected.zip"
+    },
+    "expect": {
+      "error": {
+        "code": "parser.invalid_checksum",
+        "path": "response.headers.x-checksum-sha256",
+        "fields": {}
+      }
+    }
+  },
+  {
+    "name": "checksum.header.combined_invalid_base64",
+    "input": {
+      "parser": {
+        "type": "header",
+        "name": "X-Checksum-Sha256",
+        "algorithm": "sha256",
+        "encoding": "base64"
+      },
+      "response": {
+        "body": "",
+        "headers": [["X-Checksum-Sha256", "!@, !@"]]
+      },
+      "artifact": "selected.zip"
+    },
+    "expect": {
+      "error": {
+        "code": "parser.invalid_encoding",
+        "path": "response.headers.x-checksum-sha256",
+        "fields": {}
+      }
+    }
+  },
+  {
+    "name": "checksum.header.combined_invalid_length",
+    "input": {
+      "parser": {
+        "type": "header",
+        "name": "X-Checksum-Sha256",
+        "algorithm": "sha256",
+        "encoding": "hex"
+      },
+      "response": {
+        "body": "",
+        "headers": [["X-Checksum-Sha256", "abcd,abcd"]]
+      },
+      "artifact": "selected.zip"
+    },
+    "expect": {
+      "error": {
+        "code": "parser.invalid_checksum",
+        "path": "response.headers.x-checksum-sha256",
+        "fields": {}
+      }
+    }
+  },
+  {
+    "name": "checksum.header.combined_base64",
+    "input": {
+      "parser": {
+        "type": "header",
+        "name": "X-Checksum-Sha256",
+        "algorithm": "sha256",
+        "encoding": "base64"
+      },
+      "response": {
+        "body": "",
+        "headers": [
+          [
+            "X-Checksum-Sha256",
+            "ASNFZ4mrze8BI0VniavN7wEjRWeJq83vASNFZ4mrze8=,\tASNFZ4mrze8BI0VniavN7wEjRWeJq83vASNFZ4mrze8="
+          ]
+        ]
+      },
+      "artifact": "selected.zip"
+    },
+    "expect": {
+      "ok": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+    }
+  },
+  {
+    "name": "checksum.header.combined_base64_wrong_length",
+    "input": {
+      "parser": {
+        "type": "header",
+        "name": "X-Checksum-Sha256",
+        "algorithm": "sha256",
+        "encoding": "base64"
+      },
+      "response": {
+        "body": "",
+        "headers": [["X-Checksum-Sha256", "YQ==,YQ=="]]
+      },
+      "artifact": "selected.zip"
+    },
+    "expect": {
+      "error": {
+        "code": "parser.invalid_checksum",
+        "path": "response.headers.x-checksum-sha256",
+        "fields": {}
+      }
+    }
+  },
+  {
+    "name": "checksum.header.combined_invalid_differing",
+    "input": {
+      "parser": {
+        "type": "header",
+        "name": "X-Checksum-Sha256",
+        "algorithm": "sha256",
+        "encoding": "hex"
+      },
+      "response": {
+        "body": "",
+        "headers": [["X-Checksum-Sha256", "zz,xx"]]
+      },
+      "artifact": "selected.zip"
+    },
+    "expect": {
+      "error": {
+        "code": "parser.ambiguous",
+        "path": "response.headers.x-checksum-sha256",
+        "fields": {
+          "name": "X-Checksum-Sha256"
+        }
+      }
+    }
+  },
+  {
+    "name": "checksum.header.combined_entry_limit",
+    "input": {
+      "parser": {
+        "type": "header",
+        "name": "X-Checksum-Sha256",
+        "algorithm": "sha256",
+        "encoding": "hex"
+      },
+      "response": {
+        "body": "",
+        "headers": [
+          [
+            "X-Checksum-Sha256",
+            "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef,0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+          ]
+        ]
+      },
+      "artifact": "selected.zip",
+      "limits": {
+        "header_value_bytes": 64
+      }
+    },
+    "expect": {
+      "error": {
+        "code": "parser.body_too_large",
+        "path": "response.headers.x-checksum-sha256",
+        "fields": {
+          "limit": 64,
+          "actual": 129
+        }
+      }
+    }
+  },
+  {
+    "name": "checksum.header.combined_entry_at_limit",
+    "input": {
+      "parser": {
+        "type": "header",
+        "name": "X-Checksum-Sha256",
+        "algorithm": "sha256",
+        "encoding": "hex"
+      },
+      "response": {
+        "body": "",
+        "headers": [
+          [
+            "X-Checksum-Sha256",
+            "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef, 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+          ]
+        ]
+      },
+      "artifact": "selected.zip",
+      "limits": {
+        "header_value_bytes": 130
+      }
+    },
+    "expect": {
+      "ok": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+    }
+  },
+  {
+    "name": "checksum.header.non_ows_preserved",
+    "input": {
+      "parser": {
+        "type": "header",
+        "name": "X-Checksum-Sha256",
+        "algorithm": "sha256",
+        "encoding": "hex"
+      },
+      "response": {
+        "body": "",
+        "headers": [
+          [
+            "X-Checksum-Sha256",
+            " 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef, 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+          ]
+        ]
+      },
+      "artifact": "selected.zip"
+    },
+    "expect": {
+      "error": {
+        "code": "parser.invalid_checksum",
+        "path": "response.headers.x-checksum-sha256",
+        "fields": {}
       }
     }
   }

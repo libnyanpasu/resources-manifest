@@ -99,7 +99,19 @@ fn parse_header(
             });
         }
     }
-    let value = response.single_header(name)?;
+    let mut values = response
+        .header_values(name)
+        .flat_map(|value| value.split(','))
+        .map(|value| value.trim_matches([' ', '\t']))
+        .filter(|value| !value.is_empty());
+    let value = values.next().ok_or_else(|| ParseError::FindHeader {
+        name: name.to_owned(),
+    })?;
+    if values.any(|other| other != value) {
+        return Err(ParseError::SelectHeader {
+            name: name.to_owned(),
+        });
+    }
     let digest = match encoding {
         HeaderEncoding::Hex => value.to_owned(),
         HeaderEncoding::Base64 => STANDARD

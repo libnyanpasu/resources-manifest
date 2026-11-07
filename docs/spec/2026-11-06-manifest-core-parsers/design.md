@@ -215,19 +215,19 @@ S0a 卡把本节内容写进 `D/`。本节是规范性的。
 
 ### 5.3 parser 精确语义
 
-parser 的输入是 `RemoteResponse { body: &str, headers: &[(String, String)] }`；header 名称不区分大小写。body 或单个 header 值超过上限（§5.5）直接报 `parser.body_too_large`，字段为 `{ limit, actual }`。
+parser 的输入是 `RemoteResponse { body: &str, headers: &[(String, String)] }`；header 名称不区分大小写。headers 的每项是 HTTP 客户端交付的字段值，可以是一行，也可以是按 RFC 9110 §5.3 合并的逗号列表。body 或单个收到的 header 值超过上限（§5.5）直接报 `parser.body_too_large`，字段为 `{ limit, actual }`。
 
-| parser                  | 语义                                                                                                                                                                                                                             |
-| ----------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `text`                  | `trim` 默认 `true`：先去掉首尾空白再校验；为 `false` 时 body 原样校验。结果必须满足 `VersionLabel`                                                                                                                               |
-| `regex`                 | 方言是 Rust `regex` crate 语法，不带 flag，可以用内联 `(?i)` 等。取第一个匹配的 `group`（默认 1，0 表示整个匹配），去掉首尾空白后必须满足 `VersionLabel`。校验时检查：pattern 能编译、编译大小不超上限、`group` 小于捕获组数量   |
-| `checksum`              | body 去掉首尾空白后按 `ResourceChecksum` 解析                                                                                                                                                                                    |
-| `gnu`                   | 按行切分（`\n` 或 `\r\n`），行的格式为 `<hex>[ \t]+[* ]?<name>[ \t]*`；名称完全相等；hex 长度必须等于该算法的长度。同名多行、digest 相同时取一条；digest 不同报 `ambiguous`；没有匹配报 `not_found`                              |
-| `bsd`                   | 行的格式为 `<LABEL> (<name>) = <hex>`；`LABEL` 不区分大小写，必须等于配置的算法，不等的行跳过；名称完全相等；冲突报 `ambiguous`                                                                                                  |
-| `github-release-assets` | 把 HTML 切成资产条目：名称取自下载链接 `href` 的最后一个路径段（百分号解码后），digest 只从同一条目内读取。名称必须完全相等；没有匹配报 `not_found`；匹配条目没有 digest 报 `digest_missing`；同名条目 digest 冲突报 `ambiguous` |
-| `header`（新增）        | `{ type: "header", name, algorithm, encoding: "hex" \| "base64" }`：读取指定的响应头。没有这个头报 `not_found`；同名头出现多次且值不同报 `ambiguous`；`base64` 先解码再转成小写 hex；长度必须等于该算法的长度                    |
+| parser                  | 语义                                                                                                                                                                                                                                                                                                                                   |
+| ----------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `text`                  | `trim` 默认 `true`：先去掉首尾空白再校验；为 `false` 时 body 原样校验。结果必须满足 `VersionLabel`                                                                                                                                                                                                                                     |
+| `regex`                 | 方言是 Rust `regex` crate 语法，不带 flag，可以用内联 `(?i)` 等。取第一个匹配的 `group`（默认 1，0 表示整个匹配），去掉首尾空白后必须满足 `VersionLabel`。校验时检查：pattern 能编译、编译大小不超上限、`group` 小于捕获组数量                                                                                                         |
+| `checksum`              | body 去掉首尾空白后按 `ResourceChecksum` 解析                                                                                                                                                                                                                                                                                          |
+| `gnu`                   | 按行切分（`\n` 或 `\r\n`），行的格式为 `<hex>[ \t]+[* ]?<name>[ \t]*`；名称完全相等；hex 长度必须等于该算法的长度。同名多行、digest 相同时取一条；digest 不同报 `ambiguous`；没有匹配报 `not_found`                                                                                                                                    |
+| `bsd`                   | 行的格式为 `<LABEL> (<name>) = <hex>`；`LABEL` 不区分大小写，必须等于配置的算法，不等的行跳过；名称完全相等；冲突报 `ambiguous`                                                                                                                                                                                                        |
+| `github-release-assets` | 把 HTML 切成资产条目：名称取自下载链接 `href` 的最后一个路径段（百分号解码后），digest 只从同一条目内读取。名称必须完全相等；没有匹配报 `not_found`；匹配条目没有 digest 报 `digest_missing`；同名条目 digest 冲突报 `ambiguous`                                                                                                       |
+| `header`（新增）        | `{ type: "header", name, algorithm, encoding: "hex" \| "base64" }`：收集指定名称的所有字段值（名称大小写不敏感），每项按 `,` 拆分，裁剪元素两端的 SP / HTAB 并忽略空元素（RFC 9110 §5.6.1）。没有元素报 `not_found`（包括只有空元素的值）；元素完全相同则接受，不同报 `ambiguous`；`base64` 先解码再转成小写 hex；长度必须等于算法长度 |
 
-header 的 base64 非法时报 `parser.invalid_encoding`；hex 含非十六进制字符或字符数为奇数，以及解码后 digest 长度不等于算法长度，均报 `parser.invalid_checksum`。单个 header 值超过单值上限（默认 8 KiB，§5.5；宿主调低后以生效值为准）时优先报 `parser.body_too_large`（`{ limit, actual }`）；此码同时适用于 body 和单个 header 值，不新增错误码。
+合法的 hex / base64 digest 不含逗号，单个合法值不因拆分而改变。8 KiB 单值上限在拆分前逐项检查，不按元素计算。header 的 base64 非法时报 `parser.invalid_encoding`；hex 含非十六进制字符或字符数为奇数，以及解码后 digest 长度不等于算法长度，均报 `parser.invalid_checksum`。单个 header 值超过单值上限（默认 8 KiB，§5.5；宿主调低后以生效值为准）时优先报 `parser.body_too_large`（`{ limit, actual }`）；此码同时适用于 body 和单个 header 值，不新增错误码。
 
 version parser 不支持 header，需求出现时再按 minor 增加。
 
@@ -292,7 +292,7 @@ parser 规则错误使用相对于规则的定位：`invalid_pattern` 为 `parse
 
 A4 细化：GitHub 的 `not_found`、`digest_missing`、`ambiguous` 字段均为 `{ name }`，名称为请求的 artifact 原值；`invalid_checksum` 字段为 `{}`，包括不支持的算法、非法 hex 和算法长度错误。上述错误的 `path` 均为 `response.body`。匹配条目没有 digest 时拒绝，即使另有同名条目带 digest；未匹配条目的畸形 digest 不参与校验。
 
-A2–A5 细化：version 的 `not_found`、`invalid_version` 字段为 `{}`；GNU / BSD 的 `not_found`、`ambiguous` 字段为 `{ name }`，保留 artifact 原值。`invalid_checksum`、`invalid_encoding` 字段为 `{}`；`invalid_pattern` 在 pattern 字节数超限时为 `{ limit, actual }`，语法或编译大小错误时为 `{}`。header 的 `not_found`、`ambiguous` 字段为 `{ name }`，保留规则声明的大小写；其 `body_too_large` 字段为 `{ limit, actual }`。所有 header 响应错误的路径为 `response.headers.<ASCII 小写名称>`，其余响应错误为 `response.body`；规则错误路径遵循上面的 parser 规则定位。
+A2–A5 细化：version 的 `not_found`、`invalid_version` 字段为 `{}`；GNU / BSD 的 `not_found`、`ambiguous` 字段为 `{ name }`，保留 artifact 原值。`invalid_checksum`、`invalid_encoding` 字段为 `{}`；`invalid_pattern` 在 pattern 字节数超限时为 `{ limit, actual }`，语法或编译大小错误时为 `{}`。header 按 §5.3 拆分客户端交付的逗号列表，忽略空元素；只有空元素与缺失一样报 `not_found`。header 的 `not_found`、`ambiguous` 字段为 `{ name }`，保留规则声明的大小写；其 `body_too_large` 字段为 `{ limit, actual }`。所有 header 响应错误的路径为 `response.headers.<ASCII 小写名称>`，其余响应错误为 `response.body`；规则错误路径遵循上面的 parser 规则定位。
 
 消费者按 `code` 与结构字段进行程序化匹配，不解析 `message`。`parser.ambiguous` 的 `name` 是请求的 artifact 文件名或 header 规则中的名称；`groups` 是包含 group 0 的捕获组总数。
 
@@ -606,7 +606,7 @@ kind 列表按 manifest 中 variant 顺序，仅列出支持目标平台的 `{ v
   计划只序列化，不增加 `Deserialize`，`finishChecksum` 只接受真实下载计划句柄；
   从中取得绑定的 ChecksumPlan，不接受 JS 伪造的 parser、artifact 或 kind。
 - `RemoteResponseInput` 是 `{ body: string, headers?: [string, string][] }`，headers 默认空数组，
-  保留重复头与顺序。`LimitsInput` 的可选字段为 `body_bytes`、`header_value_bytes`、
+  每项可为单行字段值或客户端合并的逗号列表，允许保留重复项与顺序；不要求宿主取得每次出现的原始头行，header parser 按 §5.3 拆分。`LimitsInput` 的可选字段为 `body_bytes`、`header_value_bytes`、
   `regex_pattern_bytes`、`regex_size_bytes`、`template_depth`、`render_output_bytes`；
   逐字段调用 `Limits::with_*`，只能调低默认上限。core 的 selection/options 与 parser 的
   response 是借用类型，边界先解码其各字段，再构造借用输入，不复制定义对应的 wire struct，
@@ -706,6 +706,7 @@ kind 列表按 manifest 中 variant 顺序，仅列出支持目标平台的 `{ v
 | V-12 | download 的 release source 覆盖宿主 source                                           | 宿主 source 优先于 release source                                                                                               | §7.2 的显式合并顺序；宿主值仍必须先通过 VersionLabel                                        |
 | V-13 | 缺少平台 default_variants 时，即使唯一候选也失败                                     | 唯一候选可直接选中；多个候选仍必须配置默认                                                                                      | B1 已允许单候选省略默认，选择层保持同一有效性规则                                           |
 | V-14 | 宿主 tags 拼接后比较 `tag_key`，`["a+b"]` 可选中 `[a, b]`                            | 按 tag ID 集合精确比较；合法 tag ID 结果相同                                                                                    | 防拼接歧义（§7.1 tag ID 不含 `+`）                                                          |
+| V-15 | `RemoteResponse.headers` 每项对应原始头行                                            | 每项可为单行或逗号合并值；header parser 按 §5.3 拆分、去 OWS、忽略空元素后判断                                                  | 标准 fetch API 只暴露合并值，契约须支持标准客户端                                           |
 
 ### 11.2 决策
 
