@@ -730,7 +730,7 @@ checksums.txt 为 13,835 B，最大 header 值为 3,969 B。
 | O-6  | wasm 的消费者                    | **已定（2026-11-06）：** 只有 Node 包，用于构建期胶水脚本下载并校验资源                                                                                                                      |
 | O-7  | 版本与兼容方式                   | **已定（2026-11-06）：** 参考 Docker 采用 `major.minor`；兼容更新只升 minor（§5.4）                                                                                                          |
 | O-8  | wasm 体积预算                    | **C1 实测（2026-11-07）：** raw 1,513,596 B，gzip（level 9）535,484 B；Node initSync 五次中位数 1.963 ms。建议 gzip ≤ 803,226 B（当前 1.5 倍），初始化中位数 ≤ 10 ms；测量环境与方法见下文。 |
-| O-9  | 本仓库的 Rust 规则               | **推荐：** 采用 clash-nyanpasu `rust.md`                                                                                                                                                     |
+| O-9  | 本仓库的 Rust 规则               | **已定（2026-11-08）：** 采用 `docs/development/rust.md`（改编自 clash-nyanpasu）                                                                                                            |
 | O-10 | crate 和包的正式名称             | 沿用工作名，在创建该包的 PR 中确定                                                                                                                                                           |
 | O-11 | 发布前的版本号                   | **已定（2026-11-06）：** 包首次发布前保持 `"2.0"`，这期间的契约改动都并入 2.0，不升版本。理解是"发布前不升 schema 版本"，并非"发布前完全不改契约"；若理解有误，以维护者更正为准              |
 | O-12 | Schema `$id` 前缀                | **已定（本 PR，2026-11-06）：** `https://libnyanpasu.github.io/resources-manifest/schema/`；后接 `2.0/manifest.schema.json` 或 `2.0/manifest-template.schema.json`                           |
