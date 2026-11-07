@@ -9,7 +9,7 @@ use manifest_parser::{
     CompiledVersionParser, Limits, ParseError, RemoteChecksumParser, RemoteResponse,
     RemoteVersionParser, ResourceChecksum,
 };
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 use snafu::Snafu;
 use specta::Type;
@@ -144,9 +144,11 @@ impl From<RenderError> for ResolveError {
     }
 }
 
-#[derive(Debug, Clone, Copy, Default)]
+#[derive(Debug, Clone, Copy, Default, Type)]
 pub struct VariantSelection<'a> {
+    #[specta(optional)]
     pub id: Option<&'a str>,
+    #[specta(optional)]
     pub tags: Option<&'a [String]>,
 }
 
@@ -317,14 +319,17 @@ impl VersionPlan {
     }
 }
 
-#[derive(Debug, Clone, Copy, Default)]
+#[derive(Debug, Clone, Copy, Default, Type)]
 pub struct VersionOptions<'a> {
+    #[specta(optional)]
     pub source: Option<&'a SourceVariables>,
+    #[specta(optional)]
     pub mirror: Option<&'a str>,
 }
 
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize, Type)]
 #[non_exhaustive]
+#[serde(rename_all = "snake_case")]
 pub enum ChecksumMode {
     #[default]
     Remote,
@@ -333,11 +338,15 @@ pub enum ChecksumMode {
     Snapshot,
 }
 
-#[derive(Debug, Clone, Copy, Default)]
+#[derive(Debug, Clone, Copy, Default, Type)]
 pub struct DownloadOptions<'a> {
+    #[specta(optional)]
     pub version: Option<&'a str>,
+    #[specta(optional)]
     pub source: Option<&'a SourceVariables>,
+    #[specta(optional)]
     pub mirror: Option<&'a str>,
+    #[specta(optional)]
     pub checksum_mode: ChecksumMode,
 }
 

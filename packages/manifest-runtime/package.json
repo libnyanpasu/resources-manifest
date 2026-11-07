@@ -1,0 +1,10 @@
+{
+  "name": "@manifest/runtime",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": "./src/mod.ts",
+  "dependencies": {
+    "@manifest/metadata": "workspace:*"
+  }
+}

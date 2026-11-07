@@ -1,5 +1,6 @@
 files/
 target/
+packages/manifest-runtime/wasm/
 pnpm-lock.yaml
 # Byte-for-byte snapshot of a real compiled manifest.
 crates/manifest-metadata/tests/fixtures/

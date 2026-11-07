@@ -539,6 +539,46 @@ BSD 陷阱故意将包含 64 个十六进制字符（32 字节）、符合配置
 
 ## 数据验证
 
+### Rust / Node 执行清单核对（C3）
+
+在仓库根目录运行：
+
+```sh
+pnpm test
+pnpm check:conformance
+```
+
+两条命令都会先运行 `build:wasm`，首次检出也会生成 runtime glue。
+`pnpm test` 执行 `packages/*/*_test.ts`，其中 Node 一致性运行器
+`packages/manifest-runtime/conformance_test.ts` 为每条 corpus 用例及每个 GitHub HTML
+fixture 资产分别注册 `test(name)`，经 `@manifest/runtime` 执行。
+
+`pnpm check:conformance` 随后依次运行：
+
+```sh
+cargo test -p manifest-parser --test conformance
+cargo test -p manifest-core --test conformance --test resolve --test reference_golden
+node --test packages/manifest-runtime/conformance_test.ts
+```
+
+`scripts/check-conformance.ts` 继承调用者环境（包括 `RUSTUP_TOOLCHAIN`），
+为 Rust 和 Node 分别创建独立的空临时清单，通过 `MANIFEST_CONFORMANCE_LIST`
+传给运行器。两端只在用例断言通过后追加一行 JSON 字符串，完整保留用例名；
+fixture 名称为 `fixtures.github-expanded-assets.<fixture stem>.<asset name>`。
+未设置此环境变量时，运行器不写清单。
+
+任一子进程失败、清单为空、同侧名称重复或两端名称集合不同都会令命令失败；
+集合不同时分别打印 Rust 和 Node 缺失的名称。成功时输出各目录 / 名称前缀的
+Rust / Node 数量与总数，其中 `version.*` 和 `checksum.*` 分别归入
+`parsers/version` 和 `parsers/checksum`。临时清单在成功或失败后清理，
+每次运行使用新目录，旧清单不会影响结果。
+
+反向检查可临时在 Rust parser 运行器的 `run_cases` 循环中按完整名称跳过一条用例，
+运行 `pnpm check:conformance`，确认失败信息中的 `Missing on Rust` 包含该名称；
+恢复后再次运行应通过。
+
+### 语料格式验证（S0b）
+
 S0b 的验证是在仓库根目录用一次性 Node 脚本遍历 `conformance/**/*.json`，
 逐文件 `JSON.parse`，确认顶层为数组并检查所有 `name` 全局唯一，同时打印每文件用例数。
 脚本不入库，执行报告中保留完整文本。然后执行：
@@ -549,4 +589,4 @@ pnpm fmt:check
 ```
 
 A2 / A3 建立 Rust parser 运行器，B1 / B3 补充 validate / kind 运行器，
-B2 填充 `resolve/templates.json`、B4 增加参考差分，C3 再让 Node 读取同一份数据并核对用例名清单。
+B2 填充 `resolve/templates.json`、B4 增加参考差分，C3 让 Node 读取同一份数据并核对用例名清单。

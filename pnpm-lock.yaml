@@ -205,6 +205,12 @@ importers:
         specifier: 8.20.0
         version: 8.20.0
 
+  packages/manifest-runtime:
+    dependencies:
+      '@manifest/metadata':
+        specifier: workspace:*
+        version: link:../manifest-metadata
+
 packages:
 
   '@oxlint/binding-android-arm-eabi@1.91.0':

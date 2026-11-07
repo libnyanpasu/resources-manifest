@@ -9,6 +9,20 @@ use manifest_parser::Limits;
 use serde::Deserialize;
 use serde_json::{Value, json};
 
+fn record_case(name: &str) {
+    use std::io::Write;
+    static LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
+    if let Some(path) = std::env::var_os("MANIFEST_CONFORMANCE_LIST") {
+        let _guard = LOCK.lock().expect("case list lock poisoned");
+        let mut file = std::fs::OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(path)
+            .expect("case list is writable");
+        writeln!(file, "{}", serde_json::to_string(name).unwrap()).unwrap();
+    }
+}
+
 const SNAPSHOT: &str = include_str!("../../manifest-metadata/tests/fixtures/resources.json");
 
 #[derive(Deserialize)]
@@ -160,6 +174,7 @@ fn corpus() {
                 case.name, case.expect, actual
             ));
         } else {
+            record_case(&case.name);
             println!("PASS {}", case.name);
         }
     }

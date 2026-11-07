@@ -7,6 +7,20 @@ use manifest_metadata::{ResourceArtifactVersionTemplate, SupportedPlatform};
 use manifest_parser::Limits;
 use serde::Deserialize;
 
+fn record_case(name: &str) {
+    use std::io::Write;
+    static LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
+    if let Some(path) = std::env::var_os("MANIFEST_CONFORMANCE_LIST") {
+        let _guard = LOCK.lock().expect("case list lock poisoned");
+        let mut file = std::fs::OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(path)
+            .expect("case list is writable");
+        writeln!(file, "{}", serde_json::to_string(name).unwrap()).unwrap();
+    }
+}
+
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
 struct Case {
@@ -117,6 +131,7 @@ fn reference_downloads_match_every_default_artifact() {
         };
         assert_eq!(plan.version(), input.version, "{}", case.name);
         assert_eq!(plan.request().mirror_url(), None, "{}", case.name);
+        let failures_before = failures.len();
         for (field, actual, expected) in [
             (
                 "artifact",
@@ -142,6 +157,9 @@ fn reference_downloads_match_every_default_artifact() {
                     case.name
                 ));
             }
+        }
+        if failures.len() == failures_before {
+            record_case(&case.name);
         }
     }
     assert_eq!(covered, expected, "golden covers every resource/platform");
