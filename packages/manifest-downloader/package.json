@@ -4,12 +4,16 @@
   "private": true,
   "type": "module",
   "exports": "./main.ts",
+  "bin": {
+    "manifest-download": "./main.ts"
+  },
   "scripts": {
     "dev": "node --watch main.ts",
     "start": "node main.ts"
   },
   "dependencies": {
-    "@manifest/metadata": "workspace:*"
+    "@manifest/metadata": "workspace:*",
+    "@manifest/runtime": "workspace:*"
   },
   "devDependencies": {
     "ajv": "8.20.0"

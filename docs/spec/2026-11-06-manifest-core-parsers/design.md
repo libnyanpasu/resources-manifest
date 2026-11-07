@@ -656,9 +656,16 @@ kind 列表按 manifest 中 variant 顺序，仅列出支持目标平台的 `{ v
 ### 8.4 C4 构建期下载校验胶水脚本（`@manifest/downloader`）
 
 - 命令行用法：`manifest-download --manifest <path|url> --resource <id> --platform <p> [--variant <id> | --tags <a,b>] [--mirror <id>] [--allow-parsed] [--allow-snapshot] --out <dir>`。
-- 流程：获取 manifest → `validateManifest` → 选择 → 打印 kind 与宿主 `VerifyPolicy` 下的 `checkPolicy` 决定（接受或拒绝及原因）→ 按计划用 `fetch` 请求 → `parseVersion` / `finishChecksum` → 下载到临时文件 → 用 `node:crypto` 计算 digest 并比对 → 原子地移入 `--out`。
+- 流程：获取 manifest → `validateManifest` → 选择 → 打印 kind 与宿主 `VerifyPolicy` 下的 `checkPolicy` 决定（接受或拒绝及原因）→ 按计划用 `globalThis.fetch` 请求 → `parseVersion` / `finishChecksum` → 下载到临时文件 → 用 `node:crypto` 计算 digest 并比对 → 原子地移入 `--out`。
 - 默认只接受 `authoritative`；遇到 `parsed` 时报 `verify.kind_rejected`，提示可以加 `--allow-parsed`。
 - HTTP 侧的上限（重定向次数、超时、body 大小）与 §5.5 一致；不读取任何未声明的响应头作为 checksum。
+- 所有请求仅接受无 userinfo、无 fragment 的 HTTP(S) URL；重定向的 HTTPS → HTTP 降级在发出下一跳之前报 `http.insecure_redirect`，覆盖 manifest、版本、checksum 和产物。
+- HTTP 错误的 `path` 使用稳定定位符 `http.manifest` / `http.version` / `http.checksum` / `http.artifact`；消息中的 URL 去掉 userinfo 和 fragment，查询参数替换为 `?<redacted>`，保留 scheme、host 和 path。
+- C4 宿主决定：所有 HTTP 请求集中在 downloader 的 `http.ts`，使用 `globalThis.fetch` 和 `redirect: "manual"`。仅取 parser 声明的头，名称转为小写，存在时把 `headers.get(name)` 的合并值作为单项传给 core；core 按 §5.3 进行逗号列表拆分，宿主不需要取得原始头行。手动跟随最多 5 次重定向；每跳使用一个 `AbortSignal.timeout` 截止时间覆盖响应头和 body 读取，默认 30 秒。未消费的 body 会取消。HTTP manifest 与 parser body 按流限制为 2 MiB，声明的单个收到的 header 值（包括合并值）限制为 8 KiB，在拆分前检查。runtime 尚未导出 Limits 默认值读取接口，宿主按 §5.5 设置这两个上限。
+- C4 代理决定：直接依赖 Node 的 fetch 内建环境代理支持，不自行检测代理开关或管理 Agent / socket。依据 [Node.js CLI 文档](https://nodejs.org/api/cli.html#node_use_env_proxy1)，`NODE_USE_ENV_PROXY=1` 从 24.0.0（以及 22.21.0）起适用于 fetch，本项目最低版本 24.2 已支持；[`--use-env-proxy`](https://nodejs.org/api/cli.html#--use-env-proxy) 命令行 / `NODE_OPTIONS` 开关从 24.5.0（以及 22.21.0）起提供。[HTTP 内建代理文档](https://nodejs.org/api/http.html#built-in-proxy-support) 的 24.5.0 门槛对应 `node:http` / `node:https` 的 Agent 支持。进程启动时启用后，由 Node 读取 `HTTP_PROXY` / `HTTPS_PROXY` 与 `NO_PROXY`，未启用时保持 Node 默认行为；代理路由与绕过的子进程测试按各自支持版本执行。
+- C4 产物大小决定（本节原先未指定）：流式写盘并计算 digest，默认上限为 1 GiB（1,073,741,824 字节）；通过 `--max-artifact-bytes <bytes>` 配置正的安全整数。此限制独立于 parser body 上限。临时文件放在 `--out` 目录内，校验成功后按产物路径最后一段命名并原子 rename；失败清理临时文件。
+- C4 文件名决定：`planDownload` 生成计划后，在请求 checksum 或产物前检查产物路径的最后一段；所有平台统一拒绝 Windows 保留设备名（含扩展名）、非法字符与控制字符、尾随点或空格，以及空、`.`、`..`，报 `download.invalid_filename`。
+- C4 snapshot 决定：仅设置 `--allow-snapshot` 时，在请求远端版本前打印 `version=unresolved kind=snapshot` 的预期策略决定；解析版本后使用 core 的 `checksum_mode: "snapshot"`，由 core 检查其与 fallback 版本精确匹配及 checksum 是否存在，确认后再次打印已解析版本与有效策略。两个允许开关同时设置时使用远端 parsed 路径，不自动回退。所有路径在请求版本、checksum 或产物前必须已有策略行；默认拒绝远端产物时版本显示为 `unresolved`，在请求远端元数据前输出策略拒绝原因。
 
 ---
 

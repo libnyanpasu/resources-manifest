@@ -18,7 +18,8 @@
 - `packages/manifest-metadata`：纯 TypeScript 库，存放生成的类型与 schema
   （`src/types.ts`、`src/version.ts`、`schema/` 均为生成物，禁止手改）。契约层级说明见其 README。
 - `packages/manifest-generator`：生成完整 manifest 的 Node.js 可执行包。
-- `packages/manifest-downloader`：解析 manifest 并按需下载的 Node.js 可执行包。
+- `packages/manifest-downloader`：通过 `@manifest/runtime` 选择、规划并校验下载的 Node.js
+  可执行包；HTTP 集中在 `http.ts`，产物流式写入临时文件并在校验通过后原子移入输出目录。
 - `conformance/`：语言无关的一致性语料，Rust 运行器位于
   `crates/manifest-parser/tests/conformance.rs`（parser 与全局名称检查）和
   `crates/manifest-core/tests/{conformance,resolve,reference_golden}.rs`（validate / compat /

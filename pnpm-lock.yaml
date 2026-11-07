@@ -184,6 +184,9 @@ importers:
       '@manifest/metadata':
         specifier: workspace:*
         version: link:../manifest-metadata
+      '@manifest/runtime':
+        specifier: workspace:*
+        version: link:../manifest-runtime
     devDependencies:
       ajv:
         specifier: 8.20.0
