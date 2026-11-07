@@ -571,7 +571,10 @@ kind 列表按 manifest 中 variant 顺序，仅列出支持目标平台的 `{ v
 ### 8.1 C1 `manifest-wasm`
 
 - `crate-type = ["cdylib"]`；导出 `validateManifest`、`artifactChecksumKind`、`selectVariant`、`planVersion`、`planDownload`、`parseVersion`、`finishChecksum`、`checkPolicy`。
-- 值的转换用 `serde-wasm-bindgen`，采用 `Serializer::json_compatible()`。错误一律转成 `{ code, path, message, fields }`。`ValidatedManifest` 以不透明句柄留在 wasm 内。
+- 值的转换用 `serde-wasm-bindgen`，采用 `Serializer::json_compatible().serialize_maps_as_objects(false)`，
+  再递归转换成普通 JS 对象，以 `Object.defineProperty` 写入自有属性。
+  任意键 map（source、resources、registries、mirrors 等）的 `__proto__` 键作为数据保留，不调用原型 setter。
+  错误一律转成 `{ code, path, message, fields }`。`ValidatedManifest` 以不透明句柄留在 wasm 内。
 - C1 的 JS 边界签名如下；`?` 表示可以省略、传 `undefined` 或 `null`，使用默认值。
 
   | JS API                                                                                                                                                                              | 返回值                                          |
@@ -595,6 +598,8 @@ kind 列表按 manifest 中 variant 顺序，仅列出支持目标平台的 `{ v
 - `ValidatedManifest.newerMinor` 是只读布尔属性。`SelectedArtifact.value` 返回所选 variant；
   `VersionPlan.value`、`DownloadPlan.value` 返回 core 的 serde 计划投影，wire 字段保持 snake_case。
   每次读取 `value` 都生成新的普通 JS 对象，修改它不改变 wasm 状态。
+  Node facade 对所有句柄的 `value` / `newerMinor` getter 和方法使用相同的错误翻译，
+  将结构化 wasm 错误转为 `ManifestRuntimeError`；调用 wasm 时解包成原始句柄。
   这些类均无公开构造函数，使用 wasm-bindgen 的 `free()` / `Symbol.dispose` 释放。
   selection 内部共享不可变 manifest 的所有权，因此释放原 manifest 句柄后仍可规划；
   计划拥有执行所需状态，释放 selection 后仍可完成 checksum。
@@ -607,6 +612,14 @@ kind 列表按 manifest 中 variant 顺序，仅列出支持目标平台的 `{ v
   response 是借用类型，边界先解码其各字段，再构造借用输入，不复制定义对应的 wire struct，
   不给带私有上限不变量的 Limits 添加 `Deserialize`。
   `ChecksumMode` 的 serde / specta 定义直接放在 core，wire 值为 `remote` / `snapshot`。
+- JS 输入先生成只含自有可枚举字段的快照，再逐字段直接解码成目标类型，避免先解码为通用 JSON Value。
+  快照最多允许沿任一路径嵌套 64 层容器（对象或数组），超过上限及循环引用均以
+  `wasm.invalid_input` 拒绝，path 指向触发上限的字段；未知、将被忽略的字段也受此限制。
+  `serde-wasm-bindgen` 的 `IgnoredAny` 本身不递归，但 tagged enum 的 serde 缓冲和 parser 的
+  自定义反序列化仍可能递归读取通用值，因此 raw manifest、artifact、parser 和其余入口均需快照保护。
+  快照同时拒绝任意位置的 NaN / ±Infinity，保留精确参数字段路径，不能将其转换为 null 或缺省值。
+  显式 null / undefined 的既有可选参数语义不变；有限 priority 在 ±2^53 边界及之外仍可往返，
+  只有绝对值不超过 `Number.MAX_SAFE_INTEGER` 的整数使用 serde 整数序列化，其余使用 f64。
 - `parseVersion` 可直接接收规则以覆盖 C3 的独立 parser 语料（包括编译失败用例）；
   解析版本请求时从 `versionPlan.value.remote.parser` 取得规则，并传入规划时相同的 Limits。
   它只返回已验证版本字符串，不接收或生成校验可信度。

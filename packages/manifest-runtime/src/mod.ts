@@ -139,8 +139,30 @@ function call<Result>(operation: () => Result): Result {
   }
 }
 
+const handles = new WeakMap<object, object>();
+
+function wrap<Handle extends object>(raw: Handle): Handle {
+  const wrapped = new Proxy(raw, {
+    get(target, key) {
+      return call(() => {
+        const value: unknown = Reflect.get(target, key, target);
+        return typeof value === "function"
+          ? (...args: unknown[]) =>
+              call(() => Reflect.apply(value, target, args))
+          : value;
+      });
+    },
+  });
+  handles.set(wrapped, raw);
+  return wrapped;
+}
+
+function unwrap<Handle extends object>(wrapped: Handle): Handle {
+  return (handles.get(wrapped) ?? wrapped) as Handle;
+}
+
 export function validateManifest(raw: unknown): ValidatedManifest {
-  return call(() => wasm.validateManifest(raw));
+  return wrap(call(() => wasm.validateManifest(raw)));
 }
 
 export function artifactChecksumKind(
@@ -155,8 +177,10 @@ export function selectVariant(
   platform: SupportedPlatform,
   selection?: VariantSelection | null,
 ): SelectedArtifact {
-  return call(() =>
-    wasm.selectVariant(manifest, resource, platform, selection),
+  return wrap(
+    call(() =>
+      wasm.selectVariant(unwrap(manifest), resource, platform, selection),
+    ),
   );
 }
 
@@ -165,7 +189,7 @@ export function planVersion(
   options?: VersionOptions | null,
   limits?: LimitsInput | null,
 ): VersionPlan {
-  return call(() => wasm.planVersion(selected, options, limits));
+  return wrap(call(() => wasm.planVersion(unwrap(selected), options, limits)));
 }
 
 export function planDownload(
@@ -173,7 +197,7 @@ export function planDownload(
   options?: DownloadOptions | null,
   limits?: LimitsInput | null,
 ): DownloadPlan {
-  return call(() => wasm.planDownload(selected, options, limits));
+  return wrap(call(() => wasm.planDownload(unwrap(selected), options, limits)));
 }
 
 export function parseVersion(
@@ -188,7 +212,7 @@ export function finishChecksum(
   plan: DownloadPlan,
   response: RemoteResponseInput,
 ): ResolvedChecksum & { kind: "parsed" } {
-  return call(() => wasm.finishChecksum(plan, response));
+  return call(() => wasm.finishChecksum(unwrap(plan), response));
 }
 
 export function checkPolicy(
@@ -213,7 +237,7 @@ export function listVariantChecksumKinds(
   platform: SupportedPlatform,
 ): VariantChecksumKind[] {
   return call(() =>
-    wasm.listVariantChecksumKinds(manifest, resource, platform),
+    wasm.listVariantChecksumKinds(unwrap(manifest), resource, platform),
   );
 }
 
@@ -233,7 +257,7 @@ export function renderArtifact(
   options?: Pick<DownloadOptions, "version" | "source"> | null,
   limits?: LimitsInput | null,
 ): { artifact: string; canonical_url: string } {
-  return call(() => wasm.renderArtifact(selected, options, limits));
+  return call(() => wasm.renderArtifact(unwrap(selected), options, limits));
 }
 
 export function compareDigest(

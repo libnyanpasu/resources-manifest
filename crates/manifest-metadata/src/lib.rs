@@ -494,7 +494,7 @@ impl From<FiniteF64> for f64 {
 
 impl Serialize for FiniteF64 {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        const MAX_SAFE_INTEGER: f64 = 9_007_199_254_740_992.0; // 2^53
+        const MAX_SAFE_INTEGER: f64 = 9_007_199_254_740_991.0;
         if self.0.fract() == 0.0 && self.0.abs() <= MAX_SAFE_INTEGER {
             serializer.serialize_i64(self.0 as i64)
         } else {
@@ -970,6 +970,25 @@ mod tests {
                     case["expect"]["ok"]["newer_minor"]
                 );
             }
+        }
+    }
+
+    #[test]
+    fn finite_f64_serializes_safe_integer_boundaries() {
+        for value in [
+            -9_007_199_254_740_994.0,
+            -9_007_199_254_740_992.0,
+            -9_007_199_254_740_991.0,
+            9_007_199_254_740_991.0,
+            9_007_199_254_740_992.0,
+            9_007_199_254_740_994.0,
+        ] {
+            let finite = FiniteF64::new(value).unwrap();
+            let serialized = serde_json::to_value(finite).unwrap();
+            assert_eq!(serialized.is_i64(), value.abs() < 9_007_199_254_740_992.0);
+            assert_eq!(serialized.as_f64(), Some(value));
+            let parsed: FiniteF64 = serde_json::from_value(serialized).unwrap();
+            assert_eq!(parsed, finite);
         }
     }
 

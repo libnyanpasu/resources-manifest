@@ -9,13 +9,72 @@ use manifest_metadata::{
 use manifest_parser::{Limits, RemoteChecksumParser, RemoteResponse, RemoteVersionParser};
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
-use serde_json::{Map, Value, json};
+use serde_json::{Value, json};
 use wasm_bindgen::prelude::*;
 
+#[wasm_bindgen(inline_js = r#"
+export function snapshotInput(value, path) {
+    function snapshot(value, path, depth) {
+        const fail = message => {
+            throw { code: "wasm.invalid_input", path, message, fields: {} };
+        };
+        if (typeof value === "number" && !Number.isFinite(value)) {
+            fail("number must be finite");
+        }
+        if (value === null || typeof value !== "object") return value;
+        if (depth >= 64) fail("input nesting exceeds 64 containers");
+        if (Array.isArray(value)) {
+            return Array.from(value, (entry, index) => snapshot(entry, `${path}.${index}`, depth + 1));
+        }
+        const result = Object.create(null);
+        for (const key of Object.keys(value)) {
+            result[key] = snapshot(value[key], `${path}.${key}`, depth + 1);
+        }
+        return result;
+    }
+    return snapshot(value, path, 0);
+}
+
+export function isRecord(value) {
+    return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+
+export function readField(value, key) {
+    return value == null ? undefined : Reflect.get(value, key);
+}
+
+export function outputObjects(value) {
+    if (value === null || typeof value !== "object") return value;
+    if (Array.isArray(value)) return value.map(outputObjects);
+    const result = {};
+    const entries = value instanceof Map ? value.entries() : Object.entries(value);
+    for (const [key, entry] of entries) {
+        Object.defineProperty(result, key, {
+            value: outputObjects(entry), enumerable: true, writable: true, configurable: true
+        });
+    }
+    return result;
+}
+"#)]
+extern "C" {
+    #[wasm_bindgen(catch, js_name = snapshotInput)]
+    fn snapshot_input(value: JsValue, path: &str) -> Result<JsValue, JsValue>;
+    #[wasm_bindgen(js_name = isRecord)]
+    fn is_record(value: &JsValue) -> bool;
+    #[wasm_bindgen(js_name = readField)]
+    fn read_field(value: &JsValue, key: &str) -> JsValue;
+    #[wasm_bindgen(js_name = outputObjects)]
+    fn output_objects(value: JsValue) -> JsValue;
+}
+
 fn error(code: &str, path: &str, message: impl std::fmt::Display, fields: Value) -> JsValue {
-    json!({ "code": code, "path": path, "message": message.to_string(), "fields": fields })
-        .serialize(&serde_wasm_bindgen::Serializer::json_compatible())
-        .expect("JSON error objects are serializable to JavaScript")
+    output_objects(
+        json!({ "code": code, "path": path, "message": message.to_string(), "fields": fields })
+            .serialize(
+                &serde_wasm_bindgen::Serializer::json_compatible().serialize_maps_as_objects(false),
+            )
+            .expect("JSON error objects are serializable to JavaScript"),
+    )
 }
 
 fn invalid_input(path: &str, message: impl std::fmt::Display) -> JsValue {
@@ -23,70 +82,71 @@ fn invalid_input(path: &str, message: impl std::fmt::Display) -> JsValue {
 }
 
 fn from_js<T: DeserializeOwned>(value: JsValue, path: &str) -> Result<T, JsValue> {
-    serde_wasm_bindgen::from_value(value).map_err(|source| invalid_input(path, source))
+    serde_wasm_bindgen::from_value(snapshot_input(value, path)?)
+        .map_err(|source| invalid_input(path, source))
 }
 
 fn to_js(value: &impl Serialize) -> Result<JsValue, JsValue> {
     value
-        .serialize(&serde_wasm_bindgen::Serializer::json_compatible())
+        .serialize(
+            &serde_wasm_bindgen::Serializer::json_compatible().serialize_maps_as_objects(false),
+        )
+        .map(output_objects)
         .map_err(|source| error("wasm.serialization_failed", "arg.result", source, json!({})))
 }
 
-fn object(value: JsValue, path: &str) -> Result<Map<String, Value>, JsValue> {
-    from_js(value, path)
+fn object(value: JsValue, path: &str) -> Result<JsValue, JsValue> {
+    if !is_record(&value) {
+        return Err(invalid_input(path, "expected an object"));
+    }
+    snapshot_input(value, path)
 }
 
-fn options(value: JsValue, path: &str) -> Result<Map<String, Value>, JsValue> {
+fn options(value: JsValue, path: &str) -> Result<JsValue, JsValue> {
     if value.is_null() || value.is_undefined() {
-        Ok(Map::new())
+        Ok(JsValue::UNDEFINED)
     } else {
         object(value, path)
     }
 }
 
 fn field<T: DeserializeOwned>(
-    object: &mut Map<String, Value>,
+    object: &JsValue,
     key: &str,
     path: &str,
 ) -> Result<Option<T>, JsValue> {
-    object
-        .remove(key)
-        .filter(|value| !value.is_null())
-        .map(|value| {
-            serde_json::from_value(value)
-                .map_err(|source| invalid_input(&format!("{path}.{key}"), source))
-        })
-        .transpose()
+    let value = read_field(object, key);
+    if value.is_null() || value.is_undefined() {
+        Ok(None)
+    } else {
+        from_js(value, &format!("{path}.{key}")).map(Some)
+    }
 }
 
-fn required<T: DeserializeOwned>(
-    object: &mut Map<String, Value>,
-    key: &str,
-    path: &str,
-) -> Result<T, JsValue> {
+fn required<T: DeserializeOwned>(object: &JsValue, key: &str, path: &str) -> Result<T, JsValue> {
     field(object, key, path)?
         .ok_or_else(|| invalid_input(&format!("{path}.{key}"), "missing required field"))
 }
 
 fn limits(value: JsValue) -> Result<Limits, JsValue> {
-    let mut input = options(value, "arg.limits")?;
+    let input = options(value, "arg.limits")?;
     let mut limits = Limits::default();
-    if let Some(value) = field(&mut input, "body_bytes", "arg.limits")? {
+    if let Some(value) = field(&input, "body_bytes", "arg.limits")? {
         limits = limits.with_body_bytes(value);
     }
-    if let Some(value) = field(&mut input, "header_value_bytes", "arg.limits")? {
+    if let Some(value) = field(&input, "header_value_bytes", "arg.limits")? {
         limits = limits.with_header_value_bytes(value);
     }
-    if let Some(value) = field(&mut input, "regex_pattern_bytes", "arg.limits")? {
+    if let Some(value) = field(&input, "regex_pattern_bytes", "arg.limits")? {
         limits = limits.with_regex_pattern_bytes(value);
     }
-    if let Some(value) = field(&mut input, "regex_size_bytes", "arg.limits")? {
+    if let Some(value) = field(&input, "regex_size_bytes", "arg.limits")? {
         limits = limits.with_regex_size_bytes(value);
     }
-    if let Some(value) = field(&mut input, "template_depth", "arg.limits")? {
+    if let Some(value) = field(&input, "template_depth", "arg.limits")? {
         limits = limits.with_template_depth(value);
     }
-    if let Some(value) = field(&mut input, "render_output_bytes", "arg.limits")? {
+    if let Some(value) = field(&input, "render_output_bytes", "arg.limits")? {
         limits = limits.with_render_output_bytes(value);
     }
     Ok(limits)
@@ -171,10 +231,9 @@ impl DownloadPlan {
 
 #[wasm_bindgen(js_name = validateManifest)]
 pub fn validate_manifest(raw: JsValue) -> Result<ValidatedManifest, JsValue> {
-    let mut raw = object(raw, "arg.manifest")?;
-    let version = raw
-        .get("manifest_version")
-        .and_then(Value::as_str)
+    let raw = object(raw, "arg.manifest")?;
+    let version = read_field(&raw, "manifest_version")
+        .as_string()
         .ok_or_else(|| {
             error(
                 "manifest.invalid_version_format",
@@ -190,8 +249,7 @@ pub fn validate_manifest(raw: JsValue) -> Result<ValidatedManifest, JsValue> {
         };
         error(source.code(), source.path(), source, fields)
     })?;
-    let raw: ResourceManifest = serde_json::from_value(Value::Object(std::mem::take(&mut raw)))
-        .map_err(|source| invalid_input("arg.manifest", source))?;
+    let raw: ResourceManifest = from_js(raw, "arg.manifest")?;
     manifest_core::validate_manifest(raw)
         .map(|inner| ValidatedManifest {
             inner: Rc::new(inner),
@@ -231,9 +289,9 @@ pub fn select_variant(
 ) -> Result<SelectedArtifact, JsValue> {
     let resource: String = from_js(resource, "arg.resource")?;
     let platform = from_js(platform, "arg.platform")?;
-    let mut selection = options(selection, "arg.selection")?;
-    let id: Option<String> = field(&mut selection, "id", "arg.selection")?;
-    let tags: Option<Vec<String>> = field(&mut selection, "tags", "arg.selection")?;
+    let selection = options(selection, "arg.selection")?;
+    let id: Option<String> = field(&selection, "id", "arg.selection")?;
+    let tags: Option<Vec<String>> = field(&selection, "tags", "arg.selection")?;
     let selected = manifest_core::select_variant(
         &manifest.inner,
         &resource,
@@ -259,9 +317,9 @@ pub fn plan_version(
     input: JsValue,
     input_limits: JsValue,
 ) -> Result<VersionPlan, JsValue> {
-    let mut input = options(input, "arg.options")?;
-    let source: Option<SourceVariables> = field(&mut input, "source", "arg.options")?;
-    let mirror: Option<String> = field(&mut input, "mirror", "arg.options")?;
+    let input = options(input, "arg.options")?;
+    let source: Option<SourceVariables> = field(&input, "source", "arg.options")?;
+    let mirror: Option<String> = field(&input, "mirror", "arg.options")?;
     manifest_core::plan_version(
         &selected.selected(),
         VersionOptions {
@@ -280,12 +338,12 @@ pub fn plan_download(
     input: JsValue,
     input_limits: JsValue,
 ) -> Result<DownloadPlan, JsValue> {
-    let mut input = options(input, "arg.options")?;
-    let version: Option<String> = field(&mut input, "version", "arg.options")?;
-    let source: Option<SourceVariables> = field(&mut input, "source", "arg.options")?;
-    let mirror: Option<String> = field(&mut input, "mirror", "arg.options")?;
+    let input = options(input, "arg.options")?;
+    let version: Option<String> = field(&input, "version", "arg.options")?;
+    let source: Option<SourceVariables> = field(&input, "source", "arg.options")?;
+    let mirror: Option<String> = field(&input, "mirror", "arg.options")?;
     let checksum_mode: ChecksumMode =
-        field(&mut input, "checksum_mode", "arg.options")?.unwrap_or_default();
+        field(&input, "checksum_mode", "arg.options")?.unwrap_or_default();
     manifest_core::plan_download(
         &selected.selected(),
         DownloadOptions {
@@ -307,10 +365,10 @@ pub fn parse_version(
     input_limits: JsValue,
 ) -> Result<JsValue, JsValue> {
     let parser: RemoteVersionParser = from_js(parser, "arg.parser")?;
-    let mut response = object(response, "response")?;
-    let body: String = required(&mut response, "body", "response")?;
+    let response = object(response, "response")?;
+    let body: String = required(&response, "body", "response")?;
     let headers: Vec<(String, String)> =
-        field(&mut response, "headers", "response")?.unwrap_or_default();
+        field(&response, "headers", "response")?.unwrap_or_default();
     let version = parser
         .compile(&limits(input_limits)?)
         .and_then(|parser| {
@@ -333,10 +391,10 @@ pub fn finish_checksum(plan: &DownloadPlan, response: JsValue) -> Result<JsValue
             json!({}),
         )
     })?;
-    let mut response = object(response, "response")?;
-    let body: String = required(&mut response, "body", "response")?;
+    let response = object(response, "response")?;
+    let body: String = required(&response, "body", "response")?;
     let headers: Vec<(String, String)> =
-        field(&mut response, "headers", "response")?.unwrap_or_default();
+        field(&response, "headers", "response")?.unwrap_or_default();
     let resolved = manifest_core::finish_checksum(
         checksum_plan,
         &RemoteResponse {
@@ -369,10 +427,10 @@ pub fn parse_checksum(
 ) -> Result<JsValue, JsValue> {
     let parser: RemoteChecksumParser = from_js(parser, "arg.parser")?;
     let artifact: String = from_js(artifact, "arg.artifact")?;
-    let mut response = object(response, "response")?;
-    let body: String = required(&mut response, "body", "response")?;
+    let response = object(response, "response")?;
+    let body: String = required(&response, "body", "response")?;
     let headers: Vec<(String, String)> =
-        field(&mut response, "headers", "response")?.unwrap_or_default();
+        field(&response, "headers", "response")?.unwrap_or_default();
     let checksum = parser
         .parse(
             &RemoteResponse {
@@ -438,9 +496,9 @@ pub fn render_artifact(
     input: JsValue,
     input_limits: JsValue,
 ) -> Result<JsValue, JsValue> {
-    let mut input = options(input, "arg.options")?;
-    let version: Option<String> = field(&mut input, "version", "arg.options")?;
-    let source: Option<SourceVariables> = field(&mut input, "source", "arg.options")?;
+    let input = options(input, "arg.options")?;
+    let version: Option<String> = field(&input, "version", "arg.options")?;
+    let source: Option<SourceVariables> = field(&input, "source", "arg.options")?;
     let rendered = selected
         .selected()
         .render(
