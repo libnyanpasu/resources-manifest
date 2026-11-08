@@ -53,9 +53,10 @@ participate in lint, formatting, or normal tests.
 
 Install workspace dependencies with `pnpm install`. Wasm checks require
 `wasm32-unknown-unknown` for the selected toolchain and a wasm-bindgen CLI matching
-`Cargo.lock`. `pnpm run test` and `pnpm run check:conformance` build wasm themselves,
-so a fresh checkout does not need a separate manual build first. Type checking
-can run before wasm generation.
+`Cargo.lock`. `pnpm run test`, `pnpm run check:conformance`, and
+`pnpm run typecheck` (part of `pnpm run check`) build wasm themselves, so a fresh
+checkout does not need a separate manual build first. Type checking needs the
+generated `manifest_wasm.d.ts`, which supplies the runtime's function signatures.
 
 | Check                                             | Command                                  |
 | ------------------------------------------------- | ---------------------------------------- |

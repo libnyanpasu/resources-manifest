@@ -82,7 +82,7 @@ After changing Rust metadata or exported plan types, run
 `pnpm run check:generated` must report no drift, including untracked files.
 Never hand-edit metadata `src/types.ts`, `src/version.ts`, `schema/`, or runtime
 `src/types.ts`. `pnpm run fmt` applies Prettier; `pnpm run check` combines its
-format check with Oxlint and `tsc --noEmit`.
+format check with Oxlint and `tsc --noEmit`; the type check builds wasm first.
 
 The tracked real-manifest snapshot at
 `crates/manifest-metadata/tests/fixtures/resources.json` is shared by Rust and

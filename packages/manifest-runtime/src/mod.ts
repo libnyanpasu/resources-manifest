@@ -1,93 +1,21 @@
 import { readFileSync } from "node:fs";
-import { createRequire } from "node:module";
-import type {
-  ChecksumAlgorithm,
-  RemoteChecksumParser,
-  RemoteVersionParser,
-  ResourceArtifactTemplate,
-  ResourceChecksum,
-  ResourceManifest,
-  ResourceVariant,
-  SupportedPlatform,
-} from "@manifest/metadata";
-import type {
-  ChecksumKind,
-  DownloadOptions,
-  DownloadPlan as DownloadPlanValue,
-  ResolvedChecksum,
-  RuntimeErrorShape,
-  VariantSelection,
-  VariantChecksumKind,
-  VerifyPolicy,
-  VersionOptions,
-  VersionPlan as VersionPlanValue,
-} from "./types.ts";
+import * as wasm from "../wasm/manifest_wasm.js";
+import type { RuntimeErrorShape } from "./types.ts";
 
 export * from "./types.ts";
 export type {
   DownloadPlan as DownloadPlanValue,
   VersionPlan as VersionPlanValue,
 } from "./types.ts";
+// The handle classes are exported as types only: they have no public
+// constructor and are created by the functions below.
+export type {
+  DownloadPlan,
+  SelectedArtifact,
+  ValidatedManifest,
+  VersionPlan,
+} from "../wasm/manifest_wasm.js";
 
-declare const handle: unique symbol;
-
-interface WasmHandle<Name extends string> {
-  readonly [handle]: Name;
-  free(): void;
-  [Symbol.dispose](): void;
-}
-
-export interface ValidatedManifest extends WasmHandle<"ValidatedManifest"> {
-  readonly newerMinor: boolean;
-  readonly value: ResourceManifest;
-}
-
-export interface SelectedArtifact extends WasmHandle<"SelectedArtifact"> {
-  readonly value: ResourceVariant;
-}
-
-export interface VersionPlan extends WasmHandle<"VersionPlan"> {
-  readonly value: VersionPlanValue;
-}
-
-export interface DownloadPlan extends WasmHandle<"DownloadPlan"> {
-  readonly value: DownloadPlanValue;
-}
-
-export interface LimitsInput {
-  body_bytes?: number;
-  header_value_bytes?: number;
-  regex_pattern_bytes?: number;
-  regex_size_bytes?: number;
-  template_depth?: number;
-  render_output_bytes?: number;
-}
-
-export interface RemoteResponseInput {
-  body: string;
-  headers?: [string, string][];
-}
-
-interface WasmExports {
-  initSync(input: { module: Uint8Array }): unknown;
-  validateManifest: typeof validateManifest;
-  artifactChecksumKind: typeof artifactChecksumKind;
-  selectVariant: typeof selectVariant;
-  planVersion: typeof planVersion;
-  planDownload: typeof planDownload;
-  parseVersion: typeof parseVersion;
-  finishChecksum: typeof finishChecksum;
-  checkPolicy: typeof checkPolicy;
-  parseChecksum: typeof parseChecksum;
-  listVariantChecksumKinds: typeof listVariantChecksumKinds;
-  renderTemplate: typeof renderTemplate;
-  renderArtifact: typeof renderArtifact;
-  compareDigest: typeof compareDigest;
-}
-
-const wasm = createRequire(import.meta.url)(
-  "../wasm/manifest_wasm.js",
-) as WasmExports;
 wasm.initSync({
   module: readFileSync(
     new URL("../wasm/manifest_wasm_bg.wasm", import.meta.url),
@@ -139,17 +67,34 @@ function call<Result>(operation: () => Result): Result {
   }
 }
 
+const handleClasses = [
+  wasm.DownloadPlan,
+  wasm.SelectedArtifact,
+  wasm.ValidatedManifest,
+  wasm.VersionPlan,
+];
 const handles = new WeakMap<object, object>();
 
-function wrap<Handle extends object>(raw: Handle): Handle {
+/**
+ * Wraps a handle so its getters and methods translate structured errors too.
+ */
+function wrap<Value>(value: Value): Value {
+  if (
+    typeof value !== "object" ||
+    value === null ||
+    !handleClasses.some((handleClass) => value instanceof handleClass)
+  ) {
+    return value;
+  }
+  const raw = value;
   const wrapped = new Proxy(raw, {
     get(target, key) {
       return call(() => {
-        const value: unknown = Reflect.get(target, key, target);
-        return typeof value === "function"
+        const property: unknown = Reflect.get(target, key, target);
+        return typeof property === "function"
           ? (...args: unknown[]) =>
-              call(() => Reflect.apply(value, target, args))
-          : value;
+              call(() => Reflect.apply(property, target, args))
+          : property;
       });
     },
   });
@@ -157,113 +102,34 @@ function wrap<Handle extends object>(raw: Handle): Handle {
   return wrapped;
 }
 
-function unwrap<Handle extends object>(wrapped: Handle): Handle {
-  return (handles.get(wrapped) ?? wrapped) as Handle;
+/** Hands wasm the original handle behind a wrapper. */
+function unwrap(value: unknown): unknown {
+  return typeof value === "object" && value !== null
+    ? (handles.get(value) ?? value)
+    : value;
 }
 
-export function validateManifest(raw: unknown): ValidatedManifest {
-  return wrap(call(() => wasm.validateManifest(raw)));
+/**
+ * Exposes a wasm export with its generated signature, translating structured
+ * errors and wrapping returned handles.
+ */
+function bind<Args extends unknown[], Result>(
+  operation: (...args: Args) => Result,
+): (...args: Args) => Result {
+  return (...args) =>
+    wrap(call(() => operation(...(args.map(unwrap) as Args))));
 }
 
-export function artifactChecksumKind(
-  artifact: ResourceArtifactTemplate,
-): ChecksumKind {
-  return call(() => wasm.artifactChecksumKind(artifact));
-}
-
-export function selectVariant(
-  manifest: ValidatedManifest,
-  resource: string,
-  platform: SupportedPlatform,
-  selection?: VariantSelection | null,
-): SelectedArtifact {
-  return wrap(
-    call(() =>
-      wasm.selectVariant(unwrap(manifest), resource, platform, selection),
-    ),
-  );
-}
-
-export function planVersion(
-  selected: SelectedArtifact,
-  options?: VersionOptions | null,
-  limits?: LimitsInput | null,
-): VersionPlan {
-  return wrap(call(() => wasm.planVersion(unwrap(selected), options, limits)));
-}
-
-export function planDownload(
-  selected: SelectedArtifact,
-  options?: DownloadOptions | null,
-  limits?: LimitsInput | null,
-): DownloadPlan {
-  return wrap(call(() => wasm.planDownload(unwrap(selected), options, limits)));
-}
-
-export function parseVersion(
-  parser: RemoteVersionParser,
-  response: RemoteResponseInput,
-  limits?: LimitsInput | null,
-): string {
-  return call(() => wasm.parseVersion(parser, response, limits));
-}
-
-export function finishChecksum(
-  plan: DownloadPlan,
-  response: RemoteResponseInput,
-): ResolvedChecksum & { kind: "parsed" } {
-  return call(() => wasm.finishChecksum(unwrap(plan), response));
-}
-
-export function checkPolicy(
-  kind: ChecksumKind,
-  policy?: VerifyPolicy | null,
-): void {
-  return call(() => wasm.checkPolicy(kind, policy));
-}
-
-export function parseChecksum(
-  parser: RemoteChecksumParser,
-  response: RemoteResponseInput,
-  artifact: string,
-  limits?: LimitsInput | null,
-): ResourceChecksum {
-  return call(() => wasm.parseChecksum(parser, response, artifact, limits));
-}
-
-export function listVariantChecksumKinds(
-  manifest: ValidatedManifest,
-  resource: string,
-  platform: SupportedPlatform,
-): VariantChecksumKind[] {
-  return call(() =>
-    wasm.listVariantChecksumKinds(unwrap(manifest), resource, platform),
-  );
-}
-
-export type TemplateValue = { authored: string } | { literal: string };
-
-export function renderTemplate(
-  template: string,
-  values: Record<string, TemplateValue>,
-  path: string,
-  limits?: LimitsInput | null,
-): string {
-  return call(() => wasm.renderTemplate(template, values, path, limits));
-}
-
-export function renderArtifact(
-  selected: SelectedArtifact,
-  options?: Pick<DownloadOptions, "version" | "source"> | null,
-  limits?: LimitsInput | null,
-): { artifact: string; canonical_url: string } {
-  return call(() => wasm.renderArtifact(unwrap(selected), options, limits));
-}
-
-export function compareDigest(
-  algorithm: ChecksumAlgorithm,
-  expected: string,
-  actual: string,
-): void {
-  return call(() => wasm.compareDigest(algorithm, expected, actual));
-}
+export const validateManifest = bind(wasm.validateManifest);
+export const artifactChecksumKind = bind(wasm.artifactChecksumKind);
+export const selectVariant = bind(wasm.selectVariant);
+export const listVariantChecksumKinds = bind(wasm.listVariantChecksumKinds);
+export const planVersion = bind(wasm.planVersion);
+export const planDownload = bind(wasm.planDownload);
+export const renderArtifact = bind(wasm.renderArtifact);
+export const renderTemplate = bind(wasm.renderTemplate);
+export const parseVersion = bind(wasm.parseVersion);
+export const parseChecksum = bind(wasm.parseChecksum);
+export const finishChecksum = bind(wasm.finishChecksum);
+export const checkPolicy = bind(wasm.checkPolicy);
+export const compareDigest = bind(wasm.compareDigest);

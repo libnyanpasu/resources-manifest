@@ -14,7 +14,7 @@ there is no separate scripts workspace package.
 | `pnpm run fmt`               | Formats the repository with Prettier, respecting `.prettierignore`.                                                        |
 | `pnpm run fmt:check`         | Checks formatting with Prettier.                                                                                           |
 | `pnpm run lint`              | Runs Oxlint.                                                                                                               |
-| `pnpm run typecheck`         | Runs the shared TypeScript configuration with no emit.                                                                     |
+| `pnpm run typecheck`         | Builds wasm, then runs the shared TypeScript configuration with no emit.                                                   |
 | `pnpm run test`              | Builds wasm and runs `packages/*/*_test.ts` with Node's test runner, including runtime conformance.                        |
 
 Source lives under `src/wasm/`, `src/conformance/`, and `src/generate/`.

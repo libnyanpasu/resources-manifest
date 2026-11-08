@@ -654,6 +654,7 @@ kind 列表按 manifest 中 variant 顺序，仅列出支持目标平台的 `{ v
 ### 8.2 C2 `@manifest/runtime`
 
 - Node 下用 `readFileSync` 读入 `.wasm` 再 `initSync`，同步初始化；导出类型化函数。
+  函数签名与句柄类型直接取自生成的 `manifest_wasm.d.ts`，不再手写一份；因此 `typecheck` 先执行 `build:wasm`。
 - 计划、kind、错误等类型由 specta 从 core 导出，写进 `packages/manifest-runtime/src/types.ts`（生成物），纳入 `check:generated`。
 - 只服务 Node 构建脚本（§5.7）。
 
