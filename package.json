@@ -1,0 +1,29 @@
+{
+  "name": "@manifest/workspace",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "license": "GPL-3.0-only",
+  "scripts": {
+    "build:wasm": "node scripts/src/wasm/build-wasm.ts",
+    "generate:schema": "cargo run -p manifest-schema-generator && prettier --write packages/manifest-metadata/src/types.ts packages/manifest-metadata/src/version.ts packages/manifest-metadata/schema packages/manifest-runtime/src/types.ts",
+    "check:generated": "pnpm run generate:schema && node scripts/src/generate/check-generated-clean.ts packages/manifest-metadata packages/manifest-runtime/src/types.ts",
+    "check:conformance": "pnpm run build:wasm && node scripts/src/conformance/check-conformance.ts",
+    "check": "pnpm run fmt:check && pnpm run lint && pnpm run typecheck",
+    "fmt": "prettier --write .",
+    "fmt:check": "prettier --check .",
+    "lint": "oxlint",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "pnpm run build:wasm && node --test \"packages/*/*_test.ts\""
+  },
+  "devDependencies": {
+    "@types/node": "26.6.6",
+    "oxlint": "1.91.0",
+    "prettier": "3.9.10",
+    "typescript": "7.0.2"
+  },
+  "packageManager": "pnpm@12.17.0",
+  "engines": {
+    "node": ">=24.2.0"
+  }
+}

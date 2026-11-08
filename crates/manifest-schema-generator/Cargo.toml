@@ -6,6 +6,7 @@ description = "Export resource manifest TypeScript definitions and JSON schemas"
 license.workspace = true
 
 [dependencies]
+manifest-core.workspace = true
 manifest-metadata.workspace = true
 schemars.workspace = true
 serde_json.workspace = true

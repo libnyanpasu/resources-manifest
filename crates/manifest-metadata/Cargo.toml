@@ -6,10 +6,10 @@ description = "Resource manifest meta types annotated with serde, schemars and s
 license.workspace = true
 
 [dependencies]
+manifest-parser.workspace = true
 indexmap.workspace = true
 schemars = { workspace = true, features = ["indexmap2"] }
 serde.workspace = true
-specta = { workspace = true, features = ["indexmap"] }
-
-[dev-dependencies]
 serde_json.workspace = true
+snafu.workspace = true
+specta = { workspace = true, features = ["indexmap"] }

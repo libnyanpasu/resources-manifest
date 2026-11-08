@@ -2,6 +2,13 @@
 /**  Supported checksum algorithms. */
 export type ChecksumAlgorithm = "md5" | "sha256" | "sha512";
 
+/**  How a `header` checksum parser decodes the header value. */
+export type HeaderEncoding =
+  /**  Hexadecimal digest, any case. */
+  | "hex"
+  /**  Standard base64 (`+/`, padded) of the raw digest bytes. */
+  | "base64";
+
 /**  A mirror transforms a canonical URL into an accelerated/alternative URL. */
 export type MirrorDefinition = {
   name: string;
@@ -35,17 +42,19 @@ export type RegistryDefinition = {
 export type RemoteChecksumParser =
   /**  The response body itself is `<algorithm>:<hex>`. */
   | { type: "checksum" }
-  | /**  GNU checksum list: `<hex>  <artifact>`. */ {
-    type: "gnu";
-    algorithm: ChecksumAlgorithm;
-  }
-  | /**  BSD checksum list: `SHA512 (<artifact>) = <hex>`. */ {
-    type: "bsd";
-    algorithm: ChecksumAlgorithm;
-  }
-  | /**  GitHub `/releases/expanded_assets/<tag>` HTML with asset digests. */ {
-    type: "github-release-assets";
-  };
+  /**  GNU checksum list: `<hex>  <artifact>`. */
+  | { type: "gnu"; algorithm: ChecksumAlgorithm }
+  /**  BSD checksum list: `SHA512 (<artifact>) = <hex>`. */
+  | { type: "bsd"; algorithm: ChecksumAlgorithm }
+  /**  GitHub `/releases/expanded_assets/<tag>` HTML with asset digests. */
+  | { type: "github-release-assets" }
+  /**  The digest is read from the named response header (case-insensitive). */
+  | {
+      type: "header";
+      name: string;
+      algorithm: ChecksumAlgorithm;
+      encoding: HeaderEncoding;
+    };
 
 export type RemoteChecksumResourceTemplate = {
   resource: RemoteResourceTemplate;
@@ -66,20 +75,21 @@ export type RemoteResourceTemplate = {
 export type RemoteVersionParser =
   /**  Use the response body, optionally trimming whitespace. */
   | {
-    type: "text";
-    /**  Defaults to true. */
-    trim?: boolean;
-  }
-  | /**  Apply a regular expression and return a capture group. */ {
-    type: "regex";
-    pattern: string;
-    /**
-     *  Capture group containing the version. Defaults to 1. Deserializing
-     *  negative or fractional values fails, matching the reference
-     *  validator's non-negative integer rule.
-     */
-    group?: number;
-  };
+      type: "text";
+      /**  Defaults to true. */
+      trim?: boolean;
+    }
+  /**  Apply a regular expression and return a capture group. */
+  | {
+      type: "regex";
+      pattern: string;
+      /**
+       *  Capture group containing the version. Defaults to 1. Deserializing
+       *  negative or fractional values fails, matching the reference
+       *  validator's non-negative integer rule.
+       */
+      group?: number;
+    };
 
 export type RemoteVersionResourceTemplate = {
   resource: RemoteResourceTemplate;
@@ -107,21 +117,22 @@ export type ResourceArtifactTemplate = {
 export type ResourceArtifactVersionTemplate =
   /**  The manifest contains a bounded, traceable release history. */
   | {
-    type: "static";
-    latest: string;
-    /**  Ordered history; the latest entry need not be first, but must exist. */
-    releases: ResourceStaticReleaseTemplate[];
-  }
-  | /**
+      type: "static";
+      latest: string;
+      /**  Ordered history; the latest entry need not be first, but must exist. */
+      releases: ResourceStaticReleaseTemplate[];
+    }
+  /**
    *  The manifest tells the backend which URLs to request and how to parse
    *  the latest version and checksum.
-   */ {
-    type: "remote";
-    /**  Snapshot generated with the manifest; consumers should still query remote. */
-    fallback?: ResourceStaticReleaseTemplate;
-    version: RemoteVersionResourceTemplate;
-    checksum?: RemoteChecksumResourceTemplate;
-  };
+   */
+  | {
+      type: "remote";
+      /**  Snapshot generated with the manifest; consumers should still query remote. */
+      fallback?: ResourceStaticReleaseTemplate;
+      version: RemoteVersionResourceTemplate;
+      checksum?: RemoteChecksumResourceTemplate;
+    };
 
 /**
  *  Serialized as `<algorithm>:<lowercase hex>`, for example `sha512:abcd...`.
@@ -145,7 +156,7 @@ export type ResourceDefinition = {
 
 /**  The compiled resource manifest consumed by downloaders and UIs. */
 export type ResourceManifest = {
-  manifest_version: 2;
+  manifest_version: `2.${number}`;
   registries: { [key in string]: RegistryDefinition };
   mirrors: { [key in string]: MirrorDefinition };
   resources: { [key in string]: ResourceDefinition };
@@ -154,7 +165,7 @@ export type ResourceManifest = {
 
 /**  The authored resource manifest template, input of the compiler. */
 export type ResourceManifestTemplate = {
-  manifest_version: 2;
+  manifest_version: `2.${number}`;
   registries: { [key in string]: RegistryDefinition };
   mirrors?: { [key in string]: MirrorDefinition };
   resources: { [key in string]: ResourceTemplate };

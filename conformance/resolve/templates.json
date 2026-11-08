@@ -1,0 +1,3805 @@
+[
+  {
+    "name": "resolve.template.unknown",
+    "input": {
+      "template": "{missing}",
+      "values": {},
+      "path": "arg.template"
+    },
+    "expect": {
+      "error": {
+        "code": "template.unknown_variable",
+        "path": "arg.template",
+        "fields": {
+          "variable": "missing"
+        }
+      }
+    }
+  },
+  {
+    "name": "resolve.template.unknown_nested",
+    "input": {
+      "template": "{a}",
+      "values": {
+        "a": {
+          "authored": "{missing}"
+        }
+      },
+      "path": "arg.template"
+    },
+    "expect": {
+      "error": {
+        "code": "template.unknown_variable",
+        "path": "arg.template",
+        "fields": {
+          "variable": "missing"
+        }
+      }
+    }
+  },
+  {
+    "name": "resolve.template.authored_release",
+    "input": {
+      "template": "{release}",
+      "values": {
+        "release": {
+          "authored": "{version}"
+        },
+        "version": {
+          "literal": "v1.2+build"
+        }
+      },
+      "path": "arg.template"
+    },
+    "expect": {
+      "ok": "v1.2+build"
+    }
+  },
+  {
+    "name": "resolve.template.literal_braces",
+    "input": {
+      "template": "{url}",
+      "values": {
+        "url": {
+          "literal": "https://example.test/{missing}"
+        }
+      },
+      "path": "arg.template"
+    },
+    "expect": {
+      "ok": "https://example.test/{missing}"
+    }
+  },
+  {
+    "name": "resolve.template.literal_cycle_text",
+    "input": {
+      "template": "{a}",
+      "values": {
+        "a": {
+          "literal": "{a}"
+        }
+      },
+      "path": "arg.template"
+    },
+    "expect": {
+      "ok": "{a}"
+    }
+  },
+  {
+    "name": "resolve.template.no_rescan_a",
+    "input": {
+      "template": "{left}{right}",
+      "values": {
+        "left": {
+          "authored": "{"
+        },
+        "right": {
+          "authored": "missing}"
+        }
+      },
+      "path": "arg.template"
+    },
+    "expect": {
+      "ok": "{missing}"
+    }
+  },
+  {
+    "name": "resolve.template.no_rescan_l",
+    "input": {
+      "template": "{left}{right}",
+      "values": {
+        "left": {
+          "literal": "{"
+        },
+        "right": {
+          "literal": "missing}"
+        }
+      },
+      "path": "arg.template"
+    },
+    "expect": {
+      "ok": "{missing}"
+    }
+  },
+  {
+    "name": "resolve.template.syntax",
+    "input": {
+      "template": "{{a}}-{a{b}-{}-{a-b}-{é}-{a b}-{x.y}",
+      "values": {
+        "a": {
+          "literal": "A"
+        },
+        "b": {
+          "literal": "B"
+        }
+      },
+      "path": "arg.template"
+    },
+    "expect": {
+      "ok": "{A}-{aB-{}-{a-b}-{é}-{a b}-{x.y}"
+    }
+  },
+  {
+    "name": "resolve.template.self_cycle",
+    "input": {
+      "template": "{a}",
+      "values": {
+        "a": {
+          "authored": "{a}"
+        }
+      },
+      "path": "arg.template"
+    },
+    "expect": {
+      "error": {
+        "code": "template.cycle",
+        "path": "arg.template",
+        "fields": {
+          "variables": ["a", "a"]
+        }
+      }
+    }
+  },
+  {
+    "name": "resolve.template.dfs_cycle",
+    "input": {
+      "template": "{a}",
+      "values": {
+        "a": {
+          "authored": "{b}"
+        },
+        "b": {
+          "authored": "{c}"
+        },
+        "c": {
+          "authored": "{b}"
+        }
+      },
+      "path": "arg.template"
+    },
+    "expect": {
+      "error": {
+        "code": "template.cycle",
+        "path": "arg.template",
+        "fields": {
+          "variables": ["a", "b", "c", "b"]
+        }
+      }
+    }
+  },
+  {
+    "name": "resolve.template.diamond",
+    "input": {
+      "template": "{a}{a}",
+      "values": {
+        "a": {
+          "authored": "{b}{c}"
+        },
+        "b": {
+          "authored": "{d}"
+        },
+        "c": {
+          "authored": "{d}"
+        },
+        "d": {
+          "literal": "x"
+        }
+      },
+      "path": "arg.template"
+    },
+    "expect": {
+      "ok": "xxxx"
+    }
+  },
+  {
+    "name": "resolve.template.depth_default_boundary",
+    "input": {
+      "template": "{a1}",
+      "values": {
+        "a1": {
+          "authored": "{a2}"
+        },
+        "a2": {
+          "authored": "{a3}"
+        },
+        "a3": {
+          "authored": "{a4}"
+        },
+        "a4": {
+          "authored": "{a5}"
+        },
+        "a5": {
+          "authored": "{a6}"
+        },
+        "a6": {
+          "authored": "{a7}"
+        },
+        "a7": {
+          "authored": "{a8}"
+        },
+        "a8": {
+          "authored": "x"
+        }
+      },
+      "path": "arg.template"
+    },
+    "expect": {
+      "ok": "x"
+    }
+  },
+  {
+    "name": "resolve.template.depth_default_exceeded",
+    "input": {
+      "template": "{a1}",
+      "values": {
+        "a1": {
+          "authored": "{a2}"
+        },
+        "a2": {
+          "authored": "{a3}"
+        },
+        "a3": {
+          "authored": "{a4}"
+        },
+        "a4": {
+          "authored": "{a5}"
+        },
+        "a5": {
+          "authored": "{a6}"
+        },
+        "a6": {
+          "authored": "{a7}"
+        },
+        "a7": {
+          "authored": "{a8}"
+        },
+        "a8": {
+          "authored": "{a9}"
+        },
+        "a9": {
+          "authored": "x"
+        }
+      },
+      "path": "arg.template"
+    },
+    "expect": {
+      "error": {
+        "code": "template.depth_exceeded",
+        "path": "arg.template",
+        "fields": {
+          "limit": 8,
+          "actual": 9
+        }
+      }
+    }
+  },
+  {
+    "name": "resolve.template.depth_lowered_boundary",
+    "input": {
+      "template": "{a1}",
+      "values": {
+        "a1": {
+          "authored": "{a2}"
+        },
+        "a2": {
+          "authored": "x"
+        }
+      },
+      "path": "arg.template",
+      "limits": {
+        "template_depth": 2
+      }
+    },
+    "expect": {
+      "ok": "x"
+    }
+  },
+  {
+    "name": "resolve.template.depth_lowered_exceeded",
+    "input": {
+      "template": "{a1}",
+      "values": {
+        "a1": {
+          "authored": "{a2}"
+        },
+        "a2": {
+          "authored": "{a3}"
+        },
+        "a3": {
+          "authored": "x"
+        }
+      },
+      "path": "arg.template",
+      "limits": {
+        "template_depth": 2
+      }
+    },
+    "expect": {
+      "error": {
+        "code": "template.depth_exceeded",
+        "path": "arg.template",
+        "fields": {
+          "limit": 2,
+          "actual": 3
+        }
+      }
+    }
+  },
+  {
+    "name": "resolve.template.depth_raised_clamped_boundary",
+    "input": {
+      "template": "{a1}",
+      "values": {
+        "a1": {
+          "authored": "{a2}"
+        },
+        "a2": {
+          "authored": "{a3}"
+        },
+        "a3": {
+          "authored": "{a4}"
+        },
+        "a4": {
+          "authored": "{a5}"
+        },
+        "a5": {
+          "authored": "{a6}"
+        },
+        "a6": {
+          "authored": "{a7}"
+        },
+        "a7": {
+          "authored": "{a8}"
+        },
+        "a8": {
+          "authored": "x"
+        }
+      },
+      "path": "arg.template",
+      "limits": {
+        "template_depth": 99
+      }
+    },
+    "expect": {
+      "ok": "x"
+    }
+  },
+  {
+    "name": "resolve.template.depth_raised_clamped_exceeded",
+    "input": {
+      "template": "{a1}",
+      "values": {
+        "a1": {
+          "authored": "{a2}"
+        },
+        "a2": {
+          "authored": "{a3}"
+        },
+        "a3": {
+          "authored": "{a4}"
+        },
+        "a4": {
+          "authored": "{a5}"
+        },
+        "a5": {
+          "authored": "{a6}"
+        },
+        "a6": {
+          "authored": "{a7}"
+        },
+        "a7": {
+          "authored": "{a8}"
+        },
+        "a8": {
+          "authored": "{a9}"
+        },
+        "a9": {
+          "authored": "x"
+        }
+      },
+      "path": "arg.template",
+      "limits": {
+        "template_depth": 99
+      }
+    },
+    "expect": {
+      "error": {
+        "code": "template.depth_exceeded",
+        "path": "arg.template",
+        "fields": {
+          "limit": 8,
+          "actual": 9
+        }
+      }
+    }
+  },
+  {
+    "name": "resolve.template.depth_zero_literal",
+    "input": {
+      "template": "{x}",
+      "values": {
+        "x": {
+          "literal": "v1"
+        }
+      },
+      "path": "arg.template",
+      "limits": {
+        "template_depth": 0
+      }
+    },
+    "expect": {
+      "ok": "v1"
+    }
+  },
+  {
+    "name": "resolve.template.depth_zero_authored",
+    "input": {
+      "template": "{x}",
+      "values": {
+        "x": {
+          "authored": "v1"
+        }
+      },
+      "path": "arg.template",
+      "limits": {
+        "template_depth": 0
+      }
+    },
+    "expect": {
+      "error": {
+        "code": "template.depth_exceeded",
+        "path": "arg.template",
+        "fields": {
+          "limit": 0,
+          "actual": 1
+        }
+      }
+    }
+  },
+  {
+    "name": "resolve.template.output_utf8_boundary",
+    "input": {
+      "template": "éé",
+      "values": {},
+      "path": "arg.template",
+      "limits": {
+        "render_output_bytes": 4
+      }
+    },
+    "expect": {
+      "ok": "éé"
+    }
+  },
+  {
+    "name": "resolve.template.output_utf8_exceeded",
+    "input": {
+      "template": "éé",
+      "values": {},
+      "path": "arg.template",
+      "limits": {
+        "render_output_bytes": 3
+      }
+    },
+    "expect": {
+      "error": {
+        "code": "template.output_too_large",
+        "path": "arg.template",
+        "fields": {
+          "limit": 3,
+          "actual": 4
+        }
+      }
+    }
+  },
+  {
+    "name": "resolve.template.output_expansion",
+    "input": {
+      "template": "{a}{a}",
+      "values": {
+        "a": {
+          "authored": "éé"
+        }
+      },
+      "path": "arg.template",
+      "limits": {
+        "render_output_bytes": 7
+      }
+    },
+    "expect": {
+      "error": {
+        "code": "template.output_too_large",
+        "path": "arg.template",
+        "fields": {
+          "limit": 7,
+          "actual": 8
+        }
+      }
+    }
+  },
+  {
+    "name": "resolve.template.output_a",
+    "input": {
+      "template": "{a}",
+      "values": {
+        "a": {
+          "authored": "éé"
+        }
+      },
+      "path": "arg.template",
+      "limits": {
+        "render_output_bytes": 3
+      }
+    },
+    "expect": {
+      "error": {
+        "code": "template.output_too_large",
+        "path": "arg.template",
+        "fields": {
+          "limit": 3,
+          "actual": 4
+        }
+      }
+    }
+  },
+  {
+    "name": "resolve.template.output_l",
+    "input": {
+      "template": "{a}",
+      "values": {
+        "a": {
+          "literal": "éé"
+        }
+      },
+      "path": "arg.template",
+      "limits": {
+        "render_output_bytes": 3
+      }
+    },
+    "expect": {
+      "error": {
+        "code": "template.output_too_large",
+        "path": "arg.template",
+        "fields": {
+          "limit": 3,
+          "actual": 4
+        }
+      }
+    }
+  },
+  {
+    "name": "resolve.template.output_default_boundary",
+    "input": {
+      "template": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+      "values": {},
+      "path": "arg.template"
+    },
+    "expect": {
+      "ok": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+    }
+  },
+  {
+    "name": "resolve.template.output_raised_clamped",
+    "input": {
+      "template": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+      "values": {},
+      "path": "arg.template",
+      "limits": {
+        "render_output_bytes": 99999
+      }
+    },
+    "expect": {
+      "error": {
+        "code": "template.output_too_large",
+        "path": "arg.template",
+        "fields": {
+          "limit": 8192,
+          "actual": 8193
+        }
+      }
+    }
+  },
+  {
+    "name": "resolve.template.output_zero_empty",
+    "input": {
+      "template": "",
+      "values": {},
+      "path": "arg.template",
+      "limits": {
+        "render_output_bytes": 0
+      }
+    },
+    "expect": {
+      "ok": ""
+    }
+  },
+  {
+    "name": "resolve.template.output_zero_nonempty",
+    "input": {
+      "template": "x",
+      "values": {},
+      "path": "arg.template",
+      "limits": {
+        "render_output_bytes": 0
+      }
+    },
+    "expect": {
+      "error": {
+        "code": "template.output_too_large",
+        "path": "arg.template",
+        "fields": {
+          "limit": 0,
+          "actual": 1
+        }
+      }
+    }
+  },
+  {
+    "name": "resolve.authored_release",
+    "input": {
+      "manifest": {
+        "manifest_version": "2.0",
+        "registries": {
+          "test": {
+            "name": "Test",
+            "url_template": "https://example.test/{release}/{artifact}"
+          }
+        },
+        "mirrors": {},
+        "resources": {
+          "sample": {
+            "name": "Sample",
+            "registry": "test",
+            "tags": [],
+            "default_variants": {},
+            "source": {
+              "release": "{version}"
+            },
+            "variants": [
+              {
+                "id": "default",
+                "tag_key": "",
+                "name": "Default",
+                "tags": [],
+                "artifacts": {
+                  "linux-amd64": {
+                    "artifact": "pkg-{version}.zip",
+                    "version": {
+                      "type": "static",
+                      "latest": "v1",
+                      "releases": [
+                        {
+                          "version": "v1"
+                        },
+                        {
+                          "version": "v2",
+                          "source": {
+                            "release": "tag-{version}"
+                          }
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "resource": "sample",
+      "variant": "default",
+      "platform": "linux-amd64"
+    },
+    "expect": {
+      "ok": {
+        "artifact": "pkg-v1.zip",
+        "canonical_url": "https://example.test/v1/pkg-v1.zip"
+      }
+    }
+  },
+  {
+    "name": "resolve.static_history",
+    "input": {
+      "manifest": {
+        "manifest_version": "2.0",
+        "registries": {
+          "test": {
+            "name": "Test",
+            "url_template": "https://example.test/{release}/{artifact}"
+          }
+        },
+        "mirrors": {},
+        "resources": {
+          "sample": {
+            "name": "Sample",
+            "registry": "test",
+            "tags": [],
+            "default_variants": {},
+            "source": {
+              "release": "{version}"
+            },
+            "variants": [
+              {
+                "id": "default",
+                "tag_key": "",
+                "name": "Default",
+                "tags": [],
+                "artifacts": {
+                  "linux-amd64": {
+                    "artifact": "pkg-{version}.zip",
+                    "version": {
+                      "type": "static",
+                      "latest": "v1",
+                      "releases": [
+                        {
+                          "version": "v1"
+                        },
+                        {
+                          "version": "v2",
+                          "source": {
+                            "release": "tag-{version}"
+                          }
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "resource": "sample",
+      "variant": "default",
+      "platform": "linux-amd64",
+      "version": "v2"
+    },
+    "expect": {
+      "ok": {
+        "artifact": "pkg-v2.zip",
+        "canonical_url": "https://example.test/tag-v2/pkg-v2.zip"
+      }
+    }
+  },
+  {
+    "name": "resolve.host_version_injection",
+    "input": {
+      "manifest": {
+        "manifest_version": "2.0",
+        "registries": {
+          "test": {
+            "name": "Test",
+            "url_template": "https://example.test/{release}/{artifact}"
+          }
+        },
+        "mirrors": {},
+        "resources": {
+          "sample": {
+            "name": "Sample",
+            "registry": "test",
+            "tags": [],
+            "default_variants": {},
+            "source": {
+              "release": "{version}"
+            },
+            "variants": [
+              {
+                "id": "default",
+                "tag_key": "",
+                "name": "Default",
+                "tags": [],
+                "artifacts": {
+                  "linux-amd64": {
+                    "artifact": "pkg-{version}.zip",
+                    "version": {
+                      "type": "static",
+                      "latest": "v1",
+                      "releases": [
+                        {
+                          "version": "v1"
+                        },
+                        {
+                          "version": "v2",
+                          "source": {
+                            "release": "tag-{version}"
+                          }
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "resource": "sample",
+      "variant": "default",
+      "platform": "linux-amd64",
+      "version": "alpha?x=1#f"
+    },
+    "expect": {
+      "error": {
+        "code": "template.invalid_literal",
+        "path": "arg.version",
+        "fields": {}
+      }
+    }
+  },
+  {
+    "name": "resolve.host_version_brace",
+    "input": {
+      "manifest": {
+        "manifest_version": "2.0",
+        "registries": {
+          "test": {
+            "name": "Test",
+            "url_template": "https://example.test/{release}/{artifact}"
+          }
+        },
+        "mirrors": {},
+        "resources": {
+          "sample": {
+            "name": "Sample",
+            "registry": "test",
+            "tags": [],
+            "default_variants": {},
+            "source": {
+              "release": "{version}"
+            },
+            "variants": [
+              {
+                "id": "default",
+                "tag_key": "",
+                "name": "Default",
+                "tags": [],
+                "artifacts": {
+                  "linux-amd64": {
+                    "artifact": "pkg-{version}.zip",
+                    "version": {
+                      "type": "static",
+                      "latest": "v1",
+                      "releases": [
+                        {
+                          "version": "v1"
+                        },
+                        {
+                          "version": "v2",
+                          "source": {
+                            "release": "tag-{version}"
+                          }
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "resource": "sample",
+      "variant": "default",
+      "platform": "linux-amd64",
+      "version": "{version}"
+    },
+    "expect": {
+      "error": {
+        "code": "template.invalid_literal",
+        "path": "arg.version",
+        "fields": {}
+      }
+    }
+  },
+  {
+    "name": "resolve.host_version_empty",
+    "input": {
+      "manifest": {
+        "manifest_version": "2.0",
+        "registries": {
+          "test": {
+            "name": "Test",
+            "url_template": "https://example.test/{release}/{artifact}"
+          }
+        },
+        "mirrors": {},
+        "resources": {
+          "sample": {
+            "name": "Sample",
+            "registry": "test",
+            "tags": [],
+            "default_variants": {},
+            "source": {
+              "release": "{version}"
+            },
+            "variants": [
+              {
+                "id": "default",
+                "tag_key": "",
+                "name": "Default",
+                "tags": [],
+                "artifacts": {
+                  "linux-amd64": {
+                    "artifact": "pkg-{version}.zip",
+                    "version": {
+                      "type": "static",
+                      "latest": "v1",
+                      "releases": [
+                        {
+                          "version": "v1"
+                        },
+                        {
+                          "version": "v2",
+                          "source": {
+                            "release": "tag-{version}"
+                          }
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "resource": "sample",
+      "variant": "default",
+      "platform": "linux-amd64",
+      "version": ""
+    },
+    "expect": {
+      "error": {
+        "code": "template.invalid_literal",
+        "path": "arg.version",
+        "fields": {}
+      }
+    }
+  },
+  {
+    "name": "resolve.host_version_slash",
+    "input": {
+      "manifest": {
+        "manifest_version": "2.0",
+        "registries": {
+          "test": {
+            "name": "Test",
+            "url_template": "https://example.test/{release}/{artifact}"
+          }
+        },
+        "mirrors": {},
+        "resources": {
+          "sample": {
+            "name": "Sample",
+            "registry": "test",
+            "tags": [],
+            "default_variants": {},
+            "source": {
+              "release": "{version}"
+            },
+            "variants": [
+              {
+                "id": "default",
+                "tag_key": "",
+                "name": "Default",
+                "tags": [],
+                "artifacts": {
+                  "linux-amd64": {
+                    "artifact": "pkg-{version}.zip",
+                    "version": {
+                      "type": "static",
+                      "latest": "v1",
+                      "releases": [
+                        {
+                          "version": "v1"
+                        },
+                        {
+                          "version": "v2",
+                          "source": {
+                            "release": "tag-{version}"
+                          }
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "resource": "sample",
+      "variant": "default",
+      "platform": "linux-amd64",
+      "version": "v1/x"
+    },
+    "expect": {
+      "error": {
+        "code": "template.invalid_literal",
+        "path": "arg.version",
+        "fields": {}
+      }
+    }
+  },
+  {
+    "name": "resolve.host_version_space",
+    "input": {
+      "manifest": {
+        "manifest_version": "2.0",
+        "registries": {
+          "test": {
+            "name": "Test",
+            "url_template": "https://example.test/{release}/{artifact}"
+          }
+        },
+        "mirrors": {},
+        "resources": {
+          "sample": {
+            "name": "Sample",
+            "registry": "test",
+            "tags": [],
+            "default_variants": {},
+            "source": {
+              "release": "{version}"
+            },
+            "variants": [
+              {
+                "id": "default",
+                "tag_key": "",
+                "name": "Default",
+                "tags": [],
+                "artifacts": {
+                  "linux-amd64": {
+                    "artifact": "pkg-{version}.zip",
+                    "version": {
+                      "type": "static",
+                      "latest": "v1",
+                      "releases": [
+                        {
+                          "version": "v1"
+                        },
+                        {
+                          "version": "v2",
+                          "source": {
+                            "release": "tag-{version}"
+                          }
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "resource": "sample",
+      "variant": "default",
+      "platform": "linux-amd64",
+      "version": " v1"
+    },
+    "expect": {
+      "error": {
+        "code": "template.invalid_literal",
+        "path": "arg.version",
+        "fields": {}
+      }
+    }
+  },
+  {
+    "name": "resolve.host_version_unicode",
+    "input": {
+      "manifest": {
+        "manifest_version": "2.0",
+        "registries": {
+          "test": {
+            "name": "Test",
+            "url_template": "https://example.test/{release}/{artifact}"
+          }
+        },
+        "mirrors": {},
+        "resources": {
+          "sample": {
+            "name": "Sample",
+            "registry": "test",
+            "tags": [],
+            "default_variants": {},
+            "source": {
+              "release": "{version}"
+            },
+            "variants": [
+              {
+                "id": "default",
+                "tag_key": "",
+                "name": "Default",
+                "tags": [],
+                "artifacts": {
+                  "linux-amd64": {
+                    "artifact": "pkg-{version}.zip",
+                    "version": {
+                      "type": "static",
+                      "latest": "v1",
+                      "releases": [
+                        {
+                          "version": "v1"
+                        },
+                        {
+                          "version": "v2",
+                          "source": {
+                            "release": "tag-{version}"
+                          }
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "resource": "sample",
+      "variant": "default",
+      "platform": "linux-amd64",
+      "version": "版本"
+    },
+    "expect": {
+      "error": {
+        "code": "template.invalid_literal",
+        "path": "arg.version",
+        "fields": {}
+      }
+    }
+  },
+  {
+    "name": "resolve.host_version_too_long",
+    "input": {
+      "manifest": {
+        "manifest_version": "2.0",
+        "registries": {
+          "test": {
+            "name": "Test",
+            "url_template": "https://example.test/{release}/{artifact}"
+          }
+        },
+        "mirrors": {},
+        "resources": {
+          "sample": {
+            "name": "Sample",
+            "registry": "test",
+            "tags": [],
+            "default_variants": {},
+            "source": {
+              "release": "{version}"
+            },
+            "variants": [
+              {
+                "id": "default",
+                "tag_key": "",
+                "name": "Default",
+                "tags": [],
+                "artifacts": {
+                  "linux-amd64": {
+                    "artifact": "pkg-{version}.zip",
+                    "version": {
+                      "type": "static",
+                      "latest": "v1",
+                      "releases": [
+                        {
+                          "version": "v1"
+                        },
+                        {
+                          "version": "v2",
+                          "source": {
+                            "release": "tag-{version}"
+                          }
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "resource": "sample",
+      "variant": "default",
+      "platform": "linux-amd64",
+      "version": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+    },
+    "expect": {
+      "error": {
+        "code": "template.invalid_literal",
+        "path": "arg.version",
+        "fields": {}
+      }
+    }
+  },
+  {
+    "name": "resolve.host_source_injection",
+    "input": {
+      "manifest": {
+        "manifest_version": "2.0",
+        "registries": {
+          "test": {
+            "name": "Test",
+            "url_template": "https://example.test/{release}/{artifact}"
+          }
+        },
+        "mirrors": {},
+        "resources": {
+          "sample": {
+            "name": "Sample",
+            "registry": "test",
+            "tags": [],
+            "default_variants": {},
+            "source": {
+              "release": "{version}"
+            },
+            "variants": [
+              {
+                "id": "default",
+                "tag_key": "",
+                "name": "Default",
+                "tags": [],
+                "artifacts": {
+                  "linux-amd64": {
+                    "artifact": "pkg-{version}.zip",
+                    "version": {
+                      "type": "static",
+                      "latest": "v1",
+                      "releases": [
+                        {
+                          "version": "v1"
+                        },
+                        {
+                          "version": "v2",
+                          "source": {
+                            "release": "tag-{version}"
+                          }
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "resource": "sample",
+      "variant": "default",
+      "platform": "linux-amd64",
+      "source": {
+        "injection": "alpha?x=1#f"
+      }
+    },
+    "expect": {
+      "error": {
+        "code": "template.invalid_literal",
+        "path": "arg.source.injection",
+        "fields": {}
+      }
+    }
+  },
+  {
+    "name": "resolve.host_source_braces",
+    "input": {
+      "manifest": {
+        "manifest_version": "2.0",
+        "registries": {
+          "test": {
+            "name": "Test",
+            "url_template": "https://example.test/{release}/{artifact}"
+          }
+        },
+        "mirrors": {},
+        "resources": {
+          "sample": {
+            "name": "Sample",
+            "registry": "test",
+            "tags": [],
+            "default_variants": {},
+            "source": {
+              "release": "{version}"
+            },
+            "variants": [
+              {
+                "id": "default",
+                "tag_key": "",
+                "name": "Default",
+                "tags": [],
+                "artifacts": {
+                  "linux-amd64": {
+                    "artifact": "pkg-{version}.zip",
+                    "version": {
+                      "type": "static",
+                      "latest": "v1",
+                      "releases": [
+                        {
+                          "version": "v1"
+                        },
+                        {
+                          "version": "v2",
+                          "source": {
+                            "release": "tag-{version}"
+                          }
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "resource": "sample",
+      "variant": "default",
+      "platform": "linux-amd64",
+      "source": {
+        "braces": "{version}"
+      }
+    },
+    "expect": {
+      "error": {
+        "code": "template.invalid_literal",
+        "path": "arg.source.braces",
+        "fields": {}
+      }
+    }
+  },
+  {
+    "name": "resolve.host_source_unused",
+    "input": {
+      "manifest": {
+        "manifest_version": "2.0",
+        "registries": {
+          "test": {
+            "name": "Test",
+            "url_template": "https://example.test/{release}/{artifact}"
+          }
+        },
+        "mirrors": {},
+        "resources": {
+          "sample": {
+            "name": "Sample",
+            "registry": "test",
+            "tags": [],
+            "default_variants": {},
+            "source": {
+              "release": "{version}"
+            },
+            "variants": [
+              {
+                "id": "default",
+                "tag_key": "",
+                "name": "Default",
+                "tags": [],
+                "artifacts": {
+                  "linux-amd64": {
+                    "artifact": "pkg-{version}.zip",
+                    "version": {
+                      "type": "static",
+                      "latest": "v1",
+                      "releases": [
+                        {
+                          "version": "v1"
+                        },
+                        {
+                          "version": "v2",
+                          "source": {
+                            "release": "tag-{version}"
+                          }
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "resource": "sample",
+      "variant": "default",
+      "platform": "linux-amd64",
+      "source": {
+        "unused": ""
+      }
+    },
+    "expect": {
+      "error": {
+        "code": "template.invalid_literal",
+        "path": "arg.source.unused",
+        "fields": {}
+      }
+    }
+  },
+  {
+    "name": "resolve.host_source_literal",
+    "input": {
+      "manifest": {
+        "manifest_version": "2.0",
+        "registries": {
+          "test": {
+            "name": "Test",
+            "url_template": "https://example.test/{release}/{artifact}"
+          }
+        },
+        "mirrors": {},
+        "resources": {
+          "sample": {
+            "name": "Sample",
+            "registry": "test",
+            "tags": [],
+            "default_variants": {},
+            "source": {
+              "release": "{version}"
+            },
+            "variants": [
+              {
+                "id": "default",
+                "tag_key": "",
+                "name": "Default",
+                "tags": [],
+                "artifacts": {
+                  "linux-amd64": {
+                    "artifact": "pkg-{version}.zip",
+                    "version": {
+                      "type": "static",
+                      "latest": "v1",
+                      "releases": [
+                        {
+                          "version": "v1"
+                        },
+                        {
+                          "version": "v2",
+                          "source": {
+                            "release": "tag-{version}"
+                          }
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "resource": "sample",
+      "variant": "default",
+      "platform": "linux-amd64",
+      "source": {
+        "release": "release_1.2+build-3"
+      }
+    },
+    "expect": {
+      "ok": {
+        "artifact": "pkg-v1.zip",
+        "canonical_url": "https://example.test/release_1.2+build-3/pkg-v1.zip"
+      }
+    }
+  },
+  {
+    "name": "resolve.precedence_registry",
+    "input": {
+      "manifest": {
+        "manifest_version": "2.0",
+        "registries": {
+          "test": {
+            "name": "Test",
+            "url_template": "https://example.test/{pick}/{artifact}",
+            "variables": {
+              "pick": "registry"
+            }
+          }
+        },
+        "mirrors": {},
+        "resources": {
+          "sample": {
+            "name": "Sample",
+            "registry": "test",
+            "tags": [],
+            "default_variants": {},
+            "source": {},
+            "variants": [
+              {
+                "id": "default",
+                "tag_key": "",
+                "name": "Default",
+                "tags": [],
+                "artifacts": {
+                  "linux-amd64": {
+                    "artifact": "pkg-{version}.zip",
+                    "version": {
+                      "type": "static",
+                      "latest": "v1",
+                      "releases": [
+                        {
+                          "version": "v1",
+                          "source": {}
+                        },
+                        {
+                          "version": "v2",
+                          "source": {
+                            "release": "tag-{version}"
+                          }
+                        }
+                      ]
+                    },
+                    "source": {}
+                  }
+                },
+                "source": {}
+              }
+            ]
+          }
+        }
+      },
+      "resource": "sample",
+      "variant": "default",
+      "platform": "linux-amd64"
+    },
+    "expect": {
+      "ok": {
+        "artifact": "pkg-v1.zip",
+        "canonical_url": "https://example.test/registry/pkg-v1.zip"
+      }
+    }
+  },
+  {
+    "name": "resolve.precedence_resource",
+    "input": {
+      "manifest": {
+        "manifest_version": "2.0",
+        "registries": {
+          "test": {
+            "name": "Test",
+            "url_template": "https://example.test/{pick}/{artifact}",
+            "variables": {
+              "pick": "registry"
+            }
+          }
+        },
+        "mirrors": {},
+        "resources": {
+          "sample": {
+            "name": "Sample",
+            "registry": "test",
+            "tags": [],
+            "default_variants": {},
+            "source": {
+              "pick": "resource"
+            },
+            "variants": [
+              {
+                "id": "default",
+                "tag_key": "",
+                "name": "Default",
+                "tags": [],
+                "artifacts": {
+                  "linux-amd64": {
+                    "artifact": "pkg-{version}.zip",
+                    "version": {
+                      "type": "static",
+                      "latest": "v1",
+                      "releases": [
+                        {
+                          "version": "v1",
+                          "source": {}
+                        },
+                        {
+                          "version": "v2",
+                          "source": {
+                            "release": "tag-{version}"
+                          }
+                        }
+                      ]
+                    },
+                    "source": {}
+                  }
+                },
+                "source": {}
+              }
+            ]
+          }
+        }
+      },
+      "resource": "sample",
+      "variant": "default",
+      "platform": "linux-amd64"
+    },
+    "expect": {
+      "ok": {
+        "artifact": "pkg-v1.zip",
+        "canonical_url": "https://example.test/resource/pkg-v1.zip"
+      }
+    }
+  },
+  {
+    "name": "resolve.precedence_variant",
+    "input": {
+      "manifest": {
+        "manifest_version": "2.0",
+        "registries": {
+          "test": {
+            "name": "Test",
+            "url_template": "https://example.test/{pick}/{artifact}",
+            "variables": {
+              "pick": "registry"
+            }
+          }
+        },
+        "mirrors": {},
+        "resources": {
+          "sample": {
+            "name": "Sample",
+            "registry": "test",
+            "tags": [],
+            "default_variants": {},
+            "source": {
+              "pick": "resource"
+            },
+            "variants": [
+              {
+                "id": "default",
+                "tag_key": "",
+                "name": "Default",
+                "tags": [],
+                "artifacts": {
+                  "linux-amd64": {
+                    "artifact": "pkg-{version}.zip",
+                    "version": {
+                      "type": "static",
+                      "latest": "v1",
+                      "releases": [
+                        {
+                          "version": "v1",
+                          "source": {}
+                        },
+                        {
+                          "version": "v2",
+                          "source": {
+                            "release": "tag-{version}"
+                          }
+                        }
+                      ]
+                    },
+                    "source": {}
+                  }
+                },
+                "source": {
+                  "pick": "variant"
+                }
+              }
+            ]
+          }
+        }
+      },
+      "resource": "sample",
+      "variant": "default",
+      "platform": "linux-amd64"
+    },
+    "expect": {
+      "ok": {
+        "artifact": "pkg-v1.zip",
+        "canonical_url": "https://example.test/variant/pkg-v1.zip"
+      }
+    }
+  },
+  {
+    "name": "resolve.precedence_artifact",
+    "input": {
+      "manifest": {
+        "manifest_version": "2.0",
+        "registries": {
+          "test": {
+            "name": "Test",
+            "url_template": "https://example.test/{pick}/{artifact}",
+            "variables": {
+              "pick": "registry"
+            }
+          }
+        },
+        "mirrors": {},
+        "resources": {
+          "sample": {
+            "name": "Sample",
+            "registry": "test",
+            "tags": [],
+            "default_variants": {},
+            "source": {
+              "pick": "resource"
+            },
+            "variants": [
+              {
+                "id": "default",
+                "tag_key": "",
+                "name": "Default",
+                "tags": [],
+                "artifacts": {
+                  "linux-amd64": {
+                    "artifact": "pkg-{version}.zip",
+                    "version": {
+                      "type": "static",
+                      "latest": "v1",
+                      "releases": [
+                        {
+                          "version": "v1",
+                          "source": {}
+                        },
+                        {
+                          "version": "v2",
+                          "source": {
+                            "release": "tag-{version}"
+                          }
+                        }
+                      ]
+                    },
+                    "source": {
+                      "pick": "artifact"
+                    }
+                  }
+                },
+                "source": {
+                  "pick": "variant"
+                }
+              }
+            ]
+          }
+        }
+      },
+      "resource": "sample",
+      "variant": "default",
+      "platform": "linux-amd64"
+    },
+    "expect": {
+      "ok": {
+        "artifact": "pkg-v1.zip",
+        "canonical_url": "https://example.test/artifact/pkg-v1.zip"
+      }
+    }
+  },
+  {
+    "name": "resolve.precedence_release",
+    "input": {
+      "manifest": {
+        "manifest_version": "2.0",
+        "registries": {
+          "test": {
+            "name": "Test",
+            "url_template": "https://example.test/{pick}/{artifact}",
+            "variables": {
+              "pick": "registry"
+            }
+          }
+        },
+        "mirrors": {},
+        "resources": {
+          "sample": {
+            "name": "Sample",
+            "registry": "test",
+            "tags": [],
+            "default_variants": {},
+            "source": {
+              "pick": "resource"
+            },
+            "variants": [
+              {
+                "id": "default",
+                "tag_key": "",
+                "name": "Default",
+                "tags": [],
+                "artifacts": {
+                  "linux-amd64": {
+                    "artifact": "pkg-{version}.zip",
+                    "version": {
+                      "type": "static",
+                      "latest": "v1",
+                      "releases": [
+                        {
+                          "version": "v1",
+                          "source": {
+                            "pick": "release"
+                          }
+                        },
+                        {
+                          "version": "v2",
+                          "source": {
+                            "release": "tag-{version}"
+                          }
+                        }
+                      ]
+                    },
+                    "source": {
+                      "pick": "artifact"
+                    }
+                  }
+                },
+                "source": {
+                  "pick": "variant"
+                }
+              }
+            ]
+          }
+        }
+      },
+      "resource": "sample",
+      "variant": "default",
+      "platform": "linux-amd64"
+    },
+    "expect": {
+      "ok": {
+        "artifact": "pkg-v1.zip",
+        "canonical_url": "https://example.test/release/pkg-v1.zip"
+      }
+    }
+  },
+  {
+    "name": "resolve.precedence_host",
+    "input": {
+      "manifest": {
+        "manifest_version": "2.0",
+        "registries": {
+          "test": {
+            "name": "Test",
+            "url_template": "https://example.test/{pick}/{artifact}",
+            "variables": {
+              "pick": "registry"
+            }
+          }
+        },
+        "mirrors": {},
+        "resources": {
+          "sample": {
+            "name": "Sample",
+            "registry": "test",
+            "tags": [],
+            "default_variants": {},
+            "source": {
+              "pick": "resource"
+            },
+            "variants": [
+              {
+                "id": "default",
+                "tag_key": "",
+                "name": "Default",
+                "tags": [],
+                "artifacts": {
+                  "linux-amd64": {
+                    "artifact": "pkg-{version}.zip",
+                    "version": {
+                      "type": "static",
+                      "latest": "v1",
+                      "releases": [
+                        {
+                          "version": "v1",
+                          "source": {
+                            "pick": "release"
+                          }
+                        },
+                        {
+                          "version": "v2",
+                          "source": {
+                            "release": "tag-{version}"
+                          }
+                        }
+                      ]
+                    },
+                    "source": {
+                      "pick": "artifact"
+                    }
+                  }
+                },
+                "source": {
+                  "pick": "variant"
+                }
+              }
+            ]
+          }
+        }
+      },
+      "resource": "sample",
+      "variant": "default",
+      "platform": "linux-amd64",
+      "source": {
+        "pick": "host"
+      }
+    },
+    "expect": {
+      "ok": {
+        "artifact": "pkg-v1.zip",
+        "canonical_url": "https://example.test/host/pkg-v1.zip"
+      }
+    }
+  },
+  {
+    "name": "resolve.builtins_win",
+    "input": {
+      "manifest": {
+        "manifest_version": "2.0",
+        "registries": {
+          "test": {
+            "name": "Test",
+            "url_template": "https://example.test/{resource}/{resource_id}/{variant}/{variant_id}/{tag_key}/{platform}/{version}/{artifact}"
+          }
+        },
+        "mirrors": {},
+        "resources": {
+          "sample": {
+            "name": "Sample",
+            "registry": "test",
+            "tags": [],
+            "default_variants": {},
+            "source": {
+              "release": "{version}",
+              "resource": "wrong",
+              "resource_id": "wrong",
+              "variant": "wrong",
+              "variant_id": "wrong",
+              "tag_key": "wrong",
+              "platform": "wrong",
+              "version": "wrong",
+              "artifact": "wrong"
+            },
+            "variants": [
+              {
+                "id": "default",
+                "tag_key": "",
+                "name": "Default",
+                "tags": [],
+                "artifacts": {
+                  "linux-amd64": {
+                    "artifact": "pkg-{version}.zip",
+                    "version": {
+                      "type": "static",
+                      "latest": "v1",
+                      "releases": [
+                        {
+                          "version": "v1"
+                        },
+                        {
+                          "version": "v2",
+                          "source": {
+                            "release": "tag-{version}"
+                          }
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "resource": "sample",
+      "variant": "default",
+      "platform": "linux-amd64",
+      "source": {
+        "resource": "host",
+        "resource_id": "host",
+        "variant": "host",
+        "variant_id": "host",
+        "tag_key": "host",
+        "platform": "host",
+        "version": "host",
+        "artifact": "host"
+      }
+    },
+    "expect": {
+      "ok": {
+        "artifact": "pkg-v1.zip",
+        "canonical_url": "https://example.test/sample/sample/default/default//linux-amd64/v1/pkg-v1.zip"
+      }
+    }
+  },
+  {
+    "name": "resolve.registry_merged_after_name",
+    "input": {
+      "manifest": {
+        "manifest_version": "2.0",
+        "registries": {
+          "test": {
+            "name": "Test",
+            "url_template": "https://example.test/{name}/{artifact}",
+            "variables": {
+              "name": "registry-{version}"
+            }
+          }
+        },
+        "mirrors": {},
+        "resources": {
+          "sample": {
+            "name": "Sample",
+            "registry": "test",
+            "tags": [],
+            "default_variants": {},
+            "source": {
+              "release": "{version}"
+            },
+            "variants": [
+              {
+                "id": "default",
+                "tag_key": "",
+                "name": "Default",
+                "tags": [],
+                "artifacts": {
+                  "linux-amd64": {
+                    "artifact": "pkg-{version}.zip",
+                    "version": {
+                      "type": "static",
+                      "latest": "v1",
+                      "releases": [
+                        {
+                          "version": "v1"
+                        },
+                        {
+                          "version": "v2",
+                          "source": {
+                            "release": "tag-{version}"
+                          }
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "resource": "sample",
+      "variant": "default",
+      "platform": "linux-amd64"
+    },
+    "expect": {
+      "ok": {
+        "artifact": "pkg-v1.zip",
+        "canonical_url": "https://example.test/registry-v1/pkg-v1.zip"
+      }
+    }
+  },
+  {
+    "name": "resolve.rendered_artifact_literal",
+    "input": {
+      "manifest": {
+        "manifest_version": "2.0",
+        "registries": {
+          "test": {
+            "name": "Test",
+            "url_template": "https://example.test/{release}/{artifact}"
+          }
+        },
+        "mirrors": {},
+        "resources": {
+          "sample": {
+            "name": "Sample",
+            "registry": "test",
+            "tags": [],
+            "default_variants": {},
+            "source": {
+              "release": "{version}"
+            },
+            "variants": [
+              {
+                "id": "default",
+                "tag_key": "",
+                "name": "Default",
+                "tags": [],
+                "artifacts": {
+                  "linux-amd64": {
+                    "artifact": "{{version}}.zip",
+                    "version": {
+                      "type": "static",
+                      "latest": "v1",
+                      "releases": [
+                        {
+                          "version": "v1"
+                        },
+                        {
+                          "version": "v2",
+                          "source": {
+                            "release": "tag-{version}"
+                          }
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "resource": "sample",
+      "variant": "default",
+      "platform": "linux-amd64"
+    },
+    "expect": {
+      "ok": {
+        "artifact": "{v1}.zip",
+        "canonical_url": "https://example.test/v1/%7Bv1%7D.zip"
+      }
+    }
+  },
+  {
+    "name": "resolve.cycle_manifest_path",
+    "input": {
+      "manifest": {
+        "manifest_version": "2.0",
+        "registries": {
+          "test": {
+            "name": "Test",
+            "url_template": "https://example.test/{release}/{artifact}"
+          }
+        },
+        "mirrors": {},
+        "resources": {
+          "sample": {
+            "name": "Sample",
+            "registry": "test",
+            "tags": [],
+            "default_variants": {},
+            "source": {
+              "release": "{release}"
+            },
+            "variants": [
+              {
+                "id": "default",
+                "tag_key": "",
+                "name": "Default",
+                "tags": [],
+                "artifacts": {
+                  "linux-amd64": {
+                    "artifact": "pkg-{version}.zip",
+                    "version": {
+                      "type": "static",
+                      "latest": "v1",
+                      "releases": [
+                        {
+                          "version": "v1"
+                        },
+                        {
+                          "version": "v2",
+                          "source": {
+                            "release": "tag-{version}"
+                          }
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "resource": "sample",
+      "variant": "default",
+      "platform": "linux-amd64"
+    },
+    "expect": {
+      "error": {
+        "code": "template.cycle",
+        "path": "resources.sample.source.release",
+        "fields": {
+          "variables": ["release", "release"]
+        }
+      }
+    }
+  },
+  {
+    "name": "resolve.depth_manifest_path",
+    "input": {
+      "manifest": {
+        "manifest_version": "2.0",
+        "registries": {
+          "test": {
+            "name": "Test",
+            "url_template": "https://example.test/{release}/{artifact}"
+          }
+        },
+        "mirrors": {},
+        "resources": {
+          "sample": {
+            "name": "Sample",
+            "registry": "test",
+            "tags": [],
+            "default_variants": {},
+            "source": {
+              "release": "{next}"
+            },
+            "variants": [
+              {
+                "id": "default",
+                "tag_key": "",
+                "name": "Default",
+                "tags": [],
+                "artifacts": {
+                  "linux-amd64": {
+                    "artifact": "pkg-{version}.zip",
+                    "version": {
+                      "type": "static",
+                      "latest": "v1",
+                      "releases": [
+                        {
+                          "version": "v1"
+                        },
+                        {
+                          "version": "v2",
+                          "source": {
+                            "release": "tag-{version}"
+                          }
+                        }
+                      ]
+                    },
+                    "source": {
+                      "next": "tag-{version}"
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "resource": "sample",
+      "variant": "default",
+      "platform": "linux-amd64",
+      "limits": {
+        "template_depth": 1
+      }
+    },
+    "expect": {
+      "error": {
+        "code": "template.depth_exceeded",
+        "path": "resources.sample.source.release",
+        "fields": {
+          "limit": 1,
+          "actual": 2
+        }
+      }
+    }
+  },
+  {
+    "name": "resolve.output_artifact_path",
+    "input": {
+      "manifest": {
+        "manifest_version": "2.0",
+        "registries": {
+          "test": {
+            "name": "Test",
+            "url_template": "https://example.test/{release}/{artifact}"
+          }
+        },
+        "mirrors": {},
+        "resources": {
+          "sample": {
+            "name": "Sample",
+            "registry": "test",
+            "tags": [],
+            "default_variants": {},
+            "source": {
+              "release": "{version}"
+            },
+            "variants": [
+              {
+                "id": "default",
+                "tag_key": "",
+                "name": "Default",
+                "tags": [],
+                "artifacts": {
+                  "linux-amd64": {
+                    "artifact": "pkg-{version}.zip",
+                    "version": {
+                      "type": "static",
+                      "latest": "v1",
+                      "releases": [
+                        {
+                          "version": "v1"
+                        },
+                        {
+                          "version": "v2",
+                          "source": {
+                            "release": "tag-{version}"
+                          }
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "resource": "sample",
+      "variant": "default",
+      "platform": "linux-amd64",
+      "limits": {
+        "render_output_bytes": 9
+      }
+    },
+    "expect": {
+      "error": {
+        "code": "template.output_too_large",
+        "path": "resources.sample.variants[0].artifacts.linux-amd64.artifact",
+        "fields": {
+          "limit": 9,
+          "actual": 10
+        }
+      }
+    }
+  },
+  {
+    "name": "resolve.manifest_version_invalid",
+    "input": {
+      "manifest": {
+        "manifest_version": "2.0",
+        "registries": {
+          "test": {
+            "name": "Test",
+            "url_template": "https://example.test/{release}/{artifact}"
+          }
+        },
+        "mirrors": {},
+        "resources": {
+          "sample": {
+            "name": "Sample",
+            "registry": "test",
+            "tags": [],
+            "default_variants": {},
+            "source": {
+              "release": "{version}"
+            },
+            "variants": [
+              {
+                "id": "default",
+                "tag_key": "",
+                "name": "Default",
+                "tags": [],
+                "artifacts": {
+                  "linux-amd64": {
+                    "artifact": "pkg-{version}.zip",
+                    "version": {
+                      "type": "static",
+                      "latest": "bad?",
+                      "releases": [
+                        {
+                          "version": "bad?"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "resource": "sample",
+      "variant": "default",
+      "platform": "linux-amd64"
+    },
+    "expect": {
+      "error": {
+        "code": "template.invalid_literal",
+        "path": "resources.sample.variants[0].artifacts.linux-amd64.version.releases[0].version",
+        "fields": {}
+      }
+    }
+  },
+  {
+    "name": "resolve.history_missing",
+    "input": {
+      "manifest": {
+        "manifest_version": "2.0",
+        "registries": {
+          "test": {
+            "name": "Test",
+            "url_template": "https://example.test/{release}/{artifact}"
+          }
+        },
+        "mirrors": {},
+        "resources": {
+          "sample": {
+            "name": "Sample",
+            "registry": "test",
+            "tags": [],
+            "default_variants": {},
+            "source": {
+              "release": "{version}"
+            },
+            "variants": [
+              {
+                "id": "default",
+                "tag_key": "",
+                "name": "Default",
+                "tags": [],
+                "artifacts": {
+                  "linux-amd64": {
+                    "artifact": "pkg-{version}.zip",
+                    "version": {
+                      "type": "static",
+                      "latest": "v1",
+                      "releases": [
+                        {
+                          "version": "v1"
+                        },
+                        {
+                          "version": "v2",
+                          "source": {
+                            "release": "tag-{version}"
+                          }
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "resource": "sample",
+      "variant": "default",
+      "platform": "linux-amd64",
+      "version": "v3"
+    },
+    "expect": {
+      "error": {
+        "code": "resolve.version_not_in_history",
+        "path": "arg.version",
+        "fields": {
+          "version": "v3"
+        }
+      }
+    }
+  },
+  {
+    "name": "resolve.remote_version_required",
+    "input": {
+      "manifest": {
+        "manifest_version": "2.0",
+        "registries": {
+          "test": {
+            "name": "Test",
+            "url_template": "https://example.test/{release}/{artifact}"
+          }
+        },
+        "mirrors": {},
+        "resources": {
+          "sample": {
+            "name": "Sample",
+            "registry": "test",
+            "tags": [],
+            "default_variants": {},
+            "source": {
+              "release": "{version}"
+            },
+            "variants": [
+              {
+                "id": "default",
+                "tag_key": "",
+                "name": "Default",
+                "tags": [],
+                "artifacts": {
+                  "linux-amd64": {
+                    "artifact": "pkg-{version}.zip",
+                    "version": {
+                      "type": "remote",
+                      "version": {
+                        "resource": {
+                          "registry": "test",
+                          "artifact": "version.txt"
+                        },
+                        "parser": {
+                          "type": "text"
+                        }
+                      },
+                      "fallback": {
+                        "version": "v0",
+                        "source": {
+                          "release": "fallback-{version}"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "resource": "sample",
+      "variant": "default",
+      "platform": "linux-amd64"
+    },
+    "expect": {
+      "error": {
+        "code": "resolve.version_required",
+        "path": "arg.version",
+        "fields": {}
+      }
+    }
+  },
+  {
+    "name": "resolve.remote_parsed_version",
+    "input": {
+      "manifest": {
+        "manifest_version": "2.0",
+        "registries": {
+          "test": {
+            "name": "Test",
+            "url_template": "https://example.test/{release}/{artifact}"
+          }
+        },
+        "mirrors": {},
+        "resources": {
+          "sample": {
+            "name": "Sample",
+            "registry": "test",
+            "tags": [],
+            "default_variants": {},
+            "source": {
+              "release": "{version}"
+            },
+            "variants": [
+              {
+                "id": "default",
+                "tag_key": "",
+                "name": "Default",
+                "tags": [],
+                "artifacts": {
+                  "linux-amd64": {
+                    "artifact": "pkg-{version}.zip",
+                    "version": {
+                      "type": "remote",
+                      "version": {
+                        "resource": {
+                          "registry": "test",
+                          "artifact": "version.txt"
+                        },
+                        "parser": {
+                          "type": "text"
+                        }
+                      },
+                      "fallback": {
+                        "version": "v0",
+                        "source": {
+                          "release": "fallback-{version}"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "resource": "sample",
+      "variant": "default",
+      "platform": "linux-amd64",
+      "version": "v2"
+    },
+    "expect": {
+      "ok": {
+        "artifact": "pkg-v2.zip",
+        "canonical_url": "https://example.test/v2/pkg-v2.zip"
+      }
+    }
+  },
+  {
+    "name": "resolve.remote_fallback_scope",
+    "input": {
+      "manifest": {
+        "manifest_version": "2.0",
+        "registries": {
+          "test": {
+            "name": "Test",
+            "url_template": "https://example.test/{release}/{artifact}"
+          }
+        },
+        "mirrors": {},
+        "resources": {
+          "sample": {
+            "name": "Sample",
+            "registry": "test",
+            "tags": [],
+            "default_variants": {},
+            "source": {
+              "release": "{version}"
+            },
+            "variants": [
+              {
+                "id": "default",
+                "tag_key": "",
+                "name": "Default",
+                "tags": [],
+                "artifacts": {
+                  "linux-amd64": {
+                    "artifact": "pkg-{version}.zip",
+                    "version": {
+                      "type": "remote",
+                      "version": {
+                        "resource": {
+                          "registry": "test",
+                          "artifact": "version.txt"
+                        },
+                        "parser": {
+                          "type": "text"
+                        }
+                      },
+                      "fallback": {
+                        "version": "v0",
+                        "source": {
+                          "release": "fallback-{version}"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "resource": "sample",
+      "variant": "default",
+      "platform": "linux-amd64",
+      "version": "v0"
+    },
+    "expect": {
+      "ok": {
+        "artifact": "pkg-v0.zip",
+        "canonical_url": "https://example.test/fallback-v0/pkg-v0.zip"
+      }
+    }
+  },
+  {
+    "name": "resolve.host_over_release",
+    "input": {
+      "manifest": {
+        "manifest_version": "2.0",
+        "registries": {
+          "test": {
+            "name": "Test",
+            "url_template": "https://example.test/{release}/{artifact}"
+          }
+        },
+        "mirrors": {},
+        "resources": {
+          "sample": {
+            "name": "Sample",
+            "registry": "test",
+            "tags": [],
+            "default_variants": {},
+            "source": {
+              "release": "{version}"
+            },
+            "variants": [
+              {
+                "id": "default",
+                "tag_key": "",
+                "name": "Default",
+                "tags": [],
+                "artifacts": {
+                  "linux-amd64": {
+                    "artifact": "pkg-{version}.zip",
+                    "version": {
+                      "type": "remote",
+                      "version": {
+                        "resource": {
+                          "registry": "test",
+                          "artifact": "version.txt"
+                        },
+                        "parser": {
+                          "type": "text"
+                        }
+                      },
+                      "fallback": {
+                        "version": "v0",
+                        "source": {
+                          "release": "fallback-{version}"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "resource": "sample",
+      "variant": "default",
+      "platform": "linux-amd64",
+      "version": "v0",
+      "source": {
+        "release": "host"
+      }
+    },
+    "expect": {
+      "ok": {
+        "artifact": "pkg-v0.zip",
+        "canonical_url": "https://example.test/host/pkg-v0.zip"
+      }
+    }
+  },
+  {
+    "name": "resolve.url.invalid",
+    "input": {
+      "manifest": {
+        "manifest_version": "2.0",
+        "registries": {
+          "test": {
+            "name": "Test",
+            "url_template": "not a URL"
+          }
+        },
+        "mirrors": {},
+        "resources": {
+          "sample": {
+            "name": "Sample",
+            "registry": "test",
+            "tags": [],
+            "default_variants": {},
+            "source": {
+              "release": "{version}"
+            },
+            "variants": [
+              {
+                "id": "default",
+                "tag_key": "",
+                "name": "Default",
+                "tags": [],
+                "artifacts": {
+                  "linux-amd64": {
+                    "artifact": "pkg-{version}.zip",
+                    "version": {
+                      "type": "static",
+                      "latest": "v1",
+                      "releases": [
+                        {
+                          "version": "v1"
+                        },
+                        {
+                          "version": "v2",
+                          "source": {
+                            "release": "tag-{version}"
+                          }
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "resource": "sample",
+      "variant": "default",
+      "platform": "linux-amd64"
+    },
+    "expect": {
+      "error": {
+        "code": "url.invalid",
+        "path": "registries.test.url_template",
+        "fields": {}
+      }
+    }
+  },
+  {
+    "name": "resolve.url.invalid_host",
+    "input": {
+      "manifest": {
+        "manifest_version": "2.0",
+        "registries": {
+          "test": {
+            "name": "Test",
+            "url_template": "https://[:::1]/{artifact}"
+          }
+        },
+        "mirrors": {},
+        "resources": {
+          "sample": {
+            "name": "Sample",
+            "registry": "test",
+            "tags": [],
+            "default_variants": {},
+            "source": {
+              "release": "{version}"
+            },
+            "variants": [
+              {
+                "id": "default",
+                "tag_key": "",
+                "name": "Default",
+                "tags": [],
+                "artifacts": {
+                  "linux-amd64": {
+                    "artifact": "pkg-{version}.zip",
+                    "version": {
+                      "type": "static",
+                      "latest": "v1",
+                      "releases": [
+                        {
+                          "version": "v1"
+                        },
+                        {
+                          "version": "v2",
+                          "source": {
+                            "release": "tag-{version}"
+                          }
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "resource": "sample",
+      "variant": "default",
+      "platform": "linux-amd64"
+    },
+    "expect": {
+      "error": {
+        "code": "url.invalid",
+        "path": "registries.test.url_template",
+        "fields": {}
+      }
+    }
+  },
+  {
+    "name": "resolve.url.unsupported_scheme",
+    "input": {
+      "manifest": {
+        "manifest_version": "2.0",
+        "registries": {
+          "test": {
+            "name": "Test",
+            "url_template": "ftp://example.test/{artifact}"
+          }
+        },
+        "mirrors": {},
+        "resources": {
+          "sample": {
+            "name": "Sample",
+            "registry": "test",
+            "tags": [],
+            "default_variants": {},
+            "source": {
+              "release": "{version}"
+            },
+            "variants": [
+              {
+                "id": "default",
+                "tag_key": "",
+                "name": "Default",
+                "tags": [],
+                "artifacts": {
+                  "linux-amd64": {
+                    "artifact": "pkg-{version}.zip",
+                    "version": {
+                      "type": "static",
+                      "latest": "v1",
+                      "releases": [
+                        {
+                          "version": "v1"
+                        },
+                        {
+                          "version": "v2",
+                          "source": {
+                            "release": "tag-{version}"
+                          }
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "resource": "sample",
+      "variant": "default",
+      "platform": "linux-amd64"
+    },
+    "expect": {
+      "error": {
+        "code": "url.unsupported_scheme",
+        "path": "registries.test.url_template",
+        "fields": {
+          "scheme": "ftp"
+        }
+      }
+    }
+  },
+  {
+    "name": "resolve.url.unsupported_opaque",
+    "input": {
+      "manifest": {
+        "manifest_version": "2.0",
+        "registries": {
+          "test": {
+            "name": "Test",
+            "url_template": "data:text/plain,hello"
+          }
+        },
+        "mirrors": {},
+        "resources": {
+          "sample": {
+            "name": "Sample",
+            "registry": "test",
+            "tags": [],
+            "default_variants": {},
+            "source": {
+              "release": "{version}"
+            },
+            "variants": [
+              {
+                "id": "default",
+                "tag_key": "",
+                "name": "Default",
+                "tags": [],
+                "artifacts": {
+                  "linux-amd64": {
+                    "artifact": "pkg-{version}.zip",
+                    "version": {
+                      "type": "static",
+                      "latest": "v1",
+                      "releases": [
+                        {
+                          "version": "v1"
+                        },
+                        {
+                          "version": "v2",
+                          "source": {
+                            "release": "tag-{version}"
+                          }
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "resource": "sample",
+      "variant": "default",
+      "platform": "linux-amd64"
+    },
+    "expect": {
+      "error": {
+        "code": "url.unsupported_scheme",
+        "path": "registries.test.url_template",
+        "fields": {
+          "scheme": "data"
+        }
+      }
+    }
+  },
+  {
+    "name": "resolve.url.userinfo",
+    "input": {
+      "manifest": {
+        "manifest_version": "2.0",
+        "registries": {
+          "test": {
+            "name": "Test",
+            "url_template": "https://user@example.test/{artifact}"
+          }
+        },
+        "mirrors": {},
+        "resources": {
+          "sample": {
+            "name": "Sample",
+            "registry": "test",
+            "tags": [],
+            "default_variants": {},
+            "source": {
+              "release": "{version}"
+            },
+            "variants": [
+              {
+                "id": "default",
+                "tag_key": "",
+                "name": "Default",
+                "tags": [],
+                "artifacts": {
+                  "linux-amd64": {
+                    "artifact": "pkg-{version}.zip",
+                    "version": {
+                      "type": "static",
+                      "latest": "v1",
+                      "releases": [
+                        {
+                          "version": "v1"
+                        },
+                        {
+                          "version": "v2",
+                          "source": {
+                            "release": "tag-{version}"
+                          }
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "resource": "sample",
+      "variant": "default",
+      "platform": "linux-amd64"
+    },
+    "expect": {
+      "error": {
+        "code": "url.forbidden_component",
+        "path": "registries.test.url_template",
+        "fields": {
+          "component": "userinfo"
+        }
+      }
+    }
+  },
+  {
+    "name": "resolve.url.password",
+    "input": {
+      "manifest": {
+        "manifest_version": "2.0",
+        "registries": {
+          "test": {
+            "name": "Test",
+            "url_template": "https://:secret@example.test/{artifact}"
+          }
+        },
+        "mirrors": {},
+        "resources": {
+          "sample": {
+            "name": "Sample",
+            "registry": "test",
+            "tags": [],
+            "default_variants": {},
+            "source": {
+              "release": "{version}"
+            },
+            "variants": [
+              {
+                "id": "default",
+                "tag_key": "",
+                "name": "Default",
+                "tags": [],
+                "artifacts": {
+                  "linux-amd64": {
+                    "artifact": "pkg-{version}.zip",
+                    "version": {
+                      "type": "static",
+                      "latest": "v1",
+                      "releases": [
+                        {
+                          "version": "v1"
+                        },
+                        {
+                          "version": "v2",
+                          "source": {
+                            "release": "tag-{version}"
+                          }
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "resource": "sample",
+      "variant": "default",
+      "platform": "linux-amd64"
+    },
+    "expect": {
+      "error": {
+        "code": "url.forbidden_component",
+        "path": "registries.test.url_template",
+        "fields": {
+          "component": "userinfo"
+        }
+      }
+    }
+  },
+  {
+    "name": "resolve.url.fragment",
+    "input": {
+      "manifest": {
+        "manifest_version": "2.0",
+        "registries": {
+          "test": {
+            "name": "Test",
+            "url_template": "https://example.test/{artifact}#frag"
+          }
+        },
+        "mirrors": {},
+        "resources": {
+          "sample": {
+            "name": "Sample",
+            "registry": "test",
+            "tags": [],
+            "default_variants": {},
+            "source": {
+              "release": "{version}"
+            },
+            "variants": [
+              {
+                "id": "default",
+                "tag_key": "",
+                "name": "Default",
+                "tags": [],
+                "artifacts": {
+                  "linux-amd64": {
+                    "artifact": "pkg-{version}.zip",
+                    "version": {
+                      "type": "static",
+                      "latest": "v1",
+                      "releases": [
+                        {
+                          "version": "v1"
+                        },
+                        {
+                          "version": "v2",
+                          "source": {
+                            "release": "tag-{version}"
+                          }
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "resource": "sample",
+      "variant": "default",
+      "platform": "linux-amd64"
+    },
+    "expect": {
+      "error": {
+        "code": "url.forbidden_component",
+        "path": "registries.test.url_template",
+        "fields": {
+          "component": "fragment"
+        }
+      }
+    }
+  },
+  {
+    "name": "resolve.url.empty_fragment",
+    "input": {
+      "manifest": {
+        "manifest_version": "2.0",
+        "registries": {
+          "test": {
+            "name": "Test",
+            "url_template": "https://example.test/{artifact}#"
+          }
+        },
+        "mirrors": {},
+        "resources": {
+          "sample": {
+            "name": "Sample",
+            "registry": "test",
+            "tags": [],
+            "default_variants": {},
+            "source": {
+              "release": "{version}"
+            },
+            "variants": [
+              {
+                "id": "default",
+                "tag_key": "",
+                "name": "Default",
+                "tags": [],
+                "artifacts": {
+                  "linux-amd64": {
+                    "artifact": "pkg-{version}.zip",
+                    "version": {
+                      "type": "static",
+                      "latest": "v1",
+                      "releases": [
+                        {
+                          "version": "v1"
+                        },
+                        {
+                          "version": "v2",
+                          "source": {
+                            "release": "tag-{version}"
+                          }
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "resource": "sample",
+      "variant": "default",
+      "platform": "linux-amd64"
+    },
+    "expect": {
+      "error": {
+        "code": "url.forbidden_component",
+        "path": "registries.test.url_template",
+        "fields": {
+          "component": "fragment"
+        }
+      }
+    }
+  },
+  {
+    "name": "resolve.url.http",
+    "input": {
+      "manifest": {
+        "manifest_version": "2.0",
+        "registries": {
+          "test": {
+            "name": "Test",
+            "url_template": "http://example.test/{artifact}"
+          }
+        },
+        "mirrors": {},
+        "resources": {
+          "sample": {
+            "name": "Sample",
+            "registry": "test",
+            "tags": [],
+            "default_variants": {},
+            "source": {
+              "release": "{version}"
+            },
+            "variants": [
+              {
+                "id": "default",
+                "tag_key": "",
+                "name": "Default",
+                "tags": [],
+                "artifacts": {
+                  "linux-amd64": {
+                    "artifact": "pkg-{version}.zip",
+                    "version": {
+                      "type": "static",
+                      "latest": "v1",
+                      "releases": [
+                        {
+                          "version": "v1"
+                        },
+                        {
+                          "version": "v2",
+                          "source": {
+                            "release": "tag-{version}"
+                          }
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "resource": "sample",
+      "variant": "default",
+      "platform": "linux-amd64"
+    },
+    "expect": {
+      "ok": {
+        "artifact": "pkg-v1.zip",
+        "canonical_url": "http://example.test/pkg-v1.zip"
+      }
+    }
+  },
+  {
+    "name": "resolve.url.canonical",
+    "input": {
+      "manifest": {
+        "manifest_version": "2.0",
+        "registries": {
+          "test": {
+            "name": "Test",
+            "url_template": "HTTPS://EXAMPLE.TEST:443/a/../{artifact}"
+          }
+        },
+        "mirrors": {},
+        "resources": {
+          "sample": {
+            "name": "Sample",
+            "registry": "test",
+            "tags": [],
+            "default_variants": {},
+            "source": {
+              "release": "{version}"
+            },
+            "variants": [
+              {
+                "id": "default",
+                "tag_key": "",
+                "name": "Default",
+                "tags": [],
+                "artifacts": {
+                  "linux-amd64": {
+                    "artifact": "pkg-{version}.zip",
+                    "version": {
+                      "type": "static",
+                      "latest": "v1",
+                      "releases": [
+                        {
+                          "version": "v1"
+                        },
+                        {
+                          "version": "v2",
+                          "source": {
+                            "release": "tag-{version}"
+                          }
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "resource": "sample",
+      "variant": "default",
+      "platform": "linux-amd64"
+    },
+    "expect": {
+      "ok": {
+        "artifact": "pkg-v1.zip",
+        "canonical_url": "https://example.test/pkg-v1.zip"
+      }
+    }
+  },
+  {
+    "name": "resolve.url.query_allowed",
+    "input": {
+      "manifest": {
+        "manifest_version": "2.0",
+        "registries": {
+          "test": {
+            "name": "Test",
+            "url_template": "https://example.test/{artifact}?x=1"
+          }
+        },
+        "mirrors": {},
+        "resources": {
+          "sample": {
+            "name": "Sample",
+            "registry": "test",
+            "tags": [],
+            "default_variants": {},
+            "source": {
+              "release": "{version}"
+            },
+            "variants": [
+              {
+                "id": "default",
+                "tag_key": "",
+                "name": "Default",
+                "tags": [],
+                "artifacts": {
+                  "linux-amd64": {
+                    "artifact": "pkg-{version}.zip",
+                    "version": {
+                      "type": "static",
+                      "latest": "v1",
+                      "releases": [
+                        {
+                          "version": "v1"
+                        },
+                        {
+                          "version": "v2",
+                          "source": {
+                            "release": "tag-{version}"
+                          }
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "resource": "sample",
+      "variant": "default",
+      "platform": "linux-amd64"
+    },
+    "expect": {
+      "ok": {
+        "artifact": "pkg-v1.zip",
+        "canonical_url": "https://example.test/pkg-v1.zip?x=1"
+      }
+    }
+  },
+  {
+    "name": "resolve.url.percent_preserved",
+    "input": {
+      "manifest": {
+        "manifest_version": "2.0",
+        "registries": {
+          "test": {
+            "name": "Test",
+            "url_template": "https://example.test/a%2Fb/{artifact}"
+          }
+        },
+        "mirrors": {},
+        "resources": {
+          "sample": {
+            "name": "Sample",
+            "registry": "test",
+            "tags": [],
+            "default_variants": {},
+            "source": {
+              "release": "{version}"
+            },
+            "variants": [
+              {
+                "id": "default",
+                "tag_key": "",
+                "name": "Default",
+                "tags": [],
+                "artifacts": {
+                  "linux-amd64": {
+                    "artifact": "pkg-{version}.zip",
+                    "version": {
+                      "type": "static",
+                      "latest": "v1",
+                      "releases": [
+                        {
+                          "version": "v1"
+                        },
+                        {
+                          "version": "v2",
+                          "source": {
+                            "release": "tag-{version}"
+                          }
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "resource": "sample",
+      "variant": "default",
+      "platform": "linux-amd64"
+    },
+    "expect": {
+      "ok": {
+        "artifact": "pkg-v1.zip",
+        "canonical_url": "https://example.test/a%2Fb/pkg-v1.zip"
+      }
+    }
+  },
+  {
+    "name": "resolve.url.plus_not_encoded",
+    "input": {
+      "manifest": {
+        "manifest_version": "2.0",
+        "registries": {
+          "test": {
+            "name": "Test",
+            "url_template": "https://example.test/a+b/{artifact}"
+          }
+        },
+        "mirrors": {},
+        "resources": {
+          "sample": {
+            "name": "Sample",
+            "registry": "test",
+            "tags": [],
+            "default_variants": {},
+            "source": {
+              "release": "{version}"
+            },
+            "variants": [
+              {
+                "id": "default",
+                "tag_key": "",
+                "name": "Default",
+                "tags": [],
+                "artifacts": {
+                  "linux-amd64": {
+                    "artifact": "pkg-{version}.zip",
+                    "version": {
+                      "type": "static",
+                      "latest": "v1",
+                      "releases": [
+                        {
+                          "version": "v1"
+                        },
+                        {
+                          "version": "v2",
+                          "source": {
+                            "release": "tag-{version}"
+                          }
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "resource": "sample",
+      "variant": "default",
+      "platform": "linux-amd64"
+    },
+    "expect": {
+      "ok": {
+        "artifact": "pkg-v1.zip",
+        "canonical_url": "https://example.test/a+b/pkg-v1.zip"
+      }
+    }
+  },
+  {
+    "name": "resolve.url.encoded_delimiters",
+    "input": {
+      "manifest": {
+        "manifest_version": "2.0",
+        "registries": {
+          "test": {
+            "name": "Test",
+            "url_template": "https://example.test/%23%3F/{artifact}"
+          }
+        },
+        "mirrors": {},
+        "resources": {
+          "sample": {
+            "name": "Sample",
+            "registry": "test",
+            "tags": [],
+            "default_variants": {},
+            "source": {
+              "release": "{version}"
+            },
+            "variants": [
+              {
+                "id": "default",
+                "tag_key": "",
+                "name": "Default",
+                "tags": [],
+                "artifacts": {
+                  "linux-amd64": {
+                    "artifact": "pkg-{version}.zip",
+                    "version": {
+                      "type": "static",
+                      "latest": "v1",
+                      "releases": [
+                        {
+                          "version": "v1"
+                        },
+                        {
+                          "version": "v2",
+                          "source": {
+                            "release": "tag-{version}"
+                          }
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "resource": "sample",
+      "variant": "default",
+      "platform": "linux-amd64"
+    },
+    "expect": {
+      "ok": {
+        "artifact": "pkg-v1.zip",
+        "canonical_url": "https://example.test/%23%3F/pkg-v1.zip"
+      }
+    }
+  },
+  {
+    "name": "resolve.snapshot_mihomo",
+    "input": {
+      "manifest": {
+        "snapshot": "resources.json"
+      },
+      "resource": "mihomo",
+      "variant": "stable-goamd64-v1",
+      "platform": "windows-x86_64",
+      "version": "v1.19.28"
+    },
+    "expect": {
+      "ok": {
+        "artifact": "mihomo-windows-amd64-v1-v1.19.28.zip",
+        "canonical_url": "https://github.com/MetaCubeX/mihomo/releases/download/v1.19.28/mihomo-windows-amd64-v1-v1.19.28.zip"
+      }
+    }
+  },
+  {
+    "name": "resolve.url.empty_userinfo",
+    "input": {
+      "manifest": {
+        "manifest_version": "2.0",
+        "registries": {
+          "test": {
+            "name": "Test",
+            "url_template": "https://@example.test/{artifact}"
+          }
+        },
+        "mirrors": {},
+        "resources": {
+          "sample": {
+            "name": "Sample",
+            "registry": "test",
+            "tags": [],
+            "default_variants": {},
+            "source": {
+              "release": "{version}"
+            },
+            "variants": [
+              {
+                "id": "default",
+                "tag_key": "",
+                "name": "Default",
+                "tags": [],
+                "artifacts": {
+                  "linux-amd64": {
+                    "artifact": "pkg-{version}.zip",
+                    "version": {
+                      "type": "static",
+                      "latest": "v1",
+                      "releases": [
+                        {
+                          "version": "v1"
+                        },
+                        {
+                          "version": "v2",
+                          "source": {
+                            "release": "tag-{version}"
+                          }
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "resource": "sample",
+      "variant": "default",
+      "platform": "linux-amd64"
+    },
+    "expect": {
+      "error": {
+        "code": "url.forbidden_component",
+        "path": "registries.test.url_template",
+        "fields": {
+          "component": "userinfo"
+        }
+      }
+    }
+  },
+  {
+    "name": "resolve.url.empty_password",
+    "input": {
+      "manifest": {
+        "manifest_version": "2.0",
+        "registries": {
+          "test": {
+            "name": "Test",
+            "url_template": "https://:@example.test/{artifact}"
+          }
+        },
+        "mirrors": {},
+        "resources": {
+          "sample": {
+            "name": "Sample",
+            "registry": "test",
+            "tags": [],
+            "default_variants": {},
+            "source": {
+              "release": "{version}"
+            },
+            "variants": [
+              {
+                "id": "default",
+                "tag_key": "",
+                "name": "Default",
+                "tags": [],
+                "artifacts": {
+                  "linux-amd64": {
+                    "artifact": "pkg-{version}.zip",
+                    "version": {
+                      "type": "static",
+                      "latest": "v1",
+                      "releases": [
+                        {
+                          "version": "v1"
+                        },
+                        {
+                          "version": "v2",
+                          "source": {
+                            "release": "tag-{version}"
+                          }
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "resource": "sample",
+      "variant": "default",
+      "platform": "linux-amd64"
+    },
+    "expect": {
+      "error": {
+        "code": "url.forbidden_component",
+        "path": "registries.test.url_template",
+        "fields": {
+          "component": "userinfo"
+        }
+      }
+    }
+  }
+]

@@ -1,0 +1,514 @@
+[
+  {
+    "name": "checksums.txt",
+    "checksum": "sha256:758817839491ecc5ecdf8736ba04b3c0083621dfe6cd4285d07ff1f7c64148e3"
+  },
+  {
+    "name": "mihomo-android-386-alpha-478af2a.gz",
+    "checksum": "sha256:a08c579e79a1242302edc6ed6a5d1c8dbe9a8520edd3f3431287d8a57aa5b50b"
+  },
+  {
+    "name": "mihomo-android-amd64-alpha-478af2a.gz",
+    "checksum": "sha256:411e7aa07591639c30099fbdff7e3c42a012bfd31a8304930cab1bb1fcd7b9b5"
+  },
+  {
+    "name": "mihomo-android-arm64-v8-alpha-478af2a.gz",
+    "checksum": "sha256:90812ed58f5a7b533baa33f7d16a534fdaf6800578443bef0953a9bf95e673da"
+  },
+  {
+    "name": "mihomo-android-armv7-alpha-478af2a.gz",
+    "checksum": "sha256:7505d6b8e15905514726eca5abbb789fb49ca156f228150fe49fe3e6c98ae93f"
+  },
+  {
+    "name": "mihomo-darwin-amd64-alpha-478af2a.gz",
+    "checksum": "sha256:e5ccf2555f05e48bf1d58e80b4879975741d1773abcc6211af98870e024b4cc8"
+  },
+  {
+    "name": "mihomo-darwin-amd64-compatible-alpha-478af2a.gz",
+    "checksum": "sha256:34e623f8085d18d76c0fef7ea9a60a95a69a8d9b5770e52c2bd6ec80b9681d6a"
+  },
+  {
+    "name": "mihomo-darwin-amd64-v1-alpha-478af2a.gz",
+    "checksum": "sha256:c716e5e6e6ce2dbcf2c735d2cc5d4e1d000a75e3c002df199c8bcb4f4614c091"
+  },
+  {
+    "name": "mihomo-darwin-amd64-v1-go120-alpha-478af2a.gz",
+    "checksum": "sha256:380535daf8cbf7e87f0c827ecc303feb09416588fd6ecc79bb75dd6e35277020"
+  },
+  {
+    "name": "mihomo-darwin-amd64-v1-go122-alpha-478af2a.gz",
+    "checksum": "sha256:2eca86fd453ac5fd0fdf52b4392d53a164711e2ac17e666e33b9220327e8f531"
+  },
+  {
+    "name": "mihomo-darwin-amd64-v1-go124-alpha-478af2a.gz",
+    "checksum": "sha256:d2378610cc001beb224b495f283a9516f859108c770e3821a8e9617c6c158575"
+  },
+  {
+    "name": "mihomo-darwin-amd64-v2-alpha-478af2a.gz",
+    "checksum": "sha256:184752540c572385b0f180db7f4d651637b152967ab91a49332106f2b6e9b1e7"
+  },
+  {
+    "name": "mihomo-darwin-amd64-v2-go120-alpha-478af2a.gz",
+    "checksum": "sha256:a6abaddc5de6a329ee512e7dd57bd3a52b3ba998d5ddefebdad77840dd5620a3"
+  },
+  {
+    "name": "mihomo-darwin-amd64-v2-go122-alpha-478af2a.gz",
+    "checksum": "sha256:c925cb553d970685cb8ac71e5e56ba938a75988ec7c86912c5cb3a52c7c95875"
+  },
+  {
+    "name": "mihomo-darwin-amd64-v2-go124-alpha-478af2a.gz",
+    "checksum": "sha256:68e2c20a7ba9c1eca6e0cf43f2d6b1851ee63a1e265629569b83798e70b40f59"
+  },
+  {
+    "name": "mihomo-darwin-amd64-v3-alpha-478af2a.gz",
+    "checksum": "sha256:85e1c048871c7025dab04137b6b326b676fb53cd0c631b887245bc642ac7bb04"
+  },
+  {
+    "name": "mihomo-darwin-amd64-v3-go120-alpha-478af2a.gz",
+    "checksum": "sha256:8404f4f21824ae8d61832e815a1430fbf323c762203b2c0d867ffca9e34efbc8"
+  },
+  {
+    "name": "mihomo-darwin-amd64-v3-go122-alpha-478af2a.gz",
+    "checksum": "sha256:a6801eea2b55f62e84c76cbe7fd2f75ed66766eaddc7503daf7b147e0d8c669e"
+  },
+  {
+    "name": "mihomo-darwin-amd64-v3-go124-alpha-478af2a.gz",
+    "checksum": "sha256:db0d96e24a82fe326a197e2393d7c99aef4b1c2867344848129c02d466ed62b7"
+  },
+  {
+    "name": "mihomo-darwin-arm64-alpha-478af2a.gz",
+    "checksum": "sha256:efc4aa19453da5070960916faf592f19db4a084bc513bf91450d919bfb699635"
+  },
+  {
+    "name": "mihomo-darwin-arm64-go120-alpha-478af2a.gz",
+    "checksum": "sha256:6c167156d925904939b6d7f9b6a32dd1026f9418e6a51d83135e2c6a97346a69"
+  },
+  {
+    "name": "mihomo-darwin-arm64-go122-alpha-478af2a.gz",
+    "checksum": "sha256:9773bcf45ec4fe6c57cb62563dd7cb330ebaeeea5f9433e4501bfdb6857d534e"
+  },
+  {
+    "name": "mihomo-darwin-arm64-go124-alpha-478af2a.gz",
+    "checksum": "sha256:ef56e76112d99d7df183dc15961908847c593aa6a19e297176fa3583f43d27de"
+  },
+  {
+    "name": "mihomo-freebsd-386-alpha-478af2a.gz",
+    "checksum": "sha256:95ee1cd51e836c66616cae5db33a45921896a5da294b541f0415456e5dfe74b0"
+  },
+  {
+    "name": "mihomo-freebsd-amd64-alpha-478af2a.gz",
+    "checksum": "sha256:8abe810f3595b5da5acb9b62c60fc68ed43a25c8dc5c164a99abb0159bfd6256"
+  },
+  {
+    "name": "mihomo-freebsd-amd64-compatible-alpha-478af2a.gz",
+    "checksum": "sha256:8783594072f69be7439f454cc06a9eb8ab1759416fc6940e64137e2fa430e356"
+  },
+  {
+    "name": "mihomo-freebsd-amd64-v1-alpha-478af2a.gz",
+    "checksum": "sha256:0710d838c78263aa1fd84dc45745cc840be165a06047c42cb8404c2fd1c607e2"
+  },
+  {
+    "name": "mihomo-freebsd-amd64-v2-alpha-478af2a.gz",
+    "checksum": "sha256:80089649ea0c0cf140981a84c78b0e304194f7fcf09c6d25d100209cbdcfd3e7"
+  },
+  {
+    "name": "mihomo-freebsd-amd64-v3-alpha-478af2a.gz",
+    "checksum": "sha256:25523cbf66d9359e12a6bf87687237b185985c384af77e65e1f46211ce959ef6"
+  },
+  {
+    "name": "mihomo-freebsd-arm64-alpha-478af2a.gz",
+    "checksum": "sha256:26f1c531be351128e1705d89c5b21c2d2d88a9504c6030401a85eb18d1d0ed64"
+  },
+  {
+    "name": "mihomo-linux-386-alpha-478af2a.deb",
+    "checksum": "sha256:d6a0d70cbce2c29db8983259e45f6c35207898206ab8aac7e64b7b08b6b077b2"
+  },
+  {
+    "name": "mihomo-linux-386-alpha-478af2a.gz",
+    "checksum": "sha256:5c8310d7dd3e424870549b0df65a27f6b745bc30698d4e0f0711ce433a0913a9"
+  },
+  {
+    "name": "mihomo-linux-386-alpha-478af2a.rpm",
+    "checksum": "sha256:fcd78955ba0f9cfd9c3c8d2bd90a00973f72800d381f44410676cde52e1fa657"
+  },
+  {
+    "name": "mihomo-linux-386-go120-alpha-478af2a.gz",
+    "checksum": "sha256:4ceef938fa932b7f7ae7bc207d87fc39e9677976369b89c97c8d000f2b3839b4"
+  },
+  {
+    "name": "mihomo-linux-386-go123-alpha-478af2a.gz",
+    "checksum": "sha256:5ae680688bb8b84c27addfa1da2c0ff8b38997c9c5ec7ef928ff8d0112bd00d4"
+  },
+  {
+    "name": "mihomo-linux-386-softfloat-alpha-478af2a.gz",
+    "checksum": "sha256:9b395af8f6696ad1a92ca8f6949759981cdc8921cdf164d68929c897158f9f88"
+  },
+  {
+    "name": "mihomo-linux-amd64-alpha-478af2a.deb",
+    "checksum": "sha256:ebf05314e396daa66a2aa13549b0ccc55a55d19f79eacd69c5d73dbfe487ba07"
+  },
+  {
+    "name": "mihomo-linux-amd64-alpha-478af2a.gz",
+    "checksum": "sha256:452daf119644c2f74d5fe7aad183264189ed31cf5ae13ba3579be0abc6fe6810"
+  },
+  {
+    "name": "mihomo-linux-amd64-alpha-478af2a.pkg.tar.zst",
+    "checksum": "sha256:ce05a3086435be212a03f3dfa55dd0ea1cc081fc73fc21232bd4eb970cd1ac6f"
+  },
+  {
+    "name": "mihomo-linux-amd64-alpha-478af2a.rpm",
+    "checksum": "sha256:d160a93b29782e8f87b30345e971fc4258c491241f5c46cb7b751c920b1f34b7"
+  },
+  {
+    "name": "mihomo-linux-amd64-compatible-alpha-478af2a.gz",
+    "checksum": "sha256:d2edf67c36a5daa69abe133c85e3afbe9d9564590a72fffa3a975d230ccb1048"
+  },
+  {
+    "name": "mihomo-linux-amd64-v1-alpha-478af2a.deb",
+    "checksum": "sha256:10b2d85ebbd70bf8b940343db276dad6ae54412521461c195a1ded1414f37872"
+  },
+  {
+    "name": "mihomo-linux-amd64-v1-alpha-478af2a.gz",
+    "checksum": "sha256:2da3a01a4bc8c0cce25a200e6335f190d6861cf4d472e5325a907f2b92a60219"
+  },
+  {
+    "name": "mihomo-linux-amd64-v1-alpha-478af2a.pkg.tar.zst",
+    "checksum": "sha256:eb80535728384291fc0987f9e265505f46d3b1fb6736cc4033fb76a239c674e1"
+  },
+  {
+    "name": "mihomo-linux-amd64-v1-alpha-478af2a.rpm",
+    "checksum": "sha256:a7704e43e61fab312968891e25d767baf8890ce2f722ea64862fa34670a648be"
+  },
+  {
+    "name": "mihomo-linux-amd64-v1-go120-alpha-478af2a.gz",
+    "checksum": "sha256:a3f91801671080a98ee10ce39864e025ac4b2d2affc3c057ab46d9b7fd5d2352"
+  },
+  {
+    "name": "mihomo-linux-amd64-v1-go123-alpha-478af2a.gz",
+    "checksum": "sha256:9a2b248dca17f7ccc837c80caa3d277b94b7e87d52599ffe17ca356af8c9fd70"
+  },
+  {
+    "name": "mihomo-linux-amd64-v2-alpha-478af2a.deb",
+    "checksum": "sha256:8c45a5ed334820c5dadb17d5da573da04dfdbf1d236327d0beb17a29d6fc7cb2"
+  },
+  {
+    "name": "mihomo-linux-amd64-v2-alpha-478af2a.gz",
+    "checksum": "sha256:4570de7e9ccceb891ff27caeeb1b8d611797d1316c1043692fa7c6bcde877912"
+  },
+  {
+    "name": "mihomo-linux-amd64-v2-alpha-478af2a.pkg.tar.zst",
+    "checksum": "sha256:121d93534859c57f8309dfe5b18a1aeb6a82b38490d91f3e744c49a2be4fcf65"
+  },
+  {
+    "name": "mihomo-linux-amd64-v2-alpha-478af2a.rpm",
+    "checksum": "sha256:e4171f00ce6b816b07605990d73eba54c326b3a70cbc6d909d0086f475e097f5"
+  },
+  {
+    "name": "mihomo-linux-amd64-v2-go120-alpha-478af2a.gz",
+    "checksum": "sha256:3efcff830e9390c70464518b185de70630638fbe3c780ecad86887564b35c085"
+  },
+  {
+    "name": "mihomo-linux-amd64-v2-go123-alpha-478af2a.gz",
+    "checksum": "sha256:20eb531c26e66ab4beba141870e295e0e002324736641b47a9dfe38f5cd31de4"
+  },
+  {
+    "name": "mihomo-linux-amd64-v3-alpha-478af2a.deb",
+    "checksum": "sha256:1dd028bdcc6473c18edfb8e453b945b8451939b058c4dae25032f6f783a4935b"
+  },
+  {
+    "name": "mihomo-linux-amd64-v3-alpha-478af2a.gz",
+    "checksum": "sha256:9138a1a77938a9d5f046869fc83ad34e324412a6140177c49fdc9bbac1b04d10"
+  },
+  {
+    "name": "mihomo-linux-amd64-v3-alpha-478af2a.pkg.tar.zst",
+    "checksum": "sha256:e4abc3720f4c4070a60462819b059ed3168b48c397440b6853c709e704edcff8"
+  },
+  {
+    "name": "mihomo-linux-amd64-v3-alpha-478af2a.rpm",
+    "checksum": "sha256:b3e6c9e3dbe367d6c955779f443d32c354e46b3bf92efbb7f9a6dc25e7a62d98"
+  },
+  {
+    "name": "mihomo-linux-amd64-v3-go120-alpha-478af2a.gz",
+    "checksum": "sha256:8bf98241450ad6116f8fd34e34aa31b6fa55b4c228c6d9bf2593971895be7567"
+  },
+  {
+    "name": "mihomo-linux-amd64-v3-go123-alpha-478af2a.gz",
+    "checksum": "sha256:f02a00a811a8fc5529a7a941ea623585262304ff1009c0c5f293a962e3767bd8"
+  },
+  {
+    "name": "mihomo-linux-arm64-alpha-478af2a.deb",
+    "checksum": "sha256:aa3b05eb1690b8cf16ae6993b7664a7664d63290a75f890c2e142fa1c83da06c"
+  },
+  {
+    "name": "mihomo-linux-arm64-alpha-478af2a.gz",
+    "checksum": "sha256:919480193b6e61e403c618ad5f0093a458ec43a5627303189687aaec9b5628a1"
+  },
+  {
+    "name": "mihomo-linux-arm64-alpha-478af2a.pkg.tar.zst",
+    "checksum": "sha256:837ef5d50b333a978b9d8e55383048a6cf2bfd26bbf8d7b274df38ed7922aef7"
+  },
+  {
+    "name": "mihomo-linux-arm64-alpha-478af2a.rpm",
+    "checksum": "sha256:aef68d929fd245becb8e7add98562918d207e28c5409e02918ec0fafe1798b8b"
+  },
+  {
+    "name": "mihomo-linux-armv5-alpha-478af2a.gz",
+    "checksum": "sha256:bf849d55c497859a3716bc5dfd565d12fbb172b77b542735defaa7267e75f96d"
+  },
+  {
+    "name": "mihomo-linux-armv6-alpha-478af2a.deb",
+    "checksum": "sha256:8aefb2fb0ac4ec4fe40b11eb8783e2cc4347a9c116f7e0431348aee54011c3a5"
+  },
+  {
+    "name": "mihomo-linux-armv6-alpha-478af2a.gz",
+    "checksum": "sha256:32d0dc567e21d955e138c258cb1067b49d5966065cd3b151e1683853a30cd71d"
+  },
+  {
+    "name": "mihomo-linux-armv6-alpha-478af2a.rpm",
+    "checksum": "sha256:719d5bff2d5bae1cccdafd6a34519772d68c45b767a1363184a2a01375d23651"
+  },
+  {
+    "name": "mihomo-linux-armv7-alpha-478af2a.deb",
+    "checksum": "sha256:ce41a3d1fc98f7b30cb90e8b5a99192895a59a9da154efccfd691edb20f00f43"
+  },
+  {
+    "name": "mihomo-linux-armv7-alpha-478af2a.gz",
+    "checksum": "sha256:df6fe105b10f0ff101a57e2ed6884e394797e32b3dd46f052dec22227bbdb430"
+  },
+  {
+    "name": "mihomo-linux-armv7-alpha-478af2a.pkg.tar.zst",
+    "checksum": "sha256:e3ef426dea7d47b630b21fc57d7ed4130206632641f821e3178966f823b0f1b4"
+  },
+  {
+    "name": "mihomo-linux-armv7-alpha-478af2a.rpm",
+    "checksum": "sha256:bbeb36dfa08ce7e78f3a148fe74a0e52b3fd11fd3b0d98dc731067fdae826b6b"
+  },
+  {
+    "name": "mihomo-linux-loong64-abi1-alpha-478af2a.deb",
+    "checksum": "sha256:862e332761c4efa47eda16de5b8d7acfdbcb4bf08d494aec03a9ee8af123e4d6"
+  },
+  {
+    "name": "mihomo-linux-loong64-abi1-alpha-478af2a.gz",
+    "checksum": "sha256:1511161388c6ccf274b85abc4b3d0a173b3b7a204556e9ed78c1073e147bce31"
+  },
+  {
+    "name": "mihomo-linux-loong64-abi1-alpha-478af2a.rpm",
+    "checksum": "sha256:35439273b56eb783df21b5d1b7cdc211d39b8db154bab3ac81709115776bc38f"
+  },
+  {
+    "name": "mihomo-linux-loong64-abi2-alpha-478af2a.deb",
+    "checksum": "sha256:9c2d8a0fd83b6c48b0abaa5dbcc430b66c650615eac0c98fc80bead42cd85432"
+  },
+  {
+    "name": "mihomo-linux-loong64-abi2-alpha-478af2a.gz",
+    "checksum": "sha256:28c53e6f7b7c7cff14f3d5032c6fd29d409084b5131182646fab5cf4c5517655"
+  },
+  {
+    "name": "mihomo-linux-loong64-abi2-alpha-478af2a.rpm",
+    "checksum": "sha256:a1e8ec8833fad43c9ddee0add61a394ad76008ee5f3e695bdbebe97787ba2d1d"
+  },
+  {
+    "name": "mihomo-linux-mips-hardfloat-alpha-478af2a.gz",
+    "checksum": "sha256:75dd6384b58a67f549b50ebb54a119541f684cd171087a33b17b90902ff88747"
+  },
+  {
+    "name": "mihomo-linux-mips-softfloat-alpha-478af2a.gz",
+    "checksum": "sha256:5be576285dee08be8f98ff16f77fe39a0eba247ee671bb69a35d404b1a3fa5aa"
+  },
+  {
+    "name": "mihomo-linux-mips64-alpha-478af2a.gz",
+    "checksum": "sha256:1988beaded546a43ebb91f683c0b7f252925a4f218e4690cbef5ba7d58c4b587"
+  },
+  {
+    "name": "mihomo-linux-mips64le-alpha-478af2a.deb",
+    "checksum": "sha256:66b63efee1904747e4e09437f932ab10b8110200a541cb6df7a1ee2c5617665e"
+  },
+  {
+    "name": "mihomo-linux-mips64le-alpha-478af2a.gz",
+    "checksum": "sha256:fe5f89bed64710793735df54644e9fd43770d9f17a3fc0b932fea30aa822af84"
+  },
+  {
+    "name": "mihomo-linux-mips64le-alpha-478af2a.rpm",
+    "checksum": "sha256:72d98b420d88e1afc1bdf93202e3056758de625e607d5106ec67356e598b35ab"
+  },
+  {
+    "name": "mihomo-linux-mipsle-hardfloat-alpha-478af2a.gz",
+    "checksum": "sha256:583849ff6bceafa9e02a4367df80766ba17597139c0ac2b36bf03f27ae1587c3"
+  },
+  {
+    "name": "mihomo-linux-mipsle-softfloat-alpha-478af2a.gz",
+    "checksum": "sha256:fcbe50ad9a7040046d59d600d8a4a5e5c883be055b635a6eaffe0d54314983fe"
+  },
+  {
+    "name": "mihomo-linux-ppc64le-alpha-478af2a.deb",
+    "checksum": "sha256:1cf2fd21629aa34479edea5f4a6efd35540191390cfc30fa6dfadfb2fd6bfa2c"
+  },
+  {
+    "name": "mihomo-linux-ppc64le-alpha-478af2a.gz",
+    "checksum": "sha256:9719b36f2946e6b03d7deb976a17da403ac09f7f4be24909b4f54ca81d9bcedf"
+  },
+  {
+    "name": "mihomo-linux-ppc64le-alpha-478af2a.rpm",
+    "checksum": "sha256:d588e54d67f4a8d8aa5270b050f65f77924f462e4fe1504b6c3b668d554a5ef7"
+  },
+  {
+    "name": "mihomo-linux-riscv64-alpha-478af2a.deb",
+    "checksum": "sha256:aa0441efc3edcd27bcbfa26fc60e6daf04526fa05633c41e063a26df0ae98365"
+  },
+  {
+    "name": "mihomo-linux-riscv64-alpha-478af2a.gz",
+    "checksum": "sha256:2c3bd99717c29c88430282ec5fa5b21b4ec80d58f47e62456dde8c02e8e4ccfe"
+  },
+  {
+    "name": "mihomo-linux-riscv64-alpha-478af2a.rpm",
+    "checksum": "sha256:e4c6ac2cba1f9fe519b5ea4afe6810943bbd4418a1bc095461d28777b073aff4"
+  },
+  {
+    "name": "mihomo-linux-s390x-alpha-478af2a.deb",
+    "checksum": "sha256:00025c4c488e78b63938f0095b8f84b1b44c696a2b7cf46335976607946e02c2"
+  },
+  {
+    "name": "mihomo-linux-s390x-alpha-478af2a.gz",
+    "checksum": "sha256:1cef6d45e120ca24ffcd2feaa16f80a678df0bc3daaab187ff6333850ac7db34"
+  },
+  {
+    "name": "mihomo-linux-s390x-alpha-478af2a.rpm",
+    "checksum": "sha256:73d5d4e54d02c119e781b560e60930dd1bf56cee7b86b32c86c916e78ab80738"
+  },
+  {
+    "name": "mihomo-windows-386-alpha-478af2a.zip",
+    "checksum": "sha256:f540b600235897c69e7380425dc6e8442aa334898a222d17027289fe26c2741e"
+  },
+  {
+    "name": "mihomo-windows-386-go120-alpha-478af2a.zip",
+    "checksum": "sha256:c94b38a293003e21544a38f2a7a6b25737caa56e624b321bee9f6ea154ab3c72"
+  },
+  {
+    "name": "mihomo-windows-386-go121-alpha-478af2a.zip",
+    "checksum": "sha256:d6b1d2367302e72ae8ad66ad081c5cb0cfe5c24810c07f6ea217d87314aa8c1c"
+  },
+  {
+    "name": "mihomo-windows-386-go122-alpha-478af2a.zip",
+    "checksum": "sha256:141c381cd65a2c6cb5b23bac6067e8bfcf599987d878cf55db1e360a2fd31abd"
+  },
+  {
+    "name": "mihomo-windows-386-go123-alpha-478af2a.zip",
+    "checksum": "sha256:2f05045eda9e5855c75b855934502d1c4ec4061bd093bf5aff1728f9ab84553d"
+  },
+  {
+    "name": "mihomo-windows-386-go124-alpha-478af2a.zip",
+    "checksum": "sha256:fff68f4c5d2430e0845b70b437d4873bc7928c806369039499c43265b6e5530b"
+  },
+  {
+    "name": "mihomo-windows-386-go125-alpha-478af2a.zip",
+    "checksum": "sha256:b7057b979a9d0c6e0d60608f3d935499e9448f4a822bcc14427f1a3e45ce83a8"
+  },
+  {
+    "name": "mihomo-windows-amd64-alpha-478af2a.zip",
+    "checksum": "sha256:2e8adafd4097562fc8587bf46b888cd8233a676519fbea588349e7b3e6a2fd97"
+  },
+  {
+    "name": "mihomo-windows-amd64-compatible-alpha-478af2a.zip",
+    "checksum": "sha256:e752d4b3f44cfbe02392bfa426498f5bfbf085c8f43e84849d871a19ef684f32"
+  },
+  {
+    "name": "mihomo-windows-amd64-v1-alpha-478af2a.zip",
+    "checksum": "sha256:762f2213141ffec38d71798e65a0c24737470b3a43611912d0ad85af30b749d5"
+  },
+  {
+    "name": "mihomo-windows-amd64-v1-go120-alpha-478af2a.zip",
+    "checksum": "sha256:5ac1bb00d31918c872c954de781dd5d3a3e99f14fd1bc9b79aa2bce080de543a"
+  },
+  {
+    "name": "mihomo-windows-amd64-v1-go121-alpha-478af2a.zip",
+    "checksum": "sha256:fae1e60936ce9fc3f06795eed9004c00325660d0fddff04907394e54798943b1"
+  },
+  {
+    "name": "mihomo-windows-amd64-v1-go122-alpha-478af2a.zip",
+    "checksum": "sha256:e1d2ff923a7047981e3c14bc8cd0eaa1242fda21b76e58da817b993c9600ea84"
+  },
+  {
+    "name": "mihomo-windows-amd64-v1-go123-alpha-478af2a.zip",
+    "checksum": "sha256:1d5f86aa8cac8f6c35c03d961e22977d393a6d3b04b033039da613d83e192bf8"
+  },
+  {
+    "name": "mihomo-windows-amd64-v1-go124-alpha-478af2a.zip",
+    "checksum": "sha256:e4a33091bf2745f3d80e81b3a6aa742b1f5278a2fce94bbc3d12da38ebfabbae"
+  },
+  {
+    "name": "mihomo-windows-amd64-v1-go125-alpha-478af2a.zip",
+    "checksum": "sha256:8b19e881e32ee8537430553eaa570d951fc644d3a24b43116c6720470ea55f93"
+  },
+  {
+    "name": "mihomo-windows-amd64-v2-alpha-478af2a.zip",
+    "checksum": "sha256:bbe4469eb838315d361b22199bfb2b8a70f3c1de84cc7fce3fdc631a7d20598c"
+  },
+  {
+    "name": "mihomo-windows-amd64-v2-go120-alpha-478af2a.zip",
+    "checksum": "sha256:0050811ea30b1248c946e75aae4a7a2cae804d35ef1177034f9ce24e86a124fa"
+  },
+  {
+    "name": "mihomo-windows-amd64-v2-go121-alpha-478af2a.zip",
+    "checksum": "sha256:f95ca16fd7d0f1d54ea6e8738cbbb4e90dba7cd7efa201a33c63a321ed12fec1"
+  },
+  {
+    "name": "mihomo-windows-amd64-v2-go122-alpha-478af2a.zip",
+    "checksum": "sha256:4f870d5d6e9b9ee4da6ddc7d7a36d3e367cf008a288b78f5a8e1b906b09fd108"
+  },
+  {
+    "name": "mihomo-windows-amd64-v2-go123-alpha-478af2a.zip",
+    "checksum": "sha256:0fd5cc083ed1ab5bd083a52e602940ebcd47d1c7b03acf4e5c8f658b317dfc31"
+  },
+  {
+    "name": "mihomo-windows-amd64-v2-go124-alpha-478af2a.zip",
+    "checksum": "sha256:9edc3485b08d82cb8933799c9c69ae026d42c3495c1297a02e4b99ab18c90bbf"
+  },
+  {
+    "name": "mihomo-windows-amd64-v2-go125-alpha-478af2a.zip",
+    "checksum": "sha256:1a07b44220daacd1b256226e38e7275a9675d5bba842362cafa05f75ec82022e"
+  },
+  {
+    "name": "mihomo-windows-amd64-v3-alpha-478af2a.zip",
+    "checksum": "sha256:659a66c3758642fd4028873dee5b5d9db28af86c532a74193e08cd066c24ef96"
+  },
+  {
+    "name": "mihomo-windows-amd64-v3-go120-alpha-478af2a.zip",
+    "checksum": "sha256:593274c38ae9bc93930d3210ed3b066eb23e8fa18ce836ba4808d72cc2f64b2c"
+  },
+  {
+    "name": "mihomo-windows-amd64-v3-go121-alpha-478af2a.zip",
+    "checksum": "sha256:828a653738fa1858c102c780754422c02f80b99d17668bc415c3bb991aa8f3dc"
+  },
+  {
+    "name": "mihomo-windows-amd64-v3-go122-alpha-478af2a.zip",
+    "checksum": "sha256:3dddc6f2b75aed1a91f0b72bbb31d2787bee5d7881737fff4761ddcb9d5a1453"
+  },
+  {
+    "name": "mihomo-windows-amd64-v3-go123-alpha-478af2a.zip",
+    "checksum": "sha256:170c58463a10cc965835341c5a05f9a7a7e5b5ee7ed23f3fa3cfcf0202829a3a"
+  },
+  {
+    "name": "mihomo-windows-amd64-v3-go124-alpha-478af2a.zip",
+    "checksum": "sha256:6b605f30164eb8a343db84d8960b778381cad89c65b7e5a89aeffb65bc1d3556"
+  },
+  {
+    "name": "mihomo-windows-amd64-v3-go125-alpha-478af2a.zip",
+    "checksum": "sha256:7f28d91d93d088f9d3fb12c6b70f0e5d651ccc19be7175137f8790a0dee885bf"
+  },
+  {
+    "name": "mihomo-windows-arm64-alpha-478af2a.zip",
+    "checksum": "sha256:07043520455d04864f4e497342f4bda220730c1a4fba34d6a8f6b30cd5569aad"
+  },
+  {
+    "name": "toolchain.tar.gz",
+    "checksum": "sha256:357bff3aa7eeb82760867d04722ed87ebfce5afa33fbec47b1efd5482ef7efa3"
+  },
+  {
+    "name": "vendor.tar.gz",
+    "checksum": "sha256:d87e15d142aeb31aabdc0800e64fac645c3abbff5f77628091d75eb5f3cb7748"
+  },
+  {
+    "name": "version.txt",
+    "checksum": "sha256:806dfc57bcb99b83ae64101bcf516c3ac80144e522769589ce425445f8a7d3be"
+  }
+]

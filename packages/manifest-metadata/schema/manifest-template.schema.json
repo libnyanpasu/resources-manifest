@@ -1,4 +1,5 @@
 {
+  "$id": "https://libnyanpasu.github.io/resources-manifest/schema/2.0/manifest-template.schema.json",
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "ResourceManifestTemplate",
   "description": "The authored resource manifest template, input of the compiler.",
@@ -29,15 +30,12 @@
       "type": "string"
     }
   },
-  "required": [
-    "manifest_version",
-    "registries",
-    "resources"
-  ],
+  "additionalProperties": false,
+  "required": ["manifest_version", "registries", "resources"],
   "$defs": {
     "ManifestVersion": {
-      "type": "integer",
-      "const": 2
+      "type": "string",
+      "pattern": "^2\\.(0|[1-9][0-9]*)$"
     },
     "RegistryDefinition": {
       "description": "A registry produces canonical download/metadata URLs.",
@@ -57,10 +55,7 @@
           }
         }
       },
-      "required": [
-        "name",
-        "url_template"
-      ]
+      "required": ["name", "url_template"]
     },
     "MirrorDefinition": {
       "description": "A mirror transforms a canonical URL into an accelerated/alternative URL.",
@@ -85,10 +80,7 @@
           "type": "number"
         }
       },
-      "required": [
-        "name",
-        "url_template"
-      ]
+      "required": ["name", "url_template"]
     },
     "ResourceTemplate": {
       "description": "A resource as authored in the template.",
@@ -146,12 +138,8 @@
           }
         }
       },
-      "required": [
-        "name",
-        "registry",
-        "tags",
-        "variants"
-      ]
+      "additionalProperties": false,
+      "required": ["name", "registry", "tags", "variants"]
     },
     "ResourceTagDefinition": {
       "description": "A tag without its identifier, used by the per-resource tag catalog.",
@@ -167,9 +155,8 @@
           "type": "string"
         }
       },
-      "required": [
-        "name"
-      ]
+      "additionalProperties": false,
+      "required": ["name"]
     },
     "ResourceVariantTemplate": {
       "description": "A variant as authored in the template.",
@@ -220,11 +207,8 @@
           "additionalProperties": false
         }
       },
-      "required": [
-        "name",
-        "tags",
-        "artifacts"
-      ]
+      "additionalProperties": false,
+      "required": ["name", "tags", "artifacts"]
     },
     "ResourceArtifactTemplate": {
       "description": "A platform artifact. The historical string shorthand is intentionally not\nmodeled; the compiler rejects it.",
@@ -245,10 +229,7 @@
           "$ref": "#/$defs/ResourceArtifactVersionTemplate"
         }
       },
-      "required": [
-        "artifact",
-        "version"
-      ]
+      "required": ["artifact", "version"]
     },
     "ResourceArtifactVersionTemplate": {
       "description": "How an artifact's version is resolved.\n\nThe `Remote` plan is intentionally inlined: these types describe a wire\nformat, not a hot data structure.",
@@ -272,11 +253,7 @@
               "const": "static"
             }
           },
-          "required": [
-            "type",
-            "latest",
-            "releases"
-          ]
+          "required": ["type", "latest", "releases"]
         },
         {
           "description": "The manifest tells the backend which URLs to request and how to parse\nthe latest version and checksum.",
@@ -305,10 +282,7 @@
               "const": "remote"
             }
           },
-          "required": [
-            "type",
-            "version"
-          ]
+          "required": ["type", "version"]
         }
       ]
     },
@@ -337,9 +311,7 @@
           }
         }
       },
-      "required": [
-        "version"
-      ]
+      "required": ["version"]
     },
     "ResourceChecksum": {
       "type": "string",
@@ -355,10 +327,7 @@
           "$ref": "#/$defs/RemoteVersionParser"
         }
       },
-      "required": [
-        "resource",
-        "parser"
-      ]
+      "required": ["resource", "parser"]
     },
     "RemoteResourceTemplate": {
       "description": "A remote metadata request described declaratively.",
@@ -380,9 +349,7 @@
           }
         }
       },
-      "required": [
-        "registry"
-      ]
+      "required": ["registry"]
     },
     "RemoteVersionParser": {
       "description": "How to parse a remote version response.",
@@ -400,9 +367,7 @@
               "const": "text"
             }
           },
-          "required": [
-            "type"
-          ]
+          "required": ["type"]
         },
         {
           "description": "Apply a regular expression and return a capture group.",
@@ -414,17 +379,15 @@
             "group": {
               "description": "Capture group containing the version. Defaults to 1. Deserializing\nnegative or fractional values fails, matching the reference\nvalidator's non-negative integer rule.",
               "type": "integer",
-              "minimum": 0
+              "minimum": 0,
+              "maximum": 4294967295
             },
             "type": {
               "type": "string",
               "const": "regex"
             }
           },
-          "required": [
-            "type",
-            "pattern"
-          ]
+          "required": ["type", "pattern"]
         }
       ]
     },
@@ -438,10 +401,7 @@
           "$ref": "#/$defs/RemoteChecksumParser"
         }
       },
-      "required": [
-        "resource",
-        "parser"
-      ]
+      "required": ["resource", "parser"]
     },
     "RemoteChecksumParser": {
       "description": "How to parse a remote checksum response.",
@@ -455,9 +415,7 @@
               "const": "checksum"
             }
           },
-          "required": [
-            "type"
-          ]
+          "required": ["type"]
         },
         {
           "description": "GNU checksum list: `<hex>  <artifact>`.",
@@ -471,10 +429,7 @@
               "const": "gnu"
             }
           },
-          "required": [
-            "type",
-            "algorithm"
-          ]
+          "required": ["type", "algorithm"]
         },
         {
           "description": "BSD checksum list: `SHA512 (<artifact>) = <hex>`.",
@@ -488,10 +443,7 @@
               "const": "bsd"
             }
           },
-          "required": [
-            "type",
-            "algorithm"
-          ]
+          "required": ["type", "algorithm"]
         },
         {
           "description": "GitHub `/releases/expanded_assets/<tag>` HTML with asset digests.",
@@ -502,19 +454,48 @@
               "const": "github-release-assets"
             }
           },
-          "required": [
-            "type"
-          ]
+          "required": ["type"]
+        },
+        {
+          "description": "The digest is read from the named response header (case-insensitive).",
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string"
+            },
+            "algorithm": {
+              "$ref": "#/$defs/ChecksumAlgorithm"
+            },
+            "encoding": {
+              "$ref": "#/$defs/HeaderEncoding"
+            },
+            "type": {
+              "type": "string",
+              "const": "header"
+            }
+          },
+          "required": ["type", "name", "algorithm", "encoding"]
         }
       ]
     },
     "ChecksumAlgorithm": {
       "description": "Supported checksum algorithms.",
       "type": "string",
-      "enum": [
-        "md5",
-        "sha256",
-        "sha512"
+      "enum": ["md5", "sha256", "sha512"]
+    },
+    "HeaderEncoding": {
+      "description": "How a `header` checksum parser decodes the header value.",
+      "oneOf": [
+        {
+          "description": "Hexadecimal digest, any case.",
+          "type": "string",
+          "const": "hex"
+        },
+        {
+          "description": "Standard base64 (`+/`, padded) of the raw digest bytes.",
+          "type": "string",
+          "const": "base64"
+        }
       ]
     }
   }

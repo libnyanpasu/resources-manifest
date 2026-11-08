@@ -1,0 +1,219 @@
+[
+  {
+    "name": "kind.static.with_checksum",
+    "input": {
+      "artifact": "selected-{version}.zip",
+      "version": {
+        "type": "static",
+        "latest": "v1.2.3",
+        "releases": [
+          {
+            "version": "v1.2.3",
+            "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+          }
+        ]
+      }
+    },
+    "expect": {
+      "ok": "authoritative"
+    }
+  },
+  {
+    "name": "kind.static.without_checksum",
+    "input": {
+      "artifact": "selected-{version}.zip",
+      "version": {
+        "type": "static",
+        "latest": "v1.2.3",
+        "releases": [
+          {
+            "version": "v1.2.3"
+          }
+        ]
+      }
+    },
+    "expect": {
+      "ok": "none"
+    }
+  },
+  {
+    "name": "kind.remote.with_rule",
+    "input": {
+      "artifact": "selected-{version}.zip",
+      "version": {
+        "type": "remote",
+        "fallback": {
+          "version": "v1.2.3",
+          "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+        },
+        "version": {
+          "resource": {
+            "registry": "github-release",
+            "artifact": "version.txt"
+          },
+          "parser": {
+            "type": "text",
+            "trim": true
+          }
+        },
+        "checksum": {
+          "resource": {
+            "registry": "github-release",
+            "artifact": "checksums.txt"
+          },
+          "parser": {
+            "type": "gnu",
+            "algorithm": "sha256"
+          }
+        }
+      }
+    },
+    "expect": {
+      "ok": "parsed"
+    }
+  },
+  {
+    "name": "kind.remote.without_rule",
+    "input": {
+      "artifact": "selected-{version}.zip",
+      "version": {
+        "type": "remote",
+        "fallback": {
+          "version": "v1.2.3",
+          "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+        },
+        "version": {
+          "resource": {
+            "registry": "github-release",
+            "artifact": "version.txt"
+          },
+          "parser": {
+            "type": "text",
+            "trim": true
+          }
+        }
+      }
+    },
+    "expect": {
+      "ok": "none"
+    }
+  },
+  {
+    "name": "kind.remote.unsupported_parser",
+    "input": {
+      "artifact": "selected-{version}.zip",
+      "version": {
+        "type": "remote",
+        "fallback": {
+          "version": "v1.2.3",
+          "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+        },
+        "version": {
+          "resource": {
+            "registry": "github-release",
+            "artifact": "version.txt"
+          },
+          "parser": {
+            "type": "text",
+            "trim": true
+          }
+        },
+        "checksum": {
+          "resource": {
+            "registry": "github-release",
+            "artifact": "checksums.txt"
+          },
+          "parser": {
+            "type": "future-digest-format",
+            "algorithm": "sha256"
+          }
+        }
+      }
+    },
+    "expect": {
+      "ok": "none"
+    }
+  },
+  {
+    "name": "kind.remote.unsupported_version_parser",
+    "input": {
+      "artifact": "pkg-{version}.zip",
+      "version": {
+        "type": "remote",
+        "fallback": {
+          "version": "v1",
+          "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+          "source": {
+            "release": "fallback-{version}"
+          }
+        },
+        "version": {
+          "resource": {
+            "registry": "meta",
+            "artifact": "version.txt"
+          },
+          "parser": {
+            "type": "future-version"
+          }
+        },
+        "checksum": {
+          "resource": {
+            "registry": "meta",
+            "artifact": "checksums.txt"
+          },
+          "parser": {
+            "type": "gnu",
+            "algorithm": "sha256"
+          }
+        }
+      }
+    },
+    "expect": {
+      "ok": "none"
+    }
+  },
+  {
+    "name": "kind.static.latest_not_first.authoritative",
+    "input": {
+      "artifact": "pkg-{version}.zip",
+      "version": {
+        "type": "static",
+        "latest": "v2",
+        "releases": [
+          {
+            "version": "v1"
+          },
+          {
+            "version": "v2",
+            "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+          }
+        ]
+      }
+    },
+    "expect": {
+      "ok": "authoritative"
+    }
+  },
+  {
+    "name": "kind.static.latest_not_first.none",
+    "input": {
+      "artifact": "pkg-{version}.zip",
+      "version": {
+        "type": "static",
+        "latest": "v2",
+        "releases": [
+          {
+            "version": "v1",
+            "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+          },
+          {
+            "version": "v2"
+          }
+        ]
+      }
+    },
+    "expect": {
+      "ok": "none"
+    }
+  }
+]
