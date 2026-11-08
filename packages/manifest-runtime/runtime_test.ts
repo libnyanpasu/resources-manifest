@@ -373,3 +373,97 @@ test("selection and checksum plans retain state after parents are freed", () => 
     kind: "parsed",
   });
 });
+
+test("undefined object entries read as missing fields", () => {
+  checkPolicy("parsed", { allow_parsed: true, allow_snapshot: undefined });
+  assert.equal(
+    parseVersion({ type: "text" }, { body: "v1", headers: undefined }),
+    "v1",
+  );
+  invalid(
+    () => parseVersion({ type: "text" }, { body: undefined as never }),
+    "response.body",
+  );
+});
+
+test("values without a JSON form are rejected at their input paths", () => {
+  using manifest = validateManifest(manifestInput());
+  using selected = selectVariant(manifest, "sample", "linux-amd64");
+  invalid(
+    () => planVersion(selected, null, { body_bytes: 1n as never }),
+    "arg.limits.body_bytes",
+  );
+  invalid(
+    () =>
+      renderTemplate("{a}", { a: { literal: Symbol("a") as never } }, "test"),
+    "arg.values.a.literal",
+  );
+  invalid(
+    () => checkPolicy("none", { allow_parsed: (() => true) as never }),
+    "arg.policy.allow_parsed",
+  );
+});
+
+test("host getter exceptions propagate unchanged and getters run once", () => {
+  const thrown = new Error("getter failed");
+  const failing = Object.defineProperty(manifestInput(), "extra", {
+    enumerable: true,
+    get() {
+      throw thrown;
+    },
+  });
+  assert.throws(
+    () => validateManifest(failing),
+    (error: unknown) => error === thrown,
+  );
+  let reads = 0;
+  const counted = Object.defineProperty({}, "allow_parsed", {
+    enumerable: true,
+    get() {
+      reads += 1;
+      return true;
+    },
+  });
+  checkPolicy("parsed", counted);
+  assert.equal(reads, 1);
+});
+
+test("structs accept positional arrays as native serde_json does", () => {
+  const raw = manifestInput();
+  Object.assign(raw.registries, {
+    main: ["Main", "https://origin.test/{artifact}", null],
+  });
+  using manifest = validateManifest(raw);
+  assert.deepEqual(manifest.value.registries.main, {
+    name: "Main",
+    url_template: "https://origin.test/{artifact}",
+  });
+});
+
+test("arrays are read by index and ignore custom iterators", () => {
+  const headers: [string, string][] = [["x-checksum", digest]];
+  Object.defineProperty(headers, Symbol.iterator, {
+    get() {
+      throw new Error("iterator must not be read");
+    },
+  });
+  const parser = {
+    type: "header",
+    name: "x-checksum",
+    algorithm: "sha256",
+    encoding: "hex",
+  } as const;
+  assert.equal(
+    parseChecksum(parser, { body: "", headers }, "pkg"),
+    `sha256:${digest}`,
+  );
+});
+
+test("policies must be objects and maps reject entry arrays", () => {
+  invalid(() => checkPolicy("parsed", [true] as never), "arg.policy");
+  invalid(() => checkPolicy("snapshot", [false, true] as never), "arg.policy");
+  invalid(
+    () => renderTemplate("{a}", [["a", { literal: "kept" }]] as never, "test"),
+    "arg.values",
+  );
+});

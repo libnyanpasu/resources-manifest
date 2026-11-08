@@ -40,9 +40,39 @@ export type DownloadPlan = {
   checksum_request: ChecksumPlan | null;
 };
 
+/**
+ *  Optional overrides that can only lower the default parser and render limits
+ *  (design §5.5).
+ */
+export type LimitsInput = {
+  body_bytes?: number | null;
+  header_value_bytes?: number | null;
+  regex_pattern_bytes?: number | null;
+  regex_size_bytes?: number | null;
+  template_depth?: number | null;
+  render_output_bytes?: number | null;
+};
+
+/**
+ *  A fetched response handed to a version or checksum parser.
+ *
+ *  Each header entry is one header line or a client-combined comma list;
+ *  duplicates and order are kept (design §5.3).
+ */
+export type RemoteResponseInput = {
+  body: string;
+  headers?: [string, string][] | null;
+};
+
 export type RemoteVersionPlan = {
   request: RequestPlan;
   parser: RemoteVersionParser;
+};
+
+/**  A rendered artifact name and its canonical download URL. */
+export type RenderedArtifact = {
+  artifact: string;
+  canonical_url: string;
 };
 
 export type RequestPlan = {
@@ -267,6 +297,14 @@ export type RuntimeErrorShape<Fields> = {
   message: string;
   fields: Fields;
 };
+
+/**
+ *  A template variable value: `authored` values expand recursively, `literal`
+ *  values are inserted verbatim.
+ */
+export type TemplateValue =
+  | ({ authored: string } & { literal?: never })
+  | ({ literal: string } & { authored?: never });
 
 export type VariantChecksumKind = {
   variant_id: string;

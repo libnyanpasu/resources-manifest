@@ -69,13 +69,26 @@ run("cargo", [
   "--release",
   "--locked",
 ]);
+const outDir = join(root, "packages/manifest-runtime/wasm");
 run("wasm-bindgen", [
   "--target",
   "web",
   "--out-dir",
-  join(root, "packages/manifest-runtime/wasm"),
+  outDir,
   join(
     metadata.target_directory,
     "wasm32-unknown-unknown/release/manifest_wasm.wasm",
   ),
 ]);
+
+// Every export names a generated TypeScript type. An `any` means an export lost
+// its `unchecked_param_type` / `unchecked_return_type` annotation.
+const declarations = readFileSync(join(outDir, "manifest_wasm.d.ts"), "utf8");
+const untyped = declarations
+  .split("\n")
+  .filter((line) => /\bany\b/.test(line) && !/^\s*(\/\*\*|\*)/.test(line));
+if (untyped.length > 0) {
+  fail(
+    `manifest_wasm.d.ts must not contain any; annotate these exports:\n${untyped.join("\n")}`,
+  );
+}

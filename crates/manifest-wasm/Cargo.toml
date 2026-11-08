@@ -6,13 +6,15 @@ license.workspace = true
 publish = false
 
 [lib]
-crate-type = ["cdylib"]
+# `rlib` lets manifest-schema-generator export the boundary wire types.
+crate-type = ["cdylib", "rlib"]
 
 [dependencies]
 manifest-core.workspace = true
 manifest-metadata.workspace = true
 manifest-parser.workspace = true
+js-sys.workspace = true
 serde.workspace = true
 serde_json.workspace = true
-serde-wasm-bindgen.workspace = true
+specta.workspace = true
 wasm-bindgen.workspace = true

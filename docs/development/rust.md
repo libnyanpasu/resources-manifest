@@ -98,8 +98,11 @@ Dependency arrows below mean "depends on":
 manifest-metadata -> manifest-parser
 manifest-core -> manifest-metadata + manifest-parser
 manifest-wasm -> manifest-core + manifest-metadata + manifest-parser
-manifest-schema-generator -> manifest-metadata + manifest-core
+manifest-schema-generator -> manifest-metadata + manifest-core + manifest-wasm
 ```
+
+The generator depends on `manifest-wasm` only to export its boundary-only wire
+types; nothing depends on the generator.
 
 `manifest-parser` owns checksum/parser wire types and their pure implementations,
 `ResourceChecksum`, `VersionLabel`, `Limits`, `RemoteResponse`, and `ParseError`.
@@ -160,8 +163,11 @@ consumers require independent lifetimes; keep mutation and cleanup ownership cle
 
 - Define a type once in its owning crate. Metadata and parser use Serde,
   Schemars, and Specta annotations; core exposes plan/error types through the
-  existing Specta generator. Use `serde-wasm-bindgen` at the wasm boundary,
-  without a second exporter or copied domain structs.
+  existing Specta generator. At the wasm boundary, snapshot JS values into
+  `serde_json::Value` with js-sys and decode them with Serde. Types that exist only
+  at the boundary live in `manifest-wasm` and go through the same Specta generator;
+  annotate every export with its generated TypeScript type. Do not add inline JS, a
+  second exporter such as tsify, or copied domain structs.
 - Serialized names and enum tags are contracts. Preserve explicit Serde names;
   `ChecksumKind` uses `authoritative`, `parsed`, `snapshot`, `none`, while the
   existing `github-release-assets` tag remains kebab-case.
