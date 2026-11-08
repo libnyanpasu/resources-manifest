@@ -90,8 +90,7 @@ v2 resource manifest merges them:
 {
   "resources": {
     "mihomo": {},
-    "clash_rs": {},
-    "clash_premium": {}
+    "clash_rs": {}
   }
 }
 ```
@@ -211,7 +210,11 @@ The compiler normalizes the algorithm and hexadecimal value to lowercase.
 
 Mutable prerelease tags often retain only the newest assets and cannot provide a
 stable historical chain. Such an artifact uses a declarative remote resolution
-plan instead of pretending to have history:
+plan instead of pretending to have history. This section describes the
+implemented single-response form; a planned extension composes the remote
+version from several responses (see
+[the core design §9.2](../spec/2026-11-06-manifest-core-parsers/design.md#92-d4-clash-rust-alpha-的版本来源o-4)).
+A single-response plan looks like this:
 
 ```json
 {
@@ -331,8 +334,10 @@ shared parser implementation.
 ## Checksum kinds
 
 The trust anchor is a signed manifest. The signature covers only the manifest
-itself; the signing scheme and workflow are defined separately. Only checksums
-embedded in static release history are `authoritative` for normal resolution.
+itself. The signing scheme is minisign; the signing interface and workflow are
+defined in [the core design §9.1](../spec/2026-11-06-manifest-core-parsers/design.md#91-d5-签名接口o-2).
+Only checksums embedded in static release history are `authoritative` for
+normal resolution.
 
 `ChecksumKind` wire names are fixed as lowercase snake_case: `authoritative`,
 `parsed`, `snapshot`, `none` (`#[serde(rename_all = "snake_case")]` in Rust).

@@ -68,12 +68,13 @@
 
 ### 1.4 编译与生成
 
-| 事实                                                                                                                                   | 位置                                                                                                                                      |
-| -------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
-| 编译阶段只检查注册表模板是否非空、变量名是否合法，从不试渲染；`https://{missing}/{artifact}` 能通过编译                                | `R/resource-template.ts:579-588`、`:808-863`；`D/:333` 声称会拒绝                                                                         |
-| 排序用 `localeCompare`，结果依赖运行时的 locale                                                                                        | `R/resource-template.ts:558`、`:800`、`:838`                                                                                              |
-| 时间戳在生成时取 `new Date()`，网络抓取和编译没有分开                                                                                  | `R/generate-latest-version.ts:126-128`                                                                                                    |
-| Clash Rust alpha：生成端用 `git/ref/tags/latest` 的 commit 加稳定版版本号拼出版本，消费端却去请求 `latest/version.txt`，两种算法不等价 | `R/manifest.ts:327-345`；`R/core-resource-templates.ts:131-135`、`:380-386`；`crates/manifest-metadata/tests/fixtures/resources.json:321` |
+| 事实                                                                                                                                                                                                   | 位置                                                                                                                                      |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| 编译阶段只检查注册表模板是否非空、变量名是否合法，从不试渲染；`https://{missing}/{artifact}` 能通过编译                                                                                                | `R/resource-template.ts:579-588`、`:808-863`；`D/:333` 声称会拒绝                                                                         |
+| 排序用 `localeCompare`，结果依赖运行时的 locale                                                                                                                                                        | `R/resource-template.ts:558`、`:800`、`:838`                                                                                              |
+| 时间戳在生成时取 `new Date()`，网络抓取和编译没有分开                                                                                                                                                  | `R/generate-latest-version.ts:126-128`                                                                                                    |
+| Clash Rust alpha：生成端用 `git/ref/tags/latest` 的 commit 加稳定版版本号拼出版本，消费端却去请求 `latest/version.txt`，两种算法不等价                                                                 | `R/manifest.ts:327-345`；`R/core-resource-templates.ts:131-135`、`:380-386`；`crates/manifest-metadata/tests/fixtures/resources.json:321` |
+| 2026-11-08 复核：上游已迁到 `ibigbug/clash-rs`；`Watfaq/clash-rs` 跳转到已落后的 `Watfaq-legacy/clash-rs`。两处 `latest/version.txt` 都返回 404；clash-nyanpasu 后端用两到三次 GitHub API 请求拼出版本 | §9.2                                                                                                                                      |
 
 ### 1.5 版本、兼容性与 Schema 生成器
 
@@ -172,7 +173,7 @@ S0a 卡把本节内容写进 `D/`。本节是规范性的。
 
 ### 5.1 信任模型与 `ChecksumKind`
 
-1. **信任锚点是签过名的 manifest。** 签名只覆盖 manifest 本身，所以只有 manifest 内嵌的 checksum 是权威的（签名方案见 O-2；本 spec 只确定签名的覆盖范围）。
+1. **信任锚点是签过名的 manifest。** 签名只覆盖 manifest 本身，所以只有 manifest 内嵌的 checksum 是权威的（方案为 minisign，接口见 §9.1，O-2）。
 2. **`ChecksumKind` 有四种：** wire 名称固定为小写 snake_case：`authoritative`、`parsed`、`snapshot`、`none`（Rust 用 `#[serde(rename_all = "snake_case")]`）。
 
    | kind            | 来源                                                                                                 | 默认策略                           |
@@ -671,14 +672,113 @@ kind 列表按 manifest 中 variant 顺序，仅列出支持目标平台的 `{ v
 
 ## 9. Phase D：编译器与快照（里程碑粒度）
 
-| 里程碑                         | 内容                                                                                                                          | 前置   | 完成判据                                                                    |
-| ------------------------------ | ----------------------------------------------------------------------------------------------------------------------------- | ------ | --------------------------------------------------------------------------- |
-| D1 快照模型                    | `ReleaseSnapshot`：release 与资产 ID、digest、观测时间、来源 URL                                                              | B 完成 | Schema 生成；generator 写出快照文件                                         |
-| D2 编译器移植                  | `compile(template, snapshot, now) -> ResourceManifest`，纯函数；按码点排序（V-4）；编译期检查模板可解析；写出 `CURRENT_MINOR` | D1     | 同一组输入两次编译的输出逐字节相同；`https://{missing}/{artifact}` 被拒     |
-| D3 generator 接入              | Node 负责抓取，写快照，再经 wasm 调用 `compile`                                                                               | D2、C2 | 与上游生成器的输出等价（`serde_json::Value` 相等，`manifest_version` 除外） |
-| D4 Clash Rust alpha 的版本来源 | 二选一（O-4）                                                                                                                 | D3     | 生成端与消费端对同一组采集到的响应得到相同版本                              |
-| D5 签名                        | 签名方案和签名流程另出 spec（O-2）                                                                                            | D3     | —                                                                           |
-| D6 退役上游脚本                | 在 clash-nyanpasu 侧跟踪                                                                                                      | D3、D4 | —                                                                           |
+| 里程碑                         | 内容                                                                                                                          | 前置   | 完成判据                                                                                                                                                           |
+| ------------------------------ | ----------------------------------------------------------------------------------------------------------------------------- | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| D0 移除 Clash Premium          | 见 §9.3                                                                                                                       | —      | 快照、golden、一致性用例、可执行测试与生成的 manifest 中不再有 `clash_premium`；文档中的历史记录可保留                                                             |
+| D1 快照模型                    | `ReleaseSnapshot`：release 与资产 ID、digest、观测时间、来源 URL                                                              | B 完成 | Schema 生成；generator 写出快照文件                                                                                                                                |
+| D2 编译器移植                  | `compile(template, snapshot, now) -> ResourceManifest`，纯函数；按码点排序（V-4）；编译期检查模板可解析；写出 `CURRENT_MINOR` | D1     | 同一组输入两次编译的输出逐字节相同；`https://{missing}/{artifact}` 被拒                                                                                            |
+| D3 generator 接入              | Node 负责抓取，写快照，再经 wasm 调用 `compile`                                                                               | D2、C2 | 保留的 resource 与上游生成器的输出等价（`serde_json::Value` 相等）；有意的差异只有 `manifest_version`、`clash_premium` 不再生成（§9.3）与 Clash Rust alpha（§9.2） |
+| D4 Clash Rust alpha 的版本来源 | 多响应组合版本（§9.2，O-4）：parser、core、wasm、一致性用例与生成物                                                           | C 完成 | 组合版本的正反用例在 Rust 与 Node 两端通过；Clash Rust alpha 为 remote，版本由 `commits/latest` 与 `releases/latest` 组合，checksum 为 `parsed`                    |
+| D5 签名                        | minisign；`manifest-signature` 的 `sign` / `verify_sign` 接口（§9.1，O-2）                                                    | D3     | generator 输出的 manifest 带 `.minisig`；Rust 与 Node 宿主跑同一组用例，篡改字节、非可信公钥、损坏签名各有反例                                                     |
+| D6 退役上游脚本                | 在 clash-nyanpasu 侧跟踪                                                                                                      | D3、D4 | —                                                                                                                                                                  |
+
+### 9.1 D5 签名接口（O-2）
+
+1. **方案：** 目前只接 minisign。签名对象是发布的 manifest 文件的原始字节；detached 签名与 manifest 同目录发布，命名为 `<manifest 文件名>.minisig`。签名只覆盖 manifest 本身（§5.1 第 1 条）。
+2. **封装：** D5 新增叶子 crate `manifest-signature`：无 IO、无 async，不依赖其他 workspace crate，`manifest-core` 也不依赖它。上层只感知签名算法，并提供必要的 key：
+
+   ```rust
+   #[non_exhaustive]
+   pub enum SignatureAlgorithm {
+       Minisign, // wire: "minisign"
+   }
+
+   impl PublicKey {
+       pub fn parse(algorithm: SignatureAlgorithm, text: &str) -> Result<Self, SignatureError>;
+   }
+   impl SecretKey {
+       pub fn parse(
+           algorithm: SignatureAlgorithm,
+           text: &str,
+           passphrase: Option<&str>,
+       ) -> Result<Self, SignatureError>;
+   }
+   impl Signature {
+       pub fn parse(algorithm: SignatureAlgorithm, text: &str) -> Result<Self, SignatureError>;
+       pub fn to_text(&self) -> String;
+   }
+
+   pub fn sign(key: &SecretKey, message: &[u8]) -> Result<Signature, SignatureError>;
+   pub fn verify_sign(
+       trusted: &[PublicKey],
+       message: &[u8],
+       signature: &Signature,
+   ) -> Result<(), SignatureError>;
+   ```
+
+   - `PublicKey`、`SecretKey`、`Signature` 的字段私有，各自记住所属算法。key 与签名以该算法的标准文本格式传入：minisign 的公钥字符串或 `.pub` 内容、`.key` 内容、`.minisig` 内容。
+   - 具体实现的类型、key ID、trusted comment 等细节不出现在公共接口中。替换实现只改本 crate 内部；新增算法只加 `SignatureAlgorithm` 变体，调用方代码不变。
+   - 算法不一致、key 或签名格式错误、签名 key 不在 `trusted` 中、验证失败分别报稳定错误码（`signature.*`，D5 卡确定完整列表），用 snafu 定义。
+
+3. **实现选择：** 候选为 jedisct1 的 `minisign`（签名与验证）和 `minisign-verify`（只验证）；2026-11-08 在 crates.io 上分别为 0.10.0 与 0.3.0。D5 卡按 wasm 体积增量（计入 O-8 预算）与能否满足上述封装来选定，只在 `manifest-signature` 内部引用。
+4. **使用位置：**
+   - 签名在 generator（D3）的 CI 中进行。secret key 与口令由宿主从 CI secret 读取后传入，crate 不读文件或环境变量。
+   - 验证在解码 manifest 之前，对原始字节进行。可信公钥由宿主内置，不从 manifest 或网络获取；允许多把以便轮换：只要 `trusted` 中有一把同算法的 key 能通过密码学验证即成功，与顺序无关；`trusted` 为空、缺少签名或验证失败都拒绝整份 manifest，不回退到未签名。D5 卡为新旧 key 重叠期与已撤下的 key 各写用例。
+   - Rust 宿主直接依赖 crate；Node 宿主通过 `manifest-wasm` 与 `@manifest/runtime` 调用 `sign` / `verifySign`。downloader 的命令行开关在 D5 卡中确定。
+5. **限制：** D5 完成前，`authoritative` 只表示"内嵌在 manifest 中"，宿主不验证签名。签名不防回滚，即重放更早的已签名 manifest；需要时另行设计。
+
+### 9.2 D4 Clash Rust alpha 的版本来源（O-4）
+
+2026-11-08 核对结果：
+
+- 上游已迁到 `ibigbug/clash-rs`（clash-nyanpasu 主仓库也用这个位置）。`Watfaq/clash-rs` 经 301 跳转到 `Watfaq-legacy/clash-rs`，后者的最新稳定版停在 v0.10.10，`ibigbug/clash-rs` 已到 v0.10.11。
+- 两处的 `latest/version.txt` 都返回 404；`latest` release 是 prerelease，25 个资产都带 sha256 digest，没有版本文件。
+- clash-nyanpasu 后端（`nyanpasu-updater` 的 `fetch_clash_rs_alpha_version`）用两到三次 GitHub API 请求得出版本（annotated tag 需再请求一次解引用）：`git/ref/tags/latest` 的 commit 前 7 位，加 `releases/latest` 的稳定 tag，拼成 `0.10.11-alpha+sha.bd22442`；它留有 TODO(#1112)，要求 manifest v2 声明滚动版本的取法。现有 version parser 只能从一个响应取一个值，表达不了。
+
+决定：alpha 保持 `remote`，checksum 仍由 `github-release-assets` parser 从 `expanded_assets/latest` 解析（`parsed`）；扩展协议，让 remote version 可以由多个响应组合。
+
+1. **wire：** remote 的 `version` 在现有单响应形式 `{ resource, parser }` 之外，新增组合形式 `{ parts, format }`。两种形式以是否有 `format` 区分，精确的 serde 表示在 D4 卡中确定。
+
+   ```json
+   "version": {
+     "parts": {
+       "stable": {
+         "resource": { "registry": "github-api", "artifact": "releases/latest" },
+         "parser": { "type": "regex", "pattern": "\"tag_name\":\\s*\"v?([0-9][^\"]*)\"" }
+       },
+       "commit": {
+         "resource": { "registry": "github-api", "artifact": "commits/{release}" },
+         "parser": { "type": "regex", "pattern": "\"sha\":\\s*\"([0-9a-f]{7})[0-9a-f]{33}\"" }
+       }
+     },
+     "format": "{stable}-alpha+sha.{commit}"
+   }
+   ```
+
+   示例中的 `github-api` 是 manifest 新增的 registry，`url_template` 为 `https://api.github.com/repos/{owner}/{repo}/{artifact}`。`commits/{ref}` 端点会把 annotated tag 解引用到 commit。
+
+2. **语义：**
+   - 每个 part 是一次普通的 remote version 请求：同样的 parser 语义（§5.3）、同样的单响应上限（§5.5），结果各自满足 `VersionLabel`。
+   - `parts` 至少 1 项、至多 4 项；名称满足变量名规则，不能与内置变量同名。
+   - `format` 是 Authored 模板，只能引用 part 名称，且必须引用每个 part；part 结果以 Literal 代入，不再展开。组合结果必须满足 `VersionLabel`，否则报 `parser.invalid_version`。
+   - 任何一个 part 失败，整个版本失败，不使用部分结果。
+3. **计划与宿主：** 版本计划按 part 名称的码点顺序列出每个 part 的请求，宿主全部执行后把各自的响应交给 core 组合。响应与 part 的对应方式、缺失或多余响应的处理，以及错误路径（组合结果没有单一的 `response.body`，不能沿用 §5.6 的 version parser 路径）在 D4 卡中确定。mirror、`ChecksumKind` 与下载计划的规则不变。
+4. **校验与兼容：**
+   - `validate_manifest` 检查 part 数量、名称、`format` 的引用完整性与 registry 引用；错误码在 D4 卡中按 §5.6 的规则确定。
+   - 这是 2.0 内的契约新增（O-11），生成的 TS、Schema 与 runtime 类型出现新形式，属于预期变化。
+   - 宽松解码与单响应形式一致：无法识别的 part parser 使该产物 `resolve.unsupported_*`（G8）。
+5. **Clash Rust alpha 的 manifest：**
+   - `source.owner` 为 `ibigbug`，不依赖 GitHub 的跳转：旧路径已经指向落后的仓库。
+   - generator 写出的 `fallback.version` 使用同一格式，使显式 snapshot 策略的精确匹配可用。
+6. **已知代价：**
+   - 每次解析需要 2 次未认证的 GitHub API 请求，同一 IP 每小时限 60 次。clash-nyanpasu 目前的做法也是这样。
+   - version 与 checksum 分别请求。上游在两次请求之间重新发布时，版本号可能落后一个构建，但下载的字节仍按 `expanded_assets` 的 digest 校验。
+
+### 9.3 移除 Clash Premium
+
+- manifest 不再包含 `clash_premium`，generator（D3）不生成它。
+- D0 卡删除快照 `crates/manifest-metadata/tests/fixtures/resources.json`、`conformance/resolve/reference-golden.json`、`conformance/validate/manifest.json` 中的 `clash_premium`，以及以它为测试对象的用例（`crates/manifest-metadata/src/lib.rs`、`packages/manifest-metadata/main_test.ts`）；仍需同类覆盖的用例改用其他 resource。G5 的 golden 随之变化。
+- `D/` 的示例已在本次修订中删除。`files/` 是只读的上游参考，不改。
 
 ---
 
@@ -720,20 +820,20 @@ kind 列表按 manifest 中 variant 顺序，仅列出支持目标平台的 `{ v
 A2 已用真实响应复核 §5.5 上限并保持不变：mihomo expanded_assets 为 523,715 B，
 checksums.txt 为 13,835 B，最大 header 值为 3,969 B。
 
-| #    | 问题                             | 结论                                                                                                                                                                                         |
-| ---- | -------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| O-1  | 默认校验策略                     | **已定（2026-11-06）：** 只接受权威来源（manifest 内嵌、随签名覆盖）的 checksum。经 parser 取得的一律是 `parsed`；从 header 取必须由 parser 规则显式声明；前端感知 kind 并提示（§5.1）       |
-| O-2  | manifest 签名                    | **部分已定（2026-11-06）：** 签名只覆盖权威来源，即 manifest 本身。方案（minisign/ed25519 等）与流程另出 spec（D5）                                                                          |
-| O-3  | `github-release-assets` 的解析器 | **已定（A4，2026-11-06）：** 用轻量 tokenizer `tl`；fixture 结果与完整 DOM 相同，wasm 增量约 64 KiB 对 605 KiB（测量见 `conformance/fixtures/github-expanded-assets/README.md`）             |
-| O-4  | Clash Rust alpha 的版本来源      | **待定：** D4 开工前确认 `latest/version.txt` 的实际内容                                                                                                                                     |
-| O-5  | 模板侧是否 `deny_unknown_fields` | **推荐：是**（S0c）；编译产物侧保持宽松（§5.4 第 5 条）                                                                                                                                      |
-| O-6  | wasm 的消费者                    | **已定（2026-11-06）：** 只有 Node 包，用于构建期胶水脚本下载并校验资源                                                                                                                      |
-| O-7  | 版本与兼容方式                   | **已定（2026-11-06）：** 参考 Docker 采用 `major.minor`；兼容更新只升 minor（§5.4）                                                                                                          |
-| O-8  | wasm 体积预算                    | **C1 实测（2026-11-07）：** raw 1,513,596 B，gzip（level 9）535,484 B；Node initSync 五次中位数 1.963 ms。建议 gzip ≤ 803,226 B（当前 1.5 倍），初始化中位数 ≤ 10 ms；测量环境与方法见下文。 |
-| O-9  | 本仓库的 Rust 规则               | **已定（2026-11-08）：** 采用 `docs/development/rust.md`（改编自 clash-nyanpasu）                                                                                                            |
-| O-10 | crate 和包的正式名称             | 沿用工作名，在创建该包的 PR 中确定                                                                                                                                                           |
-| O-11 | 发布前的版本号                   | **已定（2026-11-06）：** 包首次发布前保持 `"2.0"`，这期间的契约改动都并入 2.0，不升版本。理解是"发布前不升 schema 版本"，并非"发布前完全不改契约"；若理解有误，以维护者更正为准              |
-| O-12 | Schema `$id` 前缀                | **已定（本 PR，2026-11-06）：** `https://libnyanpasu.github.io/resources-manifest/schema/`；后接 `2.0/manifest.schema.json` 或 `2.0/manifest-template.schema.json`                           |
+| #    | 问题                             | 结论                                                                                                                                                                                                                                                  |
+| ---- | -------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| O-1  | 默认校验策略                     | **已定（2026-11-06）：** 只接受权威来源（manifest 内嵌、随签名覆盖）的 checksum。经 parser 取得的一律是 `parsed`；从 header 取必须由 parser 规则显式声明；前端感知 kind 并提示（§5.1）                                                                |
+| O-2  | manifest 签名                    | **已定（2026-11-08）：** 签名只覆盖 manifest 本身；方案只接 minisign；上层只通过 `sign` / `verify_sign` 接口感知算法并提供 key（§9.1，D5）                                                                                                            |
+| O-3  | `github-release-assets` 的解析器 | **已定（A4，2026-11-06）：** 用轻量 tokenizer `tl`；fixture 结果与完整 DOM 相同，wasm 增量约 64 KiB 对 605 KiB（测量见 `conformance/fixtures/github-expanded-assets/README.md`）                                                                      |
+| O-4  | Clash Rust alpha 的版本来源      | **已定（2026-11-08）：** 上游没有 `version.txt`；扩展协议，remote version 可由多个响应各自解析后按模板组合（§9.2，D4）；alpha 保持 remote，checksum 由 parser 解析为 `parsed`；owner 为 `ibigbug`                                                     |
+| O-5  | 模板侧是否 `deny_unknown_fields` | **已定（2026-11-08）：** 是；S0c 已为模板侧专用类型开启，编译产物侧保持宽松（§5.4 第 5 条）                                                                                                                                                           |
+| O-6  | wasm 的消费者                    | **已定（2026-11-06）：** 只有 Node 包，用于构建期胶水脚本下载并校验资源                                                                                                                                                                               |
+| O-7  | 版本与兼容方式                   | **已定（2026-11-06）：** 参考 Docker 采用 `major.minor`；兼容更新只升 minor（§5.4）                                                                                                                                                                   |
+| O-8  | wasm 体积预算                    | **已定（2026-11-08）：** 接受 C1 实测体积：raw 1,513,596 B，gzip（level 9）535,484 B；Node initSync 五次中位数 1.963 ms。预算采用 C1 建议值：gzip ≤ 803,226 B（当时的 1.5 倍），初始化中位数 ≤ 10 ms；测量环境与方法见下文                            |
+| O-9  | 本仓库的 Rust 规则               | **已定（2026-11-08）：** 采用 `docs/development/rust.md`（改编自 clash-nyanpasu）                                                                                                                                                                     |
+| O-10 | crate 和包的正式名称             | **已定（2026-11-08）：** 现有名称即正式名称：crate `manifest-metadata`、`manifest-parser`、`manifest-core`、`manifest-wasm`、`manifest-schema-generator`；包 `@manifest/metadata`、`@manifest/runtime`、`@manifest/downloader`、`@manifest/generator` |
+| O-11 | 发布前的版本号                   | **已定（2026-11-06）：** 包首次发布前保持 `"2.0"`，这期间的契约改动都并入 2.0，不升版本。理解是"发布前不升 schema 版本"，并非"发布前完全不改契约"；若理解有误，以维护者更正为准                                                                       |
+| O-12 | Schema `$id` 前缀                | **已定（本 PR，2026-11-06）：** `https://libnyanpasu.github.io/resources-manifest/schema/`；后接 `2.0/manifest.schema.json` 或 `2.0/manifest-template.schema.json`                                                                                    |
 
 C1 测量使用 Windows x86_64、Node v26.12.1、wasm-bindgen 0.2.114、Rust stable 1.99.1
 和 §8.1 的 release profile。指定的 Rust 1.95.0 在依赖编译阶段 ICE，重跑仍复现，
@@ -748,7 +848,7 @@ C1 测量使用 Windows x86_64、Node v26.12.1、wasm-bindgen 0.2.114、Rust sta
 
 ## 12. 不在范围
 
-- manifest 签名的方案与实现（O-2、D5）。
+- manifest 签名的实现（D5；方案已定为 minisign，见 §9.1）。
 - i18n：只在 `D/` 中写一句"UI 以 `tag.id` 和 resource key 作为翻译键，`name` 只作兜底"，不改类型。
 - mirror 元数据扩展、平台映射 helper、resource 的 icon 或 homepage。
 - `@manifest/*` 的 npm 发布与 JS 构建；浏览器和 bundler 接入 wasm。
