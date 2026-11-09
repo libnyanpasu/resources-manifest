@@ -852,6 +852,31 @@ alpha 的 checksum 都由 `github-release-assets` 从 `expanded_assets/<tag>` �
 - 变体只带 channel tag：每个平台只有一个构建，没有可选的维度。以后增加可选构建时，新增带 `cpu`、`toolchain` 等 tag 的变体；已有变体的 tag 不变，宿主持久化的精确 tag 组合仍然有效。
 - 已知变化点：Go 1.26 是支持 macOS 12 的最后一版。mihomo 改用 Go 1.27 后，要么新增一个带 `toolchain` tag 的 Go 1.26 darwin 变体，要么把 clash-nyanpasu 的 macOS 下限提到 13。
 
+**2026-11-10 修订：可选构建。** clash-nyanpasu 的最低支持系统是准入门槛，不是唯一选择。默认变体 `stable`、`alpha` 不变，仍是上表中满足下限的构建。上游发布的、对系统要求更高或链接方式不同的构建，作为可选变体收录；宿主检测 CPU 或系统后，按精确 tag 组合提供给用户。以下取代上面"v3 不收录""Windows、macOS 不收录 static-crt""变体只带 channel tag"三条：
+
+- 只为低于下限的系统准备的构建仍不收录：mihomo 的 v1、`compatible` 与旧 Go 构建。上游的重复文件名也不收录：mihomo 的 `amd64` 与 `amd64-v3` 是同一构建（`GOAMD64=v3`）。
+- 可选变体只包含与默认构建不同的产物，不重复默认产物。例如 clash-rs 的 linux-aarch64 默认就是 musl，所以 `musl` 变体只有 linux-amd64。
+- 三个上游都不发布 x86-64-v4（AVX-512）构建；上游开始发布后，按同样方式增加 `cpu:x86-64-v4` 变体。
+- 每个可选变体都有 stable 与 alpha 两个，ID 为 `<channel>-<后缀>`，tag 为 channel tag 加下表的一个 tag。release 来源、alpha 的版本与 checksum 与同一 resource 的默认变体相同；alpha 的产物都在同一个 tag release 中，版本观测（§9.7 第 3 条）照常要求它们一致。
+- 2026-11-10 用 v0.10.11 与 v0.29.0 的构建核对动态链接的 glibc 要求：clash-rs 的 `*-linux-gnu` 为 `GLIBC_2.39`，meow 的 `*-linux-gnu` 为 `GLIBC_2.28`。
+
+| tag             | group  | 含义                                                                                                                |
+| --------------- | ------ | ------------------------------------------------------------------------------------------------------------------- |
+| `cpu:x86-64-v3` | `cpu`  | 需要 x86-64-v3：AVX2、BMI1、BMI2、FMA、LZCNT、MOVBE                                                                 |
+| `libc:gnu`      | `libc` | 动态链接 glibc，版本要求见上；描述按 resource 写明                                                                  |
+| `libc:musl`     | `libc` | 静态链接 musl                                                                                                       |
+| `crt:static`    | `crt`  | 上游的 static-crt 构建：Windows 上 C 运行库静态链接，不依赖 Visual C++ 运行库；macOS 上仍动态链接系统库 `libSystem` |
+
+| resource   | 后缀         | tag             | 平台与产物                                                                                                                                                                                                                                                  |
+| ---------- | ------------ | --------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `mihomo`   | `x86-64-v3`  | `cpu:x86-64-v3` | `windows-x86_64`：`mihomo-windows-amd64-v3-{version}.zip`；`linux-amd64`：`mihomo-linux-amd64-v3-{version}.gz`；`darwin-x64`：`mihomo-darwin-amd64-v3-{version}.gz`                                                                                         |
+| `meow`     | `gnu`        | `libc:gnu`      | `linux-aarch64`：`meow-{version}-aarch64-unknown-linux-gnu.tar.gz`；`linux-amd64`：`meow-{version}-x86_64-unknown-linux-gnu.tar.gz`                                                                                                                         |
+| `clash_rs` | `gnu`        | `libc:gnu`      | `linux-aarch64`：`clash-rs-aarch64-unknown-linux-gnu`；`linux-amd64`：`clash-rs-x86_64-unknown-linux-gnu`                                                                                                                                                   |
+| `clash_rs` | `musl`       | `libc:musl`     | `linux-amd64`：`clash-rs-x86_64-unknown-linux-musl`                                                                                                                                                                                                         |
+| `clash_rs` | `static-crt` | `crt:static`    | `windows-x86_64`：`clash-rs-x86_64-pc-windows-msvc-static-crt.exe`；`windows-arm64`：`clash-rs-aarch64-pc-windows-msvc-static-crt.exe`；`darwin-arm64`：`clash-rs-aarch64-apple-darwin-static-crt`；`darwin-x64`：`clash-rs-x86_64-apple-darwin-static-crt` |
+
+合计 16 个变体、60 个产物：mihomo 4 个变体 18 个产物，meow 4 个变体 16 个，clash-rs 8 个变体 26 个。
+
 ### 9.5 D1 模板的 release 来源与 `ManifestSnapshot`
 
 本节的"快照"指 generator 抓取的 release 记录 `ManifestSnapshot`，不同于 §10 的 fixture 快照，也不同于 `fallback` 的 `snapshot` kind。类型都在 `manifest-metadata`，由 schema generator 导出 JSON Schema 与 TS。
