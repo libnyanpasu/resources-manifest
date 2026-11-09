@@ -38,6 +38,15 @@ requests; `raw.githubusercontent.com` does. Malformed JSON and every
 The page does not request version or checksum responses itself: release
 downloads on github.com do not allow cross-origin reads.
 
+## Deployment
+
+[`.github/workflows/pages.yml`](../../.github/workflows/pages.yml) builds the
+page on pushes to `main` that touch the viewer, the runtime, the metadata
+package or the Rust crates, and on manual dispatch. It installs Rust 1.95.0
+with the wasm target and the wasm-bindgen CLI version locked in `Cargo.lock`,
+runs `pnpm run build:viewer`, and deploys `dist/` to GitHub Pages. The
+repository's Pages source must be set to GitHub Actions.
+
 ## Layout and checks
 
 `src/model.ts` computes everything the components show and is tested with
