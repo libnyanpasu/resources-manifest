@@ -40,7 +40,7 @@ function authoredTemplate() {
                 version: {
                   type: "remote",
                   releases: "alpha",
-                  version: {
+                  latest: {
                     resource: {
                       registry: "github-release",
                       artifact: "version.txt",

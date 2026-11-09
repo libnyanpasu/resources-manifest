@@ -224,7 +224,7 @@ A single-response plan looks like this:
     "fallback": {
       "version": "alpha-e911985"
     },
-    "version": {
+    "latest": {
       "resource": {
         "registry": "github-release",
         "artifact": "version.txt"
@@ -277,7 +277,7 @@ headers; only an explicitly declared `header` checksum parser does so.
 
 ### Composite remote versions
 
-Some upstreams publish no version file. A remote `version` may instead combine
+Some upstreams publish no version file. A remote `latest` may instead combine
 several responses: each named part is an ordinary remote version request with
 its own parser, and `format` joins the part results. Clash Rust alpha combines
 the latest stable tag with the commit of its rolling `latest` tag:

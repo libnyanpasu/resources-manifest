@@ -126,7 +126,7 @@ async function fixture(t: TestContext, remote = false) {
     ? {
         type: "remote",
         fallback: { version: "v1", checksum },
-        version: {
+        latest: {
           resource: { registry: "main", artifact: "version.txt" },
           parser: { type: "text" },
         },
@@ -359,7 +359,7 @@ test("allow-parsed resolves version and checksum then downloads with WARN", asyn
 test("composite versions request every part in plan order", async (t) => {
   const f = await fixture(t, true);
   assert.equal(f.version.type, "remote");
-  f.version.version = {
+  f.version.latest = {
     parts: {
       major: {
         resource: { registry: "main", artifact: "major.txt" },
@@ -651,7 +651,7 @@ test("HTTPS downgrade redirects fail before requesting HTTP for manifest, metada
         name: "Secure",
         url_template: `${secureBase}/{artifact}`,
       };
-      const target = f.version[kind]!;
+      const target = f.version[kind === "version" ? "latest" : kind]!;
       assert.ok("resource" in target);
       target.resource.registry = "secure";
     }

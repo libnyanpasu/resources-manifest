@@ -43,7 +43,7 @@ const template = {
               version: {
                 type: "remote",
                 releases: "alpha",
-                version: {
+                latest: {
                   resource: { registry: "example", artifact: "version.txt" },
                   parser: { type: "text" } as { type: string },
                 },
@@ -87,10 +87,10 @@ test("both schemas reject unknown version parser types", () => {
   const authored = structuredClone(template);
   const remoteVersion =
     compiled.resources.clash_rs.variants[1].artifacts["windows-x86_64"].version;
-  assert.ok(remoteVersion.version);
+  assert.ok(typeof remoteVersion.latest === "object");
   authored.resources.example.variants[0].artifacts[
     "linux-amd64"
-  ].version.version = remoteVersion.version;
+  ].version.latest = remoteVersion.latest;
   const cases = [
     { validate: validateManifest, fixture: compiled },
     { validate: validateTemplate, fixture: authored },
@@ -99,12 +99,12 @@ test("both schemas reject unknown version parser types", () => {
     assert.ok(validate(fixture), ajv.errorsText(validate.errors));
   }
 
-  remoteVersion.version.parser.type = "future-parser";
+  remoteVersion.latest.parser.type = "future-parser";
   for (const { validate, fixture } of cases) {
     assert.equal(validate(fixture), false);
     assert.ok(
       validate.errors?.some((error) =>
-        error.instancePath.endsWith("/version/version/parser/type"),
+        error.instancePath.endsWith("/version/latest/parser/type"),
       ),
       ajv.errorsText(validate.errors),
     );
@@ -219,8 +219,8 @@ test("template schema accepts unknown fields in shared types", () => {
     const nodes = {
       registry: extended.registries.example,
       mirror: extended.mirrors.direct,
-      remote_version: remote.version,
-      remote_resource: remote.version.resource,
+      remote_version: remote.latest,
+      remote_resource: remote.latest.resource,
     };
     Object.assign(nodes[location], { unknown_field: true });
     assert.ok(

@@ -129,20 +129,20 @@ pub(super) fn collect(manifest: &ResourceManifest) -> Vec<ValidationError> {
                         }
                     }
                     ResourceArtifactVersionTemplate::Remote {
-                        version, checksum, ..
+                        latest, checksum, ..
                     } => {
-                        if let RemoteVersionTemplate::Composite { parts, format } = version {
+                        if let RemoteVersionTemplate::Composite { parts, format } = latest {
                             check_version_parts(
                                 parts,
                                 format,
-                                &format!("{path}.version"),
+                                &format!("{path}.latest"),
                                 &mut errors,
                             );
                         }
-                        for (name, part) in version.parts() {
+                        for (name, part) in latest.parts() {
                             let path = match name {
-                                Some(name) => format!("{path}.version.parts.{name}"),
-                                None => format!("{path}.version"),
+                                Some(name) => format!("{path}.latest.parts.{name}"),
+                                None => format!("{path}.latest"),
                             };
                             check_registry(
                                 manifest,

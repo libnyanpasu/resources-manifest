@@ -267,7 +267,8 @@
                 }
               ]
             },
-            "version": {
+            "latest": {
+              "description": "How the latest version is requested and parsed.",
               "$ref": "#/$defs/RemoteVersionTemplate"
             },
             "checksum": {
@@ -282,7 +283,7 @@
               "const": "remote"
             }
           },
-          "required": ["type", "version"]
+          "required": ["type", "latest"]
         }
       ]
     },

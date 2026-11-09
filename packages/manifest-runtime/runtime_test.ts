@@ -45,7 +45,7 @@ function manifestInput(): ResourceManifest {
                 artifact: "pkg-{version}.zip",
                 version: {
                   type: "remote",
-                  version: {
+                  latest: {
                     resource: { registry: "main", artifact: "version.txt" },
                     parser: { type: "text" },
                   },
@@ -192,11 +192,11 @@ test("non-finite host numbers are rejected at their input paths", () => {
       manifestInput().resources.sample.variants[0].artifacts["linux-amd64"]!;
     assert.equal(artifact.version.type, "remote");
     if (artifact.version.type !== "remote") assert.fail();
-    if (!("parser" in artifact.version.version)) assert.fail();
-    artifact.version.version.parser = parser;
+    if (!("parser" in artifact.version.latest)) assert.fail();
+    artifact.version.latest.parser = parser;
     invalid(
       () => artifactChecksumKind(artifact),
-      "arg.artifact.version.version.parser.group",
+      "arg.artifact.version.latest.parser.group",
     );
     for (const key of limitKeys) {
       const limits = { [key]: number };
@@ -414,13 +414,13 @@ test("a format key selects the composite version form", () => {
   };
 
   const ignored = version();
-  Object.assign(ignored.remote.version, { parts: 42 });
+  Object.assign(ignored.remote.latest, { parts: 42 });
   using single = validateManifest(ignored.input);
   assert.equal(single.value.resources.sample!.variants.length, 1);
 
   for (const format of [null, 1]) {
     const bad = version();
-    Object.assign(bad.remote.version, { format });
+    Object.assign(bad.remote.latest, { format });
     invalid(() => validateManifest(bad.input), "arg.manifest");
   }
 });

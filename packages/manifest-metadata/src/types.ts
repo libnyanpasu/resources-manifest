@@ -186,7 +186,8 @@ export type ResourceArtifactVersionTemplate =
       type: "remote";
       /**  Snapshot generated with the manifest; consumers should still query remote. */
       fallback?: ResourceStaticReleaseTemplate;
-      version: RemoteVersionTemplate;
+      /**  How the latest version is requested and parsed. */
+      latest: RemoteVersionTemplate;
       checksum?: RemoteChecksumResourceTemplate;
     };
 
@@ -328,7 +329,8 @@ export type TemplateArtifactVersion =
       type: "remote";
       /**  Release source ID. */
       releases: string;
-      version: RemoteVersionTemplate;
+      /**  How the latest version is requested and parsed. */
+      latest: RemoteVersionTemplate;
       checksum?: RemoteChecksumResourceTemplate;
     };
 

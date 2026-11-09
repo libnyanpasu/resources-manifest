@@ -346,7 +346,8 @@ pub enum ResourceArtifactVersionTemplate {
         #[serde(skip_serializing_if = "Option::is_none")]
         #[specta(optional)]
         fallback: Option<ResourceStaticReleaseTemplate>,
-        version: RemoteVersionTemplate,
+        /// How the latest version is requested and parsed.
+        latest: RemoteVersionTemplate,
         #[serde(skip_serializing_if = "Option::is_none")]
         #[specta(optional)]
         checksum: Option<RemoteChecksumResourceTemplate>,
@@ -433,10 +434,10 @@ fn deserialize_template_artifacts<'de, D: Deserializer<'de>>(
     let artifacts = BTreeMap::<SupportedPlatform, TemplateArtifact>::deserialize(deserializer)?;
     for artifact in artifacts.values() {
         if let TemplateArtifactVersion::Remote {
-            version, checksum, ..
+            latest, checksum, ..
         } = &artifact.version
         {
-            for (_, part) in version.parts() {
+            for (_, part) in latest.parts() {
                 if let RemoteVersionParser::Unsupported { parser_type } = &part.parser {
                     return Err(serde::de::Error::custom(format!(
                         "unsupported version parser type {parser_type:?} in template"
@@ -572,7 +573,8 @@ pub enum TemplateArtifactVersion {
     Remote {
         /// Release source ID.
         releases: String,
-        version: RemoteVersionTemplate,
+        /// How the latest version is requested and parsed.
+        latest: RemoteVersionTemplate,
         #[serde(skip_serializing_if = "Option::is_none")]
         #[specta(optional)]
         checksum: Option<RemoteChecksumResourceTemplate>,
@@ -920,7 +922,7 @@ mod tests {
                                     "version": {
                                         "type": "remote",
                                         "fallback": { "version": "alpha-e911985" },
-                                        "version": {
+                                        "latest": {
                                             "resource": {
                                                 "registry": "github-release",
                                                 "artifact": "version.txt"
@@ -1069,7 +1071,7 @@ mod tests {
                                 "version": {
                                     "type": "remote",
                                     "releases": "alpha",
-                                    "version": {
+                                    "latest": {
                                         "resource": { "registry": "example", "artifact": "version.txt" },
                                         "parser": { "type": "text" }
                                     }
@@ -1517,7 +1519,7 @@ mod tests {
                             "version": {
                                 "type": "remote",
                                 "releases": "alpha",
-                                "version": {
+                                "latest": {
                                     "resource": { "registry": "example", "artifact": "version.txt" },
                                     "parser": { "type": "text" }
                                 },
@@ -1537,8 +1539,8 @@ mod tests {
         for path in [
             "/registries/example".to_owned(),
             "/mirrors/direct".to_owned(),
-            format!("{version}/version"),
-            format!("{version}/version/resource"),
+            format!("{version}/latest"),
+            format!("{version}/latest/resource"),
             format!("{version}/checksum"),
             format!("{version}/checksum/resource"),
         ] {
@@ -1614,7 +1616,7 @@ mod tests {
                 .unwrap();
             artifacts.remove("future-os-cpu");
             for artifact in artifacts.values_mut() {
-                for path in ["/version/version/parser", "/version/checksum/parser"] {
+                for path in ["/version/latest/parser", "/version/checksum/parser"] {
                     if let Some(parser) = artifact.pointer_mut(path) {
                         let tag = parser["type"].as_str().unwrap();
                         if tag.starts_with("future-") {
@@ -1658,7 +1660,9 @@ mod tests {
         let artifacts = &resource.variants[0].artifacts;
         assert_eq!(artifacts.len(), 2);
         let ResourceArtifactVersionTemplate::Remote {
-            version, checksum, ..
+            latest: version,
+            checksum,
+            ..
         } = &artifacts[&SupportedPlatform::WindowsX86_64].version
         else {
             panic!("remote artifact expected");
@@ -1693,7 +1697,7 @@ mod tests {
             .remove("future-os-cpu");
         for path in [
             parser_path,
-            "/resources/sample/variants/0/artifacts/windows-x86_64/version/version/parser",
+            "/resources/sample/variants/0/artifacts/windows-x86_64/version/latest/parser",
         ] {
             let parser = input.pointer_mut(path).unwrap();
             *parser = json!({"type": parser["type"]});
@@ -1735,7 +1739,7 @@ mod tests {
             }
             for (kind, cases) in [
                 (
-                    "version",
+                    "latest",
                     vec![
                         (r#"{"type":"text","type":"future-parser"}"#, "type"),
                         (r#"{"type":"text","trim":"invalid","trim":true}"#, "trim"),
@@ -1913,7 +1917,7 @@ mod tests {
         });
         serde_json::from_value::<ResourceManifestTemplate>(template.clone()).unwrap();
         for path in [
-            "/resources/sample/variants/0/artifacts/windows-x86_64/version/version/parser",
+            "/resources/sample/variants/0/artifacts/windows-x86_64/version/latest/parser",
             "/resources/sample/variants/0/artifacts/windows-x86_64/version/checksum/parser",
         ] {
             let mut invalid = template.clone();

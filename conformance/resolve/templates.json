@@ -2511,7 +2511,7 @@
                     "artifact": "pkg-{version}.zip",
                     "version": {
                       "type": "remote",
-                      "version": {
+                      "latest": {
                         "resource": {
                           "registry": "test",
                           "artifact": "version.txt"
@@ -2578,7 +2578,7 @@
                     "artifact": "pkg-{version}.zip",
                     "version": {
                       "type": "remote",
-                      "version": {
+                      "latest": {
                         "resource": {
                           "registry": "test",
                           "artifact": "version.txt"
@@ -2645,7 +2645,7 @@
                     "artifact": "pkg-{version}.zip",
                     "version": {
                       "type": "remote",
-                      "version": {
+                      "latest": {
                         "resource": {
                           "registry": "test",
                           "artifact": "version.txt"
@@ -2712,7 +2712,7 @@
                     "artifact": "pkg-{version}.zip",
                     "version": {
                       "type": "remote",
-                      "version": {
+                      "latest": {
                         "resource": {
                           "registry": "test",
                           "artifact": "version.txt"

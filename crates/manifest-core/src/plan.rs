@@ -465,11 +465,11 @@ impl DownloadPlan {
 #[must_use = "unsupported parsers must be handled"]
 fn check_support(selected: &SelectedArtifact<'_>) -> Result<(), ResolveError> {
     if let ResourceArtifactVersionTemplate::Remote {
-        version, checksum, ..
+        latest, checksum, ..
     } = &selected.artifact.version
     {
         let unsupported = if let Some(parser_type) =
-            version.parts().find_map(|(_, part)| match &part.parser {
+            latest.parts().find_map(|(_, part)| match &part.parser {
                 RemoteVersionParser::Unsupported { parser_type } => Some(parser_type),
                 _ => None,
             }) {
@@ -538,9 +538,9 @@ pub(crate) fn plan_version_with(
             releases: releases.clone(),
             remote: None,
         }),
-        ResourceArtifactVersionTemplate::Remote { version, .. } => {
+        ResourceArtifactVersionTemplate::Remote { latest, .. } => {
             let values = version_values(selected, source)?;
-            let parts = version
+            let parts = latest
                 .parts()
                 .map(|(name, part)| {
                     let compiled = part
@@ -548,8 +548,8 @@ pub(crate) fn plan_version_with(
                         .compile(limits)
                         .map_err(|source| ResolveError::CompileParser { source })?;
                     let path = match name {
-                        Some(name) => format!("{}.version.version.parts.{name}", selected.path()),
-                        None => format!("{}.version.version", selected.path()),
+                        Some(name) => format!("{}.version.latest.parts.{name}", selected.path()),
+                        None => format!("{}.version.latest", selected.path()),
                     };
                     let request = remote_request(
                         selected,
@@ -568,7 +568,7 @@ pub(crate) fn plan_version_with(
                     })
                 })
                 .collect::<Result<_, ResolveError>>()?;
-            let format = match version {
+            let format = match latest {
                 RemoteVersionTemplate::Single(_) => None,
                 RemoteVersionTemplate::Composite { format, .. } => Some(format.clone()),
             };

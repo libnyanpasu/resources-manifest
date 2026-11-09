@@ -46,7 +46,7 @@
           "version": "v1.2.3",
           "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
         },
-        "version": {
+        "latest": {
           "resource": {
             "registry": "github-release",
             "artifact": "version.txt"
@@ -82,7 +82,7 @@
           "version": "v1.2.3",
           "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
         },
-        "version": {
+        "latest": {
           "resource": {
             "registry": "github-release",
             "artifact": "version.txt"
@@ -108,7 +108,7 @@
           "version": "v1.2.3",
           "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
         },
-        "version": {
+        "latest": {
           "resource": {
             "registry": "github-release",
             "artifact": "version.txt"
@@ -144,7 +144,7 @@
           "version": "v1.2.3",
           "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
         },
-        "version": {
+        "latest": {
           "parts": {
             "stable": {
               "resource": {
@@ -195,7 +195,7 @@
           "version": "v1.2.3",
           "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
         },
-        "version": {
+        "latest": {
           "parts": {
             "stable": {
               "resource": {
@@ -248,7 +248,7 @@
             "release": "fallback-{version}"
           }
         },
-        "version": {
+        "latest": {
           "resource": {
             "registry": "meta",
             "artifact": "version.txt"

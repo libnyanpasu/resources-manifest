@@ -360,7 +360,7 @@ fn expand(
                     }
                     (
                         TemplateArtifactVersion::Remote {
-                            version, checksum, ..
+                            latest, checksum, ..
                         },
                         Some(Source::Tag {
                             version: observed, ..
@@ -372,7 +372,7 @@ fn expand(
                             published_at: None,
                             source: None,
                         }),
-                        version: version.clone(),
+                        latest: latest.clone(),
                         checksum: checksum.clone(),
                     },
                     // The snapshot error is already reported.

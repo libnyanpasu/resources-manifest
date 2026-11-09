@@ -221,7 +221,7 @@ fn compat() {
                     .unwrap()
                     .remove("future-os-cpu");
                 for artifact in variant["artifacts"].as_object_mut().unwrap().values_mut() {
-                    for field in ["version", "checksum"] {
+                    for field in ["latest", "checksum"] {
                         if let Some(parser) =
                             artifact.pointer_mut(&format!("/version/{field}/parser"))
                             && parser["type"]

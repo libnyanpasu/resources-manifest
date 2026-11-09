@@ -81,7 +81,7 @@ function resource(options: {
               version: {
                 type: "remote",
                 releases: "alpha",
-                version: options.alphaVersion(options.artifacts[platform]),
+                latest: options.alphaVersion(options.artifacts[platform]),
                 checksum: GITHUB_ASSETS_CHECKSUM,
               },
             },

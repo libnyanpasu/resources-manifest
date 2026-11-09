@@ -685,7 +685,7 @@
                   "artifact": "selected-{version}.zip",
                   "version": {
                     "type": "remote",
-                    "version": {
+                    "latest": {
                       "resource": {
                         "registry": "github-release",
                         "artifact": "version.txt"
@@ -864,7 +864,7 @@
                   "artifact": "selected-{version}.zip",
                   "version": {
                     "type": "remote",
-                    "version": {
+                    "latest": {
                       "resource": {
                         "registry": "github-release",
                         "artifact": "version.txt"
@@ -962,7 +962,7 @@
                   "artifact": "selected-{version}.zip",
                   "version": {
                     "type": "remote",
-                    "version": {
+                    "latest": {
                       "parts": {
                         "stable": {
                           "resource": {
@@ -1074,7 +1074,7 @@
                   "artifact": "selected-{version}.zip",
                   "version": {
                     "type": "remote",
-                    "version": {
+                    "latest": {
                       "parts": {},
                       "format": "alpha"
                     },
@@ -1114,7 +1114,7 @@
     "expect": {
       "error": {
         "code": "validate.version_parts",
-        "path": "resources.sample.variants[0].artifacts.windows-x86_64.version.version.parts",
+        "path": "resources.sample.variants[0].artifacts.windows-x86_64.version.latest.parts",
         "fields": {
           "reason": "count",
           "part": null
@@ -1172,7 +1172,7 @@
                   "artifact": "selected-{version}.zip",
                   "version": {
                     "type": "remote",
-                    "version": {
+                    "latest": {
                       "parts": {
                         "a": {
                           "resource": {
@@ -1258,7 +1258,7 @@
     "expect": {
       "error": {
         "code": "validate.version_parts",
-        "path": "resources.sample.variants[0].artifacts.windows-x86_64.version.version.parts",
+        "path": "resources.sample.variants[0].artifacts.windows-x86_64.version.latest.parts",
         "fields": {
           "reason": "count",
           "part": null
@@ -1316,7 +1316,7 @@
                   "artifact": "selected-{version}.zip",
                   "version": {
                     "type": "remote",
-                    "version": {
+                    "latest": {
                       "parts": {
                         "version": {
                           "resource": {
@@ -1366,7 +1366,7 @@
     "expect": {
       "error": {
         "code": "validate.version_parts",
-        "path": "resources.sample.variants[0].artifacts.windows-x86_64.version.version.parts.version",
+        "path": "resources.sample.variants[0].artifacts.windows-x86_64.version.latest.parts.version",
         "fields": {
           "reason": "name",
           "part": "version"
@@ -1424,7 +1424,7 @@
                   "artifact": "selected-{version}.zip",
                   "version": {
                     "type": "remote",
-                    "version": {
+                    "latest": {
                       "parts": {
                         "a": {
                           "resource": {
@@ -1483,7 +1483,7 @@
     "expect": {
       "error": {
         "code": "validate.version_parts",
-        "path": "resources.sample.variants[0].artifacts.windows-x86_64.version.version.parts.b-c",
+        "path": "resources.sample.variants[0].artifacts.windows-x86_64.version.latest.parts.b-c",
         "fields": {
           "reason": "name",
           "part": "b-c"
@@ -1492,7 +1492,7 @@
       "additional_errors": [
         {
           "code": "validate.version_parts",
-          "path": "resources.sample.variants[0].artifacts.windows-x86_64.version.version.format",
+          "path": "resources.sample.variants[0].artifacts.windows-x86_64.version.latest.format",
           "fields": {
             "reason": "unreferenced",
             "part": "b-c"
@@ -1551,7 +1551,7 @@
                   "artifact": "selected-{version}.zip",
                   "version": {
                     "type": "remote",
-                    "version": {
+                    "latest": {
                       "parts": {
                         "a": {
                           "resource": {
@@ -1610,7 +1610,7 @@
     "expect": {
       "error": {
         "code": "validate.version_parts",
-        "path": "resources.sample.variants[0].artifacts.windows-x86_64.version.version.format",
+        "path": "resources.sample.variants[0].artifacts.windows-x86_64.version.latest.format",
         "fields": {
           "reason": "unreferenced",
           "part": "b"
@@ -1668,7 +1668,7 @@
                   "artifact": "selected-{version}.zip",
                   "version": {
                     "type": "remote",
-                    "version": {
+                    "latest": {
                       "parts": {
                         "a": {
                           "resource": {
@@ -1718,7 +1718,7 @@
     "expect": {
       "error": {
         "code": "validate.template_variable",
-        "path": "resources.sample.variants[0].artifacts.windows-x86_64.version.version.format",
+        "path": "resources.sample.variants[0].artifacts.windows-x86_64.version.latest.format",
         "fields": {
           "variable": "z"
         }
@@ -1775,7 +1775,7 @@
                   "artifact": "selected-{version}.zip",
                   "version": {
                     "type": "remote",
-                    "version": {
+                    "latest": {
                       "parts": {
                         "a": {
                           "resource": {
@@ -1826,7 +1826,7 @@
     "expect": {
       "error": {
         "code": "validate.parser_compile",
-        "path": "resources.sample.variants[0].artifacts.windows-x86_64.version.version.parts.a.parser.pattern",
+        "path": "resources.sample.variants[0].artifacts.windows-x86_64.version.latest.parts.a.parser.pattern",
         "fields": {
           "reason": "parser.invalid_pattern",
           "details": {}
@@ -1884,7 +1884,7 @@
                   "artifact": "selected-{version}.zip",
                   "version": {
                     "type": "remote",
-                    "version": {
+                    "latest": {
                       "parts": {
                         "a": {
                           "resource": {
@@ -1934,7 +1934,7 @@
     "expect": {
       "error": {
         "code": "validate.reference",
-        "path": "resources.sample.variants[0].artifacts.windows-x86_64.version.version.parts.a.resource.registry",
+        "path": "resources.sample.variants[0].artifacts.windows-x86_64.version.latest.parts.a.resource.registry",
         "fields": {
           "kind": "registry",
           "id": "missing"
@@ -2242,7 +2242,7 @@
                   "artifact": "selected-{version}.zip",
                   "version": {
                     "type": "remote",
-                    "version": {
+                    "latest": {
                       "resource": {
                         "registry": "github-release",
                         "artifact": "version.txt"
@@ -2357,7 +2357,7 @@
                         "release": "{version}"
                       }
                     },
-                    "version": {
+                    "latest": {
                       "resource": {
                         "registry": "github-release",
                         "artifact": "{remote_name}",
@@ -4467,7 +4467,7 @@
                   "artifact": "selected-{version}.zip",
                   "version": {
                     "type": "remote",
-                    "version": {
+                    "latest": {
                       "resource": {
                         "registry": "ghost-version",
                         "artifact": "version.txt"
@@ -4510,7 +4510,7 @@
     "expect": {
       "error": {
         "code": "validate.reference",
-        "path": "resources.sample.variants[0].artifacts.windows-x86_64.version.version.resource.registry",
+        "path": "resources.sample.variants[0].artifacts.windows-x86_64.version.latest.resource.registry",
         "fields": {
           "kind": "registry",
           "id": "ghost-version"
@@ -4855,7 +4855,7 @@
                   "artifact": "selected-{version}.zip",
                   "version": {
                     "type": "remote",
-                    "version": {
+                    "latest": {
                       "resource": {
                         "registry": "github-release",
                         "artifact": "version.txt"
@@ -4899,7 +4899,7 @@
     "expect": {
       "error": {
         "code": "validate.parser_compile",
-        "path": "resources.sample.variants[0].artifacts.windows-x86_64.version.version.parser.pattern",
+        "path": "resources.sample.variants[0].artifacts.windows-x86_64.version.latest.parser.pattern",
         "fields": {
           "reason": "parser.invalid_pattern",
           "details": {}
@@ -4957,7 +4957,7 @@
                   "artifact": "selected-{version}.zip",
                   "version": {
                     "type": "remote",
-                    "version": {
+                    "latest": {
                       "resource": {
                         "registry": "github-release",
                         "artifact": "version.txt"
@@ -5002,7 +5002,7 @@
     "expect": {
       "error": {
         "code": "validate.parser_compile",
-        "path": "resources.sample.variants[0].artifacts.windows-x86_64.version.version.parser.group",
+        "path": "resources.sample.variants[0].artifacts.windows-x86_64.version.latest.parser.group",
         "fields": {
           "reason": "parser.group_out_of_range",
           "details": {
@@ -5063,7 +5063,7 @@
                   "artifact": "selected-{version}.zip",
                   "version": {
                     "type": "remote",
-                    "version": {
+                    "latest": {
                       "resource": {
                         "registry": "github-release",
                         "artifact": "version.txt"
@@ -5107,7 +5107,7 @@
     "expect": {
       "error": {
         "code": "validate.parser_compile",
-        "path": "resources.sample.variants[0].artifacts.windows-x86_64.version.version.parser.pattern",
+        "path": "resources.sample.variants[0].artifacts.windows-x86_64.version.latest.parser.pattern",
         "fields": {
           "reason": "parser.invalid_pattern",
           "details": {
@@ -5168,7 +5168,7 @@
                   "artifact": "selected-{version}.zip",
                   "version": {
                     "type": "remote",
-                    "version": {
+                    "latest": {
                       "resource": {
                         "registry": "github-release",
                         "artifact": "version.txt"
@@ -5631,7 +5631,7 @@
                   "artifact": "selected-{version}.zip",
                   "version": {
                     "type": "remote",
-                    "version": {
+                    "latest": {
                       "resource": {
                         "registry": "github-release",
                         "artifact": "version.txt",
@@ -5677,7 +5677,7 @@
     "expect": {
       "error": {
         "code": "validate.template_variable",
-        "path": "resources.sample.variants[0].artifacts.windows-x86_64.version.version.resource.source.nested",
+        "path": "resources.sample.variants[0].artifacts.windows-x86_64.version.latest.resource.source.nested",
         "fields": {
           "variable": "missing"
         }
@@ -5734,7 +5734,7 @@
                   "artifact": "selected-{version}.zip",
                   "version": {
                     "type": "remote",
-                    "version": {
+                    "latest": {
                       "resource": {
                         "registry": "github-release",
                         "artifact": "{missing}"
@@ -5777,7 +5777,7 @@
     "expect": {
       "error": {
         "code": "validate.template_variable",
-        "path": "resources.sample.variants[0].artifacts.windows-x86_64.version.version.resource.artifact",
+        "path": "resources.sample.variants[0].artifacts.windows-x86_64.version.latest.resource.artifact",
         "fields": {
           "variable": "missing"
         }
@@ -5834,7 +5834,7 @@
                   "artifact": "selected-{version}.zip",
                   "version": {
                     "type": "remote",
-                    "version": {
+                    "latest": {
                       "resource": {
                         "registry": "github-release"
                       },
@@ -6026,7 +6026,7 @@
                   "artifact": "{missing}",
                   "version": {
                     "type": "remote",
-                    "version": {
+                    "latest": {
                       "resource": {
                         "registry": "github-release",
                         "artifact": "version.txt"
@@ -6088,7 +6088,7 @@
         },
         {
           "code": "validate.parser_compile",
-          "path": "resources.sample.variants[0].artifacts.windows-x86_64.version.version.parser.pattern",
+          "path": "resources.sample.variants[0].artifacts.windows-x86_64.version.latest.parser.pattern",
           "fields": {
             "reason": "parser.invalid_pattern",
             "details": {}
@@ -6267,7 +6267,7 @@
                   "artifact": "selected-{version}.zip",
                   "version": {
                     "type": "remote",
-                    "version": {
+                    "latest": {
                       "resource": {
                         "registry": "github-release",
                         "artifact": "version.txt"
@@ -6533,7 +6533,7 @@
                   "artifact": "selected-{version}.zip",
                   "version": {
                     "type": "remote",
-                    "version": {
+                    "latest": {
                       "resource": {
                         "registry": "github-release",
                         "artifact": "version.txt",
@@ -6632,7 +6632,7 @@
                         "fallback_only": "snapshot"
                       }
                     },
-                    "version": {
+                    "latest": {
                       "resource": {
                         "registry": "github-release",
                         "artifact": "{fallback_only}.txt"
@@ -6665,7 +6665,7 @@
     "expect": {
       "error": {
         "code": "validate.template_variable",
-        "path": "resources.sample.variants[0].artifacts.windows-x86_64.version.version.resource.artifact",
+        "path": "resources.sample.variants[0].artifacts.windows-x86_64.version.latest.resource.artifact",
         "fields": {
           "variable": "fallback_only"
         }
@@ -6728,7 +6728,7 @@
                         "fallback_only": "snapshot"
                       }
                     },
-                    "version": {
+                    "latest": {
                       "resource": {
                         "registry": "github-release",
                         "artifact": "version.txt"

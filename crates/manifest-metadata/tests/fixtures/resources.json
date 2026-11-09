@@ -185,7 +185,7 @@
                 "fallback": {
                   "version": "0.10.7-alpha+sha.85fc166"
                 },
-                "version": {
+                "latest": {
                   "resource": {
                     "registry": "github-release",
                     "artifact": "version.txt"
@@ -212,7 +212,7 @@
                 "fallback": {
                   "version": "0.10.7-alpha+sha.85fc166"
                 },
-                "version": {
+                "latest": {
                   "resource": {
                     "registry": "github-release",
                     "artifact": "version.txt"
@@ -239,7 +239,7 @@
                 "fallback": {
                   "version": "0.10.7-alpha+sha.85fc166"
                 },
-                "version": {
+                "latest": {
                   "resource": {
                     "registry": "github-release",
                     "artifact": "version.txt"
@@ -266,7 +266,7 @@
                 "fallback": {
                   "version": "0.10.7-alpha+sha.85fc166"
                 },
-                "version": {
+                "latest": {
                   "resource": {
                     "registry": "github-release",
                     "artifact": "version.txt"
@@ -293,7 +293,7 @@
                 "fallback": {
                   "version": "0.10.7-alpha+sha.85fc166"
                 },
-                "version": {
+                "latest": {
                   "resource": {
                     "registry": "github-release",
                     "artifact": "version.txt"
@@ -320,7 +320,7 @@
                 "fallback": {
                   "version": "0.10.7-alpha+sha.85fc166"
                 },
-                "version": {
+                "latest": {
                   "resource": {
                     "registry": "github-release",
                     "artifact": "version.txt"
@@ -802,7 +802,7 @@
                 "fallback": {
                   "version": "alpha-e911985"
                 },
-                "version": {
+                "latest": {
                   "resource": {
                     "registry": "github-release",
                     "artifact": "version.txt"
@@ -829,7 +829,7 @@
                 "fallback": {
                   "version": "alpha-e911985"
                 },
-                "version": {
+                "latest": {
                   "resource": {
                     "registry": "github-release",
                     "artifact": "version.txt"
@@ -856,7 +856,7 @@
                 "fallback": {
                   "version": "alpha-e911985"
                 },
-                "version": {
+                "latest": {
                   "resource": {
                     "registry": "github-release",
                     "artifact": "version.txt"
@@ -912,7 +912,7 @@
                 "fallback": {
                   "version": "alpha-e911985"
                 },
-                "version": {
+                "latest": {
                   "resource": {
                     "registry": "github-release",
                     "artifact": "version.txt"
@@ -939,7 +939,7 @@
                 "fallback": {
                   "version": "alpha-e911985"
                 },
-                "version": {
+                "latest": {
                   "resource": {
                     "registry": "github-release",
                     "artifact": "version.txt"
@@ -966,7 +966,7 @@
                 "fallback": {
                   "version": "alpha-e911985"
                 },
-                "version": {
+                "latest": {
                   "resource": {
                     "registry": "github-release",
                     "artifact": "version.txt"
@@ -1022,7 +1022,7 @@
                 "fallback": {
                   "version": "alpha-e911985"
                 },
-                "version": {
+                "latest": {
                   "resource": {
                     "registry": "github-release",
                     "artifact": "version.txt"
@@ -1049,7 +1049,7 @@
                 "fallback": {
                   "version": "alpha-e911985"
                 },
-                "version": {
+                "latest": {
                   "resource": {
                     "registry": "github-release",
                     "artifact": "version.txt"
@@ -1076,7 +1076,7 @@
                 "fallback": {
                   "version": "alpha-e911985"
                 },
-                "version": {
+                "latest": {
                   "resource": {
                     "registry": "github-release",
                     "artifact": "version.txt"
@@ -1131,7 +1131,7 @@
                 "fallback": {
                   "version": "alpha-e911985"
                 },
-                "version": {
+                "latest": {
                   "resource": {
                     "registry": "github-release",
                     "artifact": "version.txt"
@@ -1158,7 +1158,7 @@
                 "fallback": {
                   "version": "alpha-e911985"
                 },
-                "version": {
+                "latest": {
                   "resource": {
                     "registry": "github-release",
                     "artifact": "version.txt"
@@ -1185,7 +1185,7 @@
                 "fallback": {
                   "version": "alpha-e911985"
                 },
-                "version": {
+                "latest": {
                   "resource": {
                     "registry": "github-release",
                     "artifact": "version.txt"

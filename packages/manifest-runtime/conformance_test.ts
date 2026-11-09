@@ -249,9 +249,9 @@ function compat(input: ResourceManifest): unknown {
         if (artifact.version.type === "remote") {
           const remote = artifact.version;
           const parts =
-            "parts" in remote.version
-              ? Object.values(remote.version.parts)
-              : [remote.version];
+            "parts" in remote.latest
+              ? Object.values(remote.latest.parts)
+              : [remote.latest];
           for (const part of parts) part.parser = normalizeParser(part.parser);
           if (remote.checksum) {
             remote.checksum.parser = normalizeParser(remote.checksum.parser);

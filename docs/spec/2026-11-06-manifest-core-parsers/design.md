@@ -289,7 +289,7 @@ body 和单个 header 值的大小按 UTF-8 字节数计算；超限均报 `pars
 
 错误都带 `path`，统一使用 dotted locator，根为输入文档、宿主参数 `arg` 或 parser 响应 `response`：以 `.` 连接字段或对象键，数组下标写作 `[<i>]`，例如 `manifest_version`、`resources.<id>.variants[<i>].tags`。宿主传入参数使用同一形式的 `arg.<name>`，例如 `arg.version`；parser 响应错误使用 `response.body` 或 `response.headers.<小写名称>`；不使用裸参数名或其他路径语法。一致性运行器对声明的 `path` 做精确字符串比较。
 
-parser 规则错误使用相对于规则的定位：`invalid_pattern` 为 `parser.pattern`，`group_out_of_range` 为 `parser.group`，`resolve.unsupported_parser` 为 `parser.type`；B1 校验完整 manifest 时加上规则所在位置的前缀，例如 `resources.<id>.variants[<i>].artifacts.<platform>.version.version.parser.pattern`。两个 `version` 分别是产物的版本策略和 remote 策略里的版本请求；不得省略 wire 层级。
+parser 规则错误使用相对于规则的定位：`invalid_pattern` 为 `parser.pattern`，`group_out_of_range` 为 `parser.group`，`resolve.unsupported_parser` 为 `parser.type`；B1 校验完整 manifest 时加上规则所在位置的前缀，例如 `resources.<id>.variants[<i>].artifacts.<platform>.version.latest.parser.pattern`。`version` 是产物的版本策略，`latest` 是 remote 策略里的版本请求（§9.8 由 `version` 改名）；不得省略 wire 层级。
 
 A4 细化：GitHub 的 `not_found`、`digest_missing`、`ambiguous` 字段均为 `{ name }`，名称为请求的 artifact 原值；`invalid_checksum` 字段为 `{}`，包括不支持的算法、非法 hex 和算法长度错误。上述错误的 `path` 均为 `response.body`。匹配条目没有 digest 时拒绝，即使另有同名条目带 digest；未匹配条目的畸形 digest 不参与校验。
 
@@ -303,19 +303,19 @@ A2–A5 细化：version 的 `not_found`、`invalid_version` 字段为 `{}`；GN
 `resources.<id>`，`V` 表示 `R.variants[<i>]`，`A` 表示
 `V.artifacts.<platform>`；这些缩写只用于表格，实际 `path()` 返回完整 locator。
 
-| 不变量             | 完整 code                    | fields                          | path                                                                                          |
-| ------------------ | ---------------------------- | ------------------------------- | --------------------------------------------------------------------------------------------- |
-| ID 合法且唯一      | `validate.ids`               | `{ kind, id, reason }`          | `R.tags[i].id`、`V.id`、`V.tags[i].id`                                                        |
-| tag key 规范拼接   | `validate.tag_key`           | `{ expected, actual }`          | `V.tag_key`                                                                                   |
-| 展开 tag 一致      | `validate.expanded_tag`      | `{ id, reason }`                | `V.tags[i]`                                                                                   |
-| group 互斥         | `validate.tag_group`         | `{ group, tags }`               | `V.tags`                                                                                      |
-| 精确 tag 组合唯一  | `validate.tag_combination`   | `{ tag_key, first_variant }`    | `V.tags`                                                                                      |
-| 平台默认有效且完整 | `validate.default_variant`   | `{ platform, variant, reason }` | `R.default_variants.<platform>`                                                               |
-| 引用存在           | `validate.reference`         | `{ kind, id }`                  | `R.registry`、`A.version.<version\|checksum>.resource.registry`、`mirrors.<id>.registries[i]` |
-| static 历史有效    | `validate.static_history`    | `{ version, reason }`           | `A.version.latest`、`A.version.releases[i].version`                                           |
-| 已知 parser 可编译 | `validate.parser_compile`    | `{ reason, details }`           | `A.version.version.parser.<pattern\|group>`、`A.version.checksum.parser.name`                 |
-| 组合版本的 part    | `validate.version_parts`     | `{ reason, part }`              | `A.version.version.parts`、`A.version.version.parts.<name>`、`A.version.version.format`       |
-| 模板依赖完整       | `validate.template_variable` | `{ variable }`                  | 实际包含缺失变量引用的 artifact、source、variables 或 url_template 字段                       |
+| 不变量             | 完整 code                    | fields                          | path                                                                                         |
+| ------------------ | ---------------------------- | ------------------------------- | -------------------------------------------------------------------------------------------- |
+| ID 合法且唯一      | `validate.ids`               | `{ kind, id, reason }`          | `R.tags[i].id`、`V.id`、`V.tags[i].id`                                                       |
+| tag key 规范拼接   | `validate.tag_key`           | `{ expected, actual }`          | `V.tag_key`                                                                                  |
+| 展开 tag 一致      | `validate.expanded_tag`      | `{ id, reason }`                | `V.tags[i]`                                                                                  |
+| group 互斥         | `validate.tag_group`         | `{ group, tags }`               | `V.tags`                                                                                     |
+| 精确 tag 组合唯一  | `validate.tag_combination`   | `{ tag_key, first_variant }`    | `V.tags`                                                                                     |
+| 平台默认有效且完整 | `validate.default_variant`   | `{ platform, variant, reason }` | `R.default_variants.<platform>`                                                              |
+| 引用存在           | `validate.reference`         | `{ kind, id }`                  | `R.registry`、`A.version.<latest\|checksum>.resource.registry`、`mirrors.<id>.registries[i]` |
+| static 历史有效    | `validate.static_history`    | `{ version, reason }`           | `A.version.latest`、`A.version.releases[i].version`                                          |
+| 已知 parser 可编译 | `validate.parser_compile`    | `{ reason, details }`           | `A.version.latest.parser.<pattern\|group>`、`A.version.checksum.parser.name`                 |
+| 组合版本的 part    | `validate.version_parts`     | `{ reason, part }`              | `A.version.latest.parts`、`A.version.latest.parts.<name>`、`A.version.latest.format`         |
+| 模板依赖完整       | `validate.template_variable` | `{ variable }`                  | 实际包含缺失变量引用的 artifact、source、variables 或 url_template 字段                      |
 
 `ids.kind` 为 `tag` / `variant`，`reason` 为 `invalid` / `duplicate`；
 `expanded_tag.reason` 为 `unknown` / `mismatch`（对比 id、name、group、description，

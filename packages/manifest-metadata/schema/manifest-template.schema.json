@@ -299,7 +299,8 @@
               "description": "Release source ID.",
               "type": "string"
             },
-            "version": {
+            "latest": {
+              "description": "How the latest version is requested and parsed.",
               "$ref": "#/$defs/RemoteVersionTemplate"
             },
             "checksum": {
@@ -315,7 +316,7 @@
             }
           },
           "additionalProperties": false,
-          "required": ["type", "releases", "version"]
+          "required": ["type", "releases", "latest"]
         }
       ]
     },

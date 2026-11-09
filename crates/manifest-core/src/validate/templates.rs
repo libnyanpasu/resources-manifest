@@ -71,14 +71,14 @@ fn check_all(manifest: &ResourceManifest, errors: &mut Errors<'_>) {
                         }
                     }
                     ResourceArtifactVersionTemplate::Remote {
-                        version, fallback, ..
+                        latest, fallback, ..
                     } => {
-                        for (name, part) in version.parts() {
+                        for (name, part) in latest.parts() {
                             let path = match name {
                                 Some(name) => {
-                                    format!("{artifact_path}.version.version.parts.{name}.resource")
+                                    format!("{artifact_path}.version.latest.parts.{name}.resource")
                                 }
-                                None => format!("{artifact_path}.version.version.resource"),
+                                None => format!("{artifact_path}.version.latest.resource"),
                             };
                             remote(manifest, &part.resource, &base, &path, false, errors);
                         }

@@ -198,7 +198,7 @@ function template(base: string, limit = 2): ResourceManifestTemplate {
                   version: {
                     type: "remote",
                     releases: "alpha",
-                    version: {
+                    latest: {
                       resource: {
                         registry: "release",
                         artifact: "version-{platform}.txt",

@@ -94,7 +94,7 @@
                     "version": {
                       "type": "remote",
                       "releases": "alpha",
-                      "version": {
+                      "latest": {
                         "resource": {
                           "registry": "release",
                           "artifact": "version.txt"
@@ -338,7 +338,7 @@
                         "checksum": "sha256:4141414141414141414141414141414141414141414141414141414141414141",
                         "published_at": "2026-11-08T08:00:00Z"
                       },
-                      "version": {
+                      "latest": {
                         "resource": {
                           "registry": "release",
                           "artifact": "version.txt"
@@ -461,7 +461,7 @@
                     "version": {
                       "type": "remote",
                       "releases": "alpha",
-                      "version": {
+                      "latest": {
                         "resource": {
                           "registry": "release",
                           "artifact": "version.txt"
@@ -693,7 +693,7 @@
                         "checksum": "sha256:4141414141414141414141414141414141414141414141414141414141414141",
                         "published_at": "2026-11-08T08:00:00Z"
                       },
-                      "version": {
+                      "latest": {
                         "resource": {
                           "registry": "release",
                           "artifact": "version.txt"
@@ -816,7 +816,7 @@
                     "version": {
                       "type": "remote",
                       "releases": "alpha",
-                      "version": {
+                      "latest": {
                         "resource": {
                           "registry": "release",
                           "artifact": "version.txt"
@@ -1054,7 +1054,7 @@
                     "artifact": "pkg-{version}-linux.gz",
                     "version": {
                       "type": "remote",
-                      "version": {
+                      "latest": {
                         "resource": {
                           "registry": "release",
                           "artifact": "version.txt"
@@ -1177,7 +1177,7 @@
                     "version": {
                       "type": "remote",
                       "releases": "alpha",
-                      "version": {
+                      "latest": {
                         "resource": {
                           "registry": "release",
                           "artifact": "version.txt"
@@ -1391,7 +1391,7 @@
                     "version": {
                       "type": "remote",
                       "releases": "alpha",
-                      "version": {
+                      "latest": {
                         "resource": {
                           "registry": "release",
                           "artifact": "version.txt"
@@ -1605,7 +1605,7 @@
                     "version": {
                       "type": "remote",
                       "releases": "alpha",
-                      "version": {
+                      "latest": {
                         "resource": {
                           "registry": "release",
                           "artifact": "version.txt"
@@ -1825,7 +1825,7 @@
                     "version": {
                       "type": "remote",
                       "releases": "alpha",
-                      "version": {
+                      "latest": {
                         "resource": {
                           "registry": "release",
                           "artifact": "version.txt"
@@ -2045,7 +2045,7 @@
                     "version": {
                       "type": "remote",
                       "releases": "alpha",
-                      "version": {
+                      "latest": {
                         "resource": {
                           "registry": "release",
                           "artifact": "version.txt"
@@ -2241,7 +2241,7 @@
                     "version": {
                       "type": "remote",
                       "releases": "alpha",
-                      "version": {
+                      "latest": {
                         "resource": {
                           "registry": "release",
                           "artifact": "version.txt"
@@ -2441,7 +2441,7 @@
                     "version": {
                       "type": "remote",
                       "releases": "alpha",
-                      "version": {
+                      "latest": {
                         "resource": {
                           "registry": "release",
                           "artifact": "version.txt"
@@ -2605,7 +2605,7 @@
                     "version": {
                       "type": "remote",
                       "releases": "alpha",
-                      "version": {
+                      "latest": {
                         "resource": {
                           "registry": "release",
                           "artifact": "version.txt"
@@ -2821,7 +2821,7 @@
                     "version": {
                       "type": "remote",
                       "releases": "alpha",
-                      "version": {
+                      "latest": {
                         "resource": {
                           "registry": "release",
                           "artifact": "version.txt"
@@ -3042,7 +3042,7 @@
                     "version": {
                       "type": "remote",
                       "releases": "alpha",
-                      "version": {
+                      "latest": {
                         "resource": {
                           "registry": "release",
                           "artifact": "version.txt"
@@ -3261,7 +3261,7 @@
                     "version": {
                       "type": "remote",
                       "releases": "alpha",
-                      "version": {
+                      "latest": {
                         "resource": {
                           "registry": "release",
                           "artifact": "version.txt"
@@ -3482,7 +3482,7 @@
                     "version": {
                       "type": "remote",
                       "releases": "alpha",
-                      "version": {
+                      "latest": {
                         "resource": {
                           "registry": "release",
                           "artifact": "version.txt"
@@ -3701,7 +3701,7 @@
                     "version": {
                       "type": "remote",
                       "releases": "alpha",
-                      "version": {
+                      "latest": {
                         "resource": {
                           "registry": "release",
                           "artifact": "version.txt"
@@ -3920,7 +3920,7 @@
                     "version": {
                       "type": "remote",
                       "releases": "alpha",
-                      "version": {
+                      "latest": {
                         "resource": {
                           "registry": "release",
                           "artifact": "version.txt"
