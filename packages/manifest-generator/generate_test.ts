@@ -25,6 +25,7 @@ import {
 } from "@manifest/runtime";
 import { getJson } from "./http.ts";
 import { generate } from "./main.ts";
+import { summarize } from "./summary.ts";
 import { TEMPLATE } from "./template.ts";
 
 const NOW = new Date("2026-11-09T12:00:00Z");
@@ -355,7 +356,7 @@ test("identical inputs produce identical files and an unchanged run writes nothi
 
   await generate({ ...options, out: first });
   await generate({ ...options, out: second });
-  for (const file of ["resources.json", "snapshot.json"]) {
+  for (const file of ["resources.json", "snapshot.json", "summary.md"]) {
     assert.equal(
       await readFile(join(first, file), "utf8"),
       await readFile(join(second, file), "utf8"),
@@ -413,7 +414,7 @@ test("a tag release changing while its version is observed fails without writing
   assert.deepEqual(await readdir(out), []);
 });
 
-test("unchanged runs keep both files; an incomplete pair is rewritten", async (t) => {
+test("unchanged runs keep every file; incomplete output is rewritten", async (t) => {
   const server = await upstream(t);
   seed(server.releases);
   const out = await output(t);
@@ -424,7 +425,7 @@ test("unchanged runs keep both files; an incomplete pair is rewritten", async (t
     now: NOW,
   };
   await generate(options);
-  const files = ["resources.json", "snapshot.json"];
+  const files = ["resources.json", "snapshot.json", "summary.md"];
   const before = await Promise.all(
     files.map(async (file) => (await stat(join(out, file))).mtimeMs),
   );
@@ -440,12 +441,14 @@ test("unchanged runs keep both files; an incomplete pair is rewritten", async (t
     before,
   );
 
-  // A run interrupted after the manifest left no snapshot behind.
-  await rm(join(out, "snapshot.json"));
-  assert.equal(await generate(options), true);
-  assert.deepEqual((await readdir(out)).sort(), files);
+  // A run interrupted after the manifest left no snapshot or summary behind.
+  for (const file of ["snapshot.json", "summary.md"]) {
+    await rm(join(out, file));
+    assert.equal(await generate(options), true, file);
+    assert.deepEqual((await readdir(out)).sort(), files);
+  }
 
-  // Earlier non-atomic writers could leave a truncated file of either kind.
+  // Earlier non-atomic writers could leave any file truncated.
   for (const file of files) {
     const text = await readFile(join(out, file), "utf8");
     await writeFile(join(out, file), text.slice(0, text.length / 2));
@@ -573,6 +576,14 @@ test("the production template compiles and plans every alpha version", async () 
 
   const manifest = compileManifest(TEMPLATE, snapshot, NOW.toISOString());
   using validated = validateManifest(manifest);
+  // A composite version lists its parts in plan order, then its format.
+  assert.ok(
+    summarize(manifest)
+      .split("\n")
+      .includes(
+        "| `alpha` | `linux-amd64` | `clash-rs-x86_64-unknown-linux-gnu-static-crt` | `0.10.11-alpha+sha.bd22442` (fallback) | commit: `github-api` `commits/{release}` → json `/sha`<br>stable: `github-api` `releases/latest` → json `/tag_name`<br>format `{stable}-alpha+sha.{commit}` | `github-release-metadata` → github-release-assets | parsed |",
+      ),
+  );
   const plans = Object.keys(TEMPLATE.resources).map((resourceId) => {
     using selected = selectVariant(validated, resourceId, "linux-aarch64", {
       tags: ["channel:alpha"],
@@ -630,4 +641,99 @@ test("the production template compiles and plans every alpha version", async () 
     })),
   );
   assert.equal(finishVersion(plan, responses), version.clash_rs);
+});
+
+test("summary.md lists every artifact with its version, source and kind", async (t) => {
+  const server = await upstream(t);
+  seed(server.releases);
+  const out = await output(t);
+  await generate({
+    out,
+    template: template(server.base),
+    api: `${server.base}/api`,
+    now: NOW,
+  });
+  assert.equal(
+    await readFile(join(out, "summary.md"), "utf8"),
+    [
+      "# Resource manifest summary",
+      "",
+      "Manifest 2.0, updated 2026-11-09T12:00:00.000Z. Generated from `resources.json`; consumers do not read this file.",
+      "",
+      "## Sample (`sample`)",
+      "",
+      "Registry `release`, owner `o`, repo `r`.",
+      "",
+      "| Variant | Platform | Artifact | Version | Version source | Checksum | Kind |",
+      "| --- | --- | --- | --- | --- | --- | --- |",
+      "| `stable` (default) | `windows-x86_64` | `pkg-{version}-win.zip` | `v3` (1 release) | static history | release digests | authoritative |",
+      "| `stable` (default) | `linux-amd64` | `pkg-{version}-linux.gz` | `v3` (2 releases) | static history | release digests | authoritative |",
+      "| `alpha` | `windows-x86_64` | `pkg-{version}-win.zip` | `alpha-1` (fallback) | `release` `version-{platform}.txt` → text | none | none |",
+      "| `alpha` | `linux-amd64` | `pkg-{version}-linux.gz` | `alpha-1` (fallback) | `release` `version-{platform}.txt` → text | none | none |",
+      "",
+    ].join("\n"),
+  );
+});
+
+test("summary cells keep table syntax for any manifest string", () => {
+  // Pointers may hold any character; registry names and versions are free text.
+  const hostile = "a\\|b\n`c`<d>&e";
+  const encoded = "<code>a&#92;&#124;b&#10;&#96;c&#96;&#60;d&#62;&#38;e</code>";
+  const manifest: ResourceManifest = {
+    manifest_version: "2.0",
+    registries: {},
+    mirrors: {},
+    resources: {
+      [hostile]: {
+        name: hostile,
+        registry: hostile,
+        source: { [hostile]: hostile },
+        tags: [],
+        default_variants: {},
+        variants: [
+          {
+            id: hostile,
+            tag_key: "",
+            name: "V",
+            tags: [],
+            artifacts: {
+              "linux-amd64": {
+                artifact: hostile,
+                version: {
+                  type: "remote",
+                  fallback: { version: hostile },
+                  latest: {
+                    resource: { registry: hostile, artifact: hostile },
+                    parser: { type: "json", pointer: hostile },
+                  },
+                },
+              },
+            },
+          },
+        ],
+      },
+    },
+  };
+  const lines = summarize(manifest).trimEnd().split("\n");
+  const rows = lines.filter((line) => line.startsWith("|"));
+  assert.equal(rows.length, 3);
+  // Seven cells: eight delimiters, no escaped pipe or backslash.
+  for (const row of rows) {
+    assert.equal(row.split("|").length - 1, 8, row);
+    assert.doesNotMatch(row, /\\/, row);
+  }
+  assert.deepEqual(rows[2]!.split(" | "), [
+    `| ${encoded}`,
+    "`linux-amd64`",
+    encoded,
+    `${encoded} (fallback)`,
+    `${encoded} ${encoded} → json ${encoded}`,
+    "none",
+    "none |",
+  ]);
+  assert.deepEqual(lines.slice(4, 7), [
+    `## ${encoded.slice(6, -7)} (${encoded})`,
+    "",
+    `Registry ${encoded}, ${encoded.slice(6, -7)} ${encoded}.`,
+  ]);
 });

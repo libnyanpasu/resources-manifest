@@ -25,6 +25,7 @@ import {
   type RemoteResponseInput,
 } from "@manifest/runtime";
 import { getJson, getText, type HttpOptions } from "./http.ts";
+import { summarize } from "./summary.ts";
 import { TEMPLATE } from "./template.ts";
 
 export const GITHUB_API = "https://api.github.com";
@@ -32,7 +33,7 @@ const PAGE_SIZE = 100;
 const DIGEST = /^(md5:[0-9a-f]{32}|sha256:[0-9a-f]{64}|sha512:[0-9a-f]{128})$/;
 
 export interface GenerateOptions extends HttpOptions {
-  /** Directory receiving resources.json and snapshot.json. */
+  /** Directory receiving resources.json, snapshot.json and summary.md. */
   out: string;
   template?: ResourceManifestTemplate;
   /** GitHub REST API base URL. */
@@ -237,18 +238,23 @@ async function observe(
   return observed;
 }
 
-/**
- * Reads an existing output file. A missing or malformed file, such as one
- * truncated by an interrupted write, reads as absent so it gets regenerated.
- */
-async function readJson<T>(path: string): Promise<T | undefined> {
-  let text: string;
+/** Reads an existing output file; a missing file reads as absent. */
+async function readText(path: string): Promise<string | undefined> {
   try {
-    text = await readFile(path, "utf8");
+    return await readFile(path, "utf8");
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === "ENOENT") return undefined;
     throw error;
   }
+}
+
+/**
+ * Reads an existing JSON output file. A missing or malformed file, such as one
+ * truncated by an interrupted write, reads as absent so it gets regenerated.
+ */
+async function readJson<T>(path: string): Promise<T | undefined> {
+  const text = await readText(path);
+  if (text === undefined) return undefined;
   try {
     return JSON.parse(text) as T;
   } catch {
@@ -281,8 +287,8 @@ function requireLatestDigests(manifest: ResourceManifest): void {
 
 /**
  * Whether `out` already holds this manifest, apart from `updated_at`, together
- * with a snapshot that reproduces it. A pair left incomplete by an interrupted
- * run is therefore rewritten.
+ * with a snapshot that reproduces it and its summary. Files left incomplete by
+ * an interrupted run are therefore rewritten.
  */
 async function unchanged(
   out: string,
@@ -299,6 +305,9 @@ async function unchanged(
       manifest,
     )
   ) {
+    return false;
+  }
+  if ((await readText(join(out, "summary.md"))) !== summarize(previous)) {
     return false;
   }
   const snapshot = await readJson<ManifestSnapshot>(join(out, "snapshot.json"));
@@ -363,7 +372,8 @@ export async function generate(options: GenerateOptions): Promise<boolean> {
     context.log("unchanged; nothing written");
     return false;
   }
-  // The snapshot goes first: a manifest is never newer than its snapshot.
+  // The snapshot goes first: a manifest is never newer than its snapshot, and
+  // the summary is derived from the manifest.
   await mkdir(out, { recursive: true });
   await replace(
     join(out, "snapshot.json"),
@@ -371,6 +381,7 @@ export async function generate(options: GenerateOptions): Promise<boolean> {
   );
   const manifestPath = join(out, "resources.json");
   await replace(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
+  await replace(join(out, "summary.md"), summarize(manifest));
   context.log(`wrote ${manifestPath}`);
   return true;
 }

@@ -9,7 +9,7 @@ GITHUB_TOKEN=... pnpm --filter @manifest/generator run start --out ./manifest
 ```
 
 The package command is `manifest-generate`. `--out` is required and receives
-`resources.json` and `snapshot.json`. `GITHUB_TOKEN` is optional; it raises the
+`resources.json`, `snapshot.json` and `summary.md`. `GITHUB_TOKEN` is optional; it raises the
 GitHub REST API rate limit and is sent only to `https://api.github.com`. GitHub
 IDs are read from the response text, so the snapshot keeps every digit.
 
@@ -35,12 +35,18 @@ A run:
 
 `resources.json` is the compiled manifest and `snapshot.json` the captured
 releases it was compiled from; compiling the template with that snapshot and
-the manifest's `updated_at` reproduces the manifest byte for byte. Neither file
-is written when the new manifest equals the existing `resources.json` apart from
-`updated_at` and the existing `snapshot.json` still reproduces it. Each file is
-replaced through a temporary file and a rename, the snapshot first. A missing
-or malformed existing file, or a snapshot that no longer reproduces the
-manifest, makes the next run rewrite both.
+the manifest's `updated_at` reproduces the manifest byte for byte.
+[`summary.md`](summary.ts) is a review aid rendered from the manifest alone: one
+table per resource, with a row per variant and platform giving the artifact,
+version, version source, checksum source and checksum kind. Consumers do not
+read it.
+
+No file is written when the new manifest equals the existing `resources.json`
+apart from `updated_at`, the existing `snapshot.json` still reproduces it, and
+the existing `summary.md` matches it. Each file is replaced through a temporary
+file and a rename: the snapshot, then the manifest, then the summary. A missing
+or malformed existing file, a snapshot that no longer reproduces the manifest,
+or a stale summary makes the next run rewrite all three.
 
 The generator does not write the v1 `version.json`; clash-nyanpasu's upstream
 scripts keep producing it until they are retired.
