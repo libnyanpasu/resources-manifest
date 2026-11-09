@@ -13,7 +13,8 @@ use manifest_core::{
     VariantChecksumKind, VariantSelection, VerifyError, VerifyPolicy, VersionOptions, VersionPlan,
 };
 use manifest_metadata::{
-    FiniteF64, RESOURCE_MANIFEST_VERSION, ResourceManifest, ResourceManifestTemplate,
+    FiniteF64, ManifestSnapshot, RESOURCE_MANIFEST_VERSION, ResourceManifest,
+    ResourceManifestTemplate,
 };
 use manifest_wasm::{LimitsInput, RemoteResponseInput, RenderedArtifact, TemplateValue};
 use serde_json::Value;
@@ -369,7 +370,8 @@ fn metadata_package_dir() -> PathBuf {
 fn export_typescript(out_dir: &Path) -> Result<PathBuf, Box<dyn Error>> {
     let types = Types::default()
         .register::<ResourceManifest>()
-        .register::<ResourceManifestTemplate>();
+        .register::<ResourceManifestTemplate>()
+        .register::<ManifestSnapshot>();
 
     let out = out_dir.join("src/types.ts");
     Typescript::default().export_to(&out, &types, SerdeShape::new())?;
@@ -492,41 +494,9 @@ fn export_runtime_typescript() -> Result<PathBuf, Box<dyn Error>> {
     Ok(out)
 }
 
-/// The canonical checksum pattern, matching `ResourceChecksum`'s schemars
-/// impl. Used for the compiled manifest schema.
-const CANONICAL_CHECKSUM_PATTERN: &str =
-    r"^(md5:[a-f0-9]{32}|sha256:[a-f0-9]{64}|sha512:[a-f0-9]{128})$";
-
-/// The template schema accepts anything the compiler can normalize, mirroring
-/// `ResourceChecksum::new` / the reference `parseResourceChecksum`.
-const RELAXED_CHECKSUM_PATTERN: &str = r"^([mM][dD]5:[a-fA-F0-9]{32}|[sS][hH][aA]256:[a-fA-F0-9]{64}|[sS][hH][aA]512:[a-fA-F0-9]{128})$";
-
-/// Authored templates may use any casing in checksums; the compiler
-/// normalizes to lowercase. The compiled manifest schema keeps the canonical
-/// pattern. Fails loudly if the canonical pattern is not where it is
-/// expected, so a changed schemars output cannot drift silently.
-fn relax_checksum_pattern(schema: &mut schemars::Schema) -> Result<(), Box<dyn Error>> {
-    let pattern = schema
-        .as_object_mut()
-        .and_then(|object| object.get_mut("$defs"))
-        .and_then(Value::as_object_mut)
-        .and_then(|defs| defs.get_mut("ResourceChecksum"))
-        .and_then(Value::as_object_mut)
-        .and_then(|checksum| checksum.get_mut("pattern"));
-
-    match pattern {
-        Some(Value::String(pattern)) if *pattern == CANONICAL_CHECKSUM_PATTERN => {
-            *pattern = RELAXED_CHECKSUM_PATTERN.to_string();
-            Ok(())
-        }
-        _ => Err("ResourceChecksum canonical pattern not found in template schema".into()),
-    }
-}
-
 fn export_json_schema<T: schemars::JsonSchema>(
     out_dir: &Path,
     file_name: &str,
-    authored_template: bool,
 ) -> Result<PathBuf, Box<dyn Error>> {
     let settings = schemars::generate::SchemaSettings::draft2020_12();
     let mut schema = settings.into_generator().into_root_schema_for::<T>();
@@ -537,9 +507,6 @@ fn export_json_schema<T: schemars::JsonSchema>(
         )),
     );
     normalize_schema(&mut schema)?;
-    if authored_template {
-        relax_checksum_pattern(&mut schema)?;
-    }
     let out = out_dir.join("schema").join(file_name);
     fs::write(
         &out,
@@ -558,12 +525,9 @@ fn main() -> Result<(), Box<dyn Error>> {
         export_typescript(&out_dir)?,
         export_version(&out_dir)?,
         export_runtime_typescript()?,
-        export_json_schema::<ResourceManifest>(&out_dir, "manifest.schema.json", false)?,
-        export_json_schema::<ResourceManifestTemplate>(
-            &out_dir,
-            "manifest-template.schema.json",
-            true,
-        )?,
+        export_json_schema::<ResourceManifest>(&out_dir, "manifest.schema.json")?,
+        export_json_schema::<ResourceManifestTemplate>(&out_dir, "manifest-template.schema.json")?,
+        export_json_schema::<ManifestSnapshot>(&out_dir, "manifest-snapshot.schema.json")?,
     ];
 
     for path in written {

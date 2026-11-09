@@ -429,11 +429,10 @@ where
 
 fn deserialize_template_artifacts<'de, D: Deserializer<'de>>(
     deserializer: D,
-) -> Result<BTreeMap<SupportedPlatform, ResourceArtifactTemplate>, D::Error> {
-    let artifacts =
-        BTreeMap::<SupportedPlatform, ResourceArtifactTemplate>::deserialize(deserializer)?;
+) -> Result<BTreeMap<SupportedPlatform, TemplateArtifact>, D::Error> {
+    let artifacts = BTreeMap::<SupportedPlatform, TemplateArtifact>::deserialize(deserializer)?;
     for artifact in artifacts.values() {
-        if let ResourceArtifactVersionTemplate::Remote {
+        if let TemplateArtifactVersion::Remote {
             version, checksum, ..
         } = &artifact.version
         {
@@ -467,6 +466,119 @@ fn deserialize_template_artifacts<'de, D: Deserializer<'de>>(
     Ok(artifacts)
 }
 
+/// Where a resource's releases come from; the generator reads them from the
+/// GitHub repository named by the resource's `source.owner` and `source.repo`.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema, Type)]
+#[serde(tag = "type", rename_all = "snake_case", deny_unknown_fields)]
+pub enum TemplateReleaseSource {
+    /// The newest `limit` non-draft, non-prerelease releases.
+    History { limit: HistoryLimit },
+    /// One release by tag, usually a mutable prerelease.
+    Tag { tag: String },
+}
+
+/// The largest [`HistoryLimit`].
+pub const MAX_HISTORY_LIMIT: u32 = 50;
+
+/// How many releases a history source keeps: 1 to [`MAX_HISTORY_LIMIT`].
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(try_from = "u32", into = "u32")]
+pub struct HistoryLimit(u32);
+
+/// Error returned for a history limit outside 1 to [`MAX_HISTORY_LIMIT`].
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Snafu)]
+#[snafu(display("history limit must be between 1 and {MAX_HISTORY_LIMIT}, got {limit}"))]
+pub struct HistoryLimitError {
+    limit: u32,
+}
+
+impl HistoryLimit {
+    pub fn new(limit: u32) -> Result<Self, HistoryLimitError> {
+        if (1..=MAX_HISTORY_LIMIT).contains(&limit) {
+            Ok(Self(limit))
+        } else {
+            Err(HistoryLimitError { limit })
+        }
+    }
+
+    #[must_use]
+    pub fn get(self) -> u32 {
+        self.0
+    }
+}
+
+impl TryFrom<u32> for HistoryLimit {
+    type Error = HistoryLimitError;
+
+    fn try_from(limit: u32) -> Result<Self, Self::Error> {
+        Self::new(limit)
+    }
+}
+
+impl From<HistoryLimit> for u32 {
+    fn from(limit: HistoryLimit) -> Self {
+        limit.0
+    }
+}
+
+impl JsonSchema for HistoryLimit {
+    fn schema_name() -> Cow<'static, str> {
+        "HistoryLimit".into()
+    }
+
+    fn json_schema(_generator: &mut schemars::SchemaGenerator) -> Schema {
+        schemars::json_schema!({
+            "type": "integer",
+            "minimum": 1,
+            "maximum": MAX_HISTORY_LIMIT,
+        })
+    }
+
+    fn inline_schema() -> bool {
+        true
+    }
+}
+
+impl Type for HistoryLimit {
+    fn definition(types: &mut Types) -> DataType {
+        u32::definition(types)
+    }
+}
+
+/// A platform artifact as authored in the template.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema, Type)]
+#[serde(deny_unknown_fields)]
+pub struct TemplateArtifact {
+    pub artifact: String,
+    /// Artifact-level URL variables.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[specta(optional)]
+    pub source: Option<SourceVariables>,
+    pub version: TemplateArtifactVersion,
+}
+
+/// How an authored artifact is versioned. Static history and remote fallbacks
+/// come from the release snapshot at compile time.
+#[allow(clippy::large_enum_variant)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema, Type)]
+#[serde(tag = "type", rename_all = "snake_case", deny_unknown_fields)]
+pub enum TemplateArtifactVersion {
+    /// Bounded history from a `history` release source.
+    Static {
+        /// Release source ID.
+        releases: String,
+    },
+    /// Remote resolution; the fallback comes from a `tag` release source.
+    Remote {
+        /// Release source ID.
+        releases: String,
+        version: RemoteVersionTemplate,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        #[specta(optional)]
+        checksum: Option<RemoteChecksumResourceTemplate>,
+    },
+}
+
 /// A variant as authored in the template.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema, Type)]
 #[serde(deny_unknown_fields)]
@@ -483,8 +595,8 @@ pub struct ResourceVariantTemplate {
     #[specta(optional)]
     pub source: Option<SourceVariables>,
     #[serde(deserialize_with = "deserialize_template_artifacts")]
-    #[specta(type = BTreeMap<SupportedPlatform, ResourceArtifactTemplate>)]
-    pub artifacts: BTreeMap<SupportedPlatform, ResourceArtifactTemplate>,
+    #[specta(type = BTreeMap<SupportedPlatform, TemplateArtifact>)]
+    pub artifacts: BTreeMap<SupportedPlatform, TemplateArtifact>,
 }
 
 /// A variant in the compiled manifest, with expanded tags.
@@ -622,6 +734,8 @@ pub struct ResourceTemplate {
     #[serde(skip_serializing_if = "Option::is_none")]
     #[specta(optional)]
     pub default_variants: Option<BTreeMap<SupportedPlatform, String>>,
+    /// Release source ID → where the releases come from.
+    pub releases: BTreeMap<String, TemplateReleaseSource>,
     pub variants: Vec<ResourceVariantTemplate>,
 }
 
@@ -651,9 +765,80 @@ pub struct ResourceManifestTemplate {
     #[specta(optional)]
     pub mirrors: Option<BTreeMap<String, MirrorDefinition>>,
     pub resources: BTreeMap<String, ResourceTemplate>,
+}
+
+/// Releases captured by the generator, the second input of the compiler.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema, Type)]
+#[serde(deny_unknown_fields)]
+pub struct ManifestSnapshot {
+    /// RFC 3339 UTC time the capture started.
+    pub observed_at: String,
+    /// Resource ID → release source ID → captured records.
+    pub resources: BTreeMap<String, BTreeMap<String, ReleaseSourceSnapshot>>,
+}
+
+/// The records captured for one release source.
+#[allow(clippy::large_enum_variant)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema, Type)]
+#[serde(tag = "type", rename_all = "snake_case", deny_unknown_fields)]
+pub enum ReleaseSourceSnapshot {
+    /// Newest first.
+    History { releases: Vec<ReleaseSnapshot> },
+    /// `version` is observed through the artifacts' remote version plans; a
+    /// snapshot without it compiles only to a provisional manifest.
+    Tag {
+        #[serde(skip_serializing_if = "Option::is_none")]
+        #[specta(optional)]
+        version: Option<String>,
+        release: ReleaseSnapshot,
+    },
+}
+
+/// One captured GitHub release.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema, Type)]
+#[serde(deny_unknown_fields)]
+pub struct ReleaseSnapshot {
+    /// GitHub ID as a decimal string.
+    #[serde(deserialize_with = "deserialize_decimal_id")]
+    #[specta(type = String)]
+    #[schemars(regex(pattern = r"^[0-9]+$"))]
+    pub id: String,
+    pub tag: String,
+    /// API URL the record was read from.
+    pub url: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     #[specta(optional)]
-    pub updated_at: Option<String>,
+    pub published_at: Option<String>,
+    /// Sorted by name in code-point order.
+    pub assets: Vec<AssetSnapshot>,
+}
+
+/// One captured release asset.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema, Type)]
+#[serde(deny_unknown_fields)]
+pub struct AssetSnapshot {
+    /// GitHub ID as a decimal string.
+    #[serde(deserialize_with = "deserialize_decimal_id")]
+    #[specta(type = String)]
+    #[schemars(regex(pattern = r"^[0-9]+$"))]
+    pub id: String,
+    pub name: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[specta(optional)]
+    pub digest: Option<ResourceChecksum>,
+    pub updated_at: String,
+}
+
+/// IDs are decimal strings: a JS number cannot hold every `u64`.
+fn deserialize_decimal_id<'de, D: Deserializer<'de>>(deserializer: D) -> Result<String, D::Error> {
+    let id = String::deserialize(deserializer)?;
+    if !id.is_empty() && id.bytes().all(|byte| byte.is_ascii_digit()) {
+        Ok(id)
+    } else {
+        Err(serde::de::Error::custom(format!(
+            "ID must be a decimal string, got {id:?}"
+        )))
+    }
 }
 
 /// The compiled resource manifest consumed by downloaders and UIs.
@@ -867,10 +1052,30 @@ mod tests {
                     "name": "Example",
                     "registry": "example",
                     "tags": { "stable": { "name": "Stable" } },
+                    "releases": {
+                        "stable": { "type": "history", "limit": 8 },
+                        "alpha": { "type": "tag", "tag": "Prerelease-Alpha" }
+                    },
                     "variants": [{
                         "name": "Stable",
                         "tags": ["stable"],
-                        "artifacts": {}
+                        "artifacts": {
+                            "windows-x86_64": {
+                                "artifact": "example-{version}.zip",
+                                "version": { "type": "static", "releases": "stable" }
+                            },
+                            "linux-amd64": {
+                                "artifact": "example-{version}.gz",
+                                "version": {
+                                    "type": "remote",
+                                    "releases": "alpha",
+                                    "version": {
+                                        "resource": { "registry": "example", "artifact": "version.txt" },
+                                        "parser": { "type": "text" }
+                                    }
+                                }
+                            }
+                        }
                     }]
                 }
             }
@@ -883,6 +1088,11 @@ mod tests {
             "/resources/example",
             "/resources/example/variants/0",
             "/resources/example/tags/stable",
+            "/resources/example/releases/stable",
+            "/resources/example/releases/alpha",
+            "/resources/example/variants/0/artifacts/windows-x86_64",
+            "/resources/example/variants/0/artifacts/windows-x86_64/version",
+            "/resources/example/variants/0/artifacts/linux-amd64/version",
         ] {
             let mut invalid = template_json.clone();
             invalid
@@ -1088,6 +1298,109 @@ mod tests {
     }
 
     #[test]
+    fn template_release_sources_bound_the_history_limit() {
+        for limit in [0, MAX_HISTORY_LIMIT + 1] {
+            assert_eq!(
+                HistoryLimit::new(limit),
+                Err(HistoryLimitError { limit }),
+                "native construction rejects {limit}"
+            );
+        }
+        for limit in [1, MAX_HISTORY_LIMIT] {
+            let source: TemplateReleaseSource =
+                serde_json::from_value(json!({ "type": "history", "limit": limit })).unwrap();
+            assert_eq!(
+                source,
+                TemplateReleaseSource::History {
+                    limit: HistoryLimit::new(limit).unwrap()
+                }
+            );
+            assert_eq!(
+                serde_json::to_value(&source).unwrap(),
+                json!({ "type": "history", "limit": limit })
+            );
+        }
+        for limit in [0, MAX_HISTORY_LIMIT + 1] {
+            let error = serde_json::from_value::<TemplateReleaseSource>(
+                json!({ "type": "history", "limit": limit }),
+            )
+            .unwrap_err();
+            assert!(error.to_string().contains("history limit"), "{error}");
+        }
+    }
+
+    #[test]
+    fn snapshots_round_trip_and_reject_unknown_fields_and_numeric_ids() {
+        let asset = json!({
+            "id": "301",
+            "name": "pkg-v1.zip",
+            "digest": format!("sha256:{}", "ab".repeat(32)),
+            "updated_at": "2026-11-09T00:00:00Z",
+        });
+        let release = json!({
+            "id": "9007199254740993",
+            "tag": "v1",
+            "url": "https://api.github.com/repos/o/r/releases/1",
+            "published_at": "2026-11-08T00:00:00Z",
+            "assets": [asset],
+        });
+        let snapshot = json!({
+            "observed_at": "2026-11-09T00:00:00Z",
+            "resources": { "sample": {
+                "stable": { "type": "history", "releases": [release] },
+                "alpha": { "type": "tag", "version": "alpha-1", "release": release },
+            } },
+        });
+        let parsed: ManifestSnapshot = serde_json::from_value(snapshot.clone()).unwrap();
+        assert_eq!(serde_json::to_value(&parsed).unwrap(), snapshot);
+
+        let mut provisional = snapshot.clone();
+        provisional["resources"]["sample"]["alpha"]
+            .as_object_mut()
+            .unwrap()
+            .remove("version");
+        let parsed: ManifestSnapshot = serde_json::from_value(provisional).unwrap();
+        assert!(matches!(
+            &parsed.resources["sample"]["alpha"],
+            ReleaseSourceSnapshot::Tag { version: None, .. }
+        ));
+
+        for path in [
+            "",
+            "/resources/sample/stable",
+            "/resources/sample/stable/releases/0",
+            "/resources/sample/stable/releases/0/assets/0",
+        ] {
+            let mut invalid = snapshot.clone();
+            invalid
+                .pointer_mut(path)
+                .unwrap()
+                .as_object_mut()
+                .unwrap()
+                .insert("unknown_field".into(), json!(true));
+            assert!(
+                serde_json::from_value::<ManifestSnapshot>(invalid).is_err(),
+                "unknown field at {path} must be rejected"
+            );
+        }
+        for (path, id) in [
+            ("/resources/sample/stable/releases/0/id", json!(1)),
+            ("/resources/sample/stable/releases/0/id", json!("")),
+            (
+                "/resources/sample/stable/releases/0/assets/0/id",
+                json!("0x1"),
+            ),
+        ] {
+            let mut invalid = snapshot.clone();
+            *invalid.pointer_mut(path).unwrap() = id.clone();
+            assert!(
+                serde_json::from_value::<ManifestSnapshot>(invalid).is_err(),
+                "ID {id} at {path} must be rejected"
+            );
+        }
+    }
+
+    #[test]
     fn remote_version_form_follows_the_format_key() {
         let part = json!({
             "resource": { "registry": "api", "artifact": "a" },
@@ -1195,12 +1508,24 @@ mod tests {
                     "name": "Example",
                     "registry": "example",
                     "tags": {},
+                    "releases": { "alpha": { "type": "tag", "tag": "alpha" } },
                     "variants": [{
                         "name": "Default",
                         "tags": [],
                         "artifacts": { "windows-x86_64": {
                             "artifact": "example.zip",
-                            "version": { "type": "static", "latest": "v1", "releases": [{ "version": "v1" }] }
+                            "version": {
+                                "type": "remote",
+                                "releases": "alpha",
+                                "version": {
+                                    "resource": { "registry": "example", "artifact": "version.txt" },
+                                    "parser": { "type": "text" }
+                                },
+                                "checksum": {
+                                    "resource": { "registry": "example" },
+                                    "parser": { "type": "github-release-assets" }
+                                }
+                            }
                         } }
                     }]
                 }
@@ -1208,16 +1533,18 @@ mod tests {
         });
         let expected: ResourceManifestTemplate =
             serde_json::from_value(template.clone()).expect("deserialize valid template");
+        let version = "/resources/example/variants/0/artifacts/windows-x86_64/version";
         for path in [
-            "/registries/example",
-            "/mirrors/direct",
-            "/resources/example/variants/0/artifacts/windows-x86_64",
-            "/resources/example/variants/0/artifacts/windows-x86_64/version",
-            "/resources/example/variants/0/artifacts/windows-x86_64/version/releases/0",
+            "/registries/example".to_owned(),
+            "/mirrors/direct".to_owned(),
+            format!("{version}/version"),
+            format!("{version}/version/resource"),
+            format!("{version}/checksum"),
+            format!("{version}/checksum/resource"),
         ] {
             let mut extended = template.clone();
             extended
-                .pointer_mut(path)
+                .pointer_mut(&path)
                 .expect("template node exists")
                 .as_object_mut()
                 .expect("template node is an object")
@@ -1374,6 +1701,16 @@ mod tests {
         assert_eq!(serialized, input);
     }
 
+    /// The authored form of a compiled remote artifact: no fallback, bound to
+    /// the `alpha` release source.
+    fn template_artifact(compiled: &Value) -> Value {
+        let mut artifact = compiled.clone();
+        let version = artifact["version"].as_object_mut().unwrap();
+        version.remove("fallback");
+        version.insert("releases".into(), json!("alpha"));
+        artifact
+    }
+
     #[test]
     fn parser_decoding_rejects_duplicate_keys_in_compiled_manifests_and_templates() {
         let compiled = sample_manifest_json();
@@ -1384,7 +1721,8 @@ mod tests {
             "registries": {},
             "resources": {"mihomo": {
                 "name": "Mihomo", "registry": "github-release", "tags": {},
-                "variants": [{"name": "Alpha", "tags": [], "artifacts": {"windows-x86_64": artifact}}]
+                "releases": {"alpha": {"type": "tag", "tag": "Prerelease-Alpha"}},
+                "variants": [{"name": "Alpha", "tags": [], "artifacts": {"windows-x86_64": template_artifact(&artifact)}}]
             }}
         });
 
@@ -1478,7 +1816,8 @@ mod tests {
             "registries": {},
             "resources": {"mihomo": {
                 "name": "Mihomo", "registry": "github-release", "tags": {},
-                "variants": [{"name": "Alpha", "tags": [], "artifacts": {"windows-x86_64": artifact}}]
+                "releases": {"alpha": {"type": "tag", "tag": "Prerelease-Alpha"}},
+                "variants": [{"name": "Alpha", "tags": [], "artifacts": {"windows-x86_64": template_artifact(&artifact)}}]
             }}
         });
         let path = "/resources/mihomo/variants/0/artifacts/windows-x86_64/version/checksum/parser";
@@ -1567,8 +1906,9 @@ mod tests {
             "registries": {},
             "resources": {"sample": {
                 "name": "Sample", "registry": "example", "tags": {},
+                "releases": {"alpha": {"type": "tag", "tag": "Prerelease-Alpha"}},
                 "default_variants": {"windows-x86_64": "stable"},
-                "variants": [{"name": "Stable", "tags": [], "artifacts": {"windows-x86_64": artifact}}]
+                "variants": [{"name": "Stable", "tags": [], "artifacts": {"windows-x86_64": template_artifact(&artifact)}}]
             }}
         });
         serde_json::from_value::<ResourceManifestTemplate>(template.clone()).unwrap();
