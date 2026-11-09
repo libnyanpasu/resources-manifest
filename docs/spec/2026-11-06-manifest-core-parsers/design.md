@@ -3,7 +3,7 @@
 **日期：** 2026-11-06
 **基线：** `chore/migrate-to-pnpm @ 8bb7752`（`main @ f1f82a7` 加 pnpm 迁移）
 **来源：** 2026-11-06 的仓库架构审查（codex 后端视角、kimi 消费端视角、Claude 逐条对源码复核）；维护者提议"把 parser 的算子定义与实现抽成独立 crate，前端经 wasm 接入复用"；维护者 2026-11-06 的决策（O-1、O-6、O-7、O-11，§11.2）。
-**范围：** 审查发现的修复与新方向的优先级（§2），以及 Phase 0（协议冻结）、Phase A（`manifest-parser`）、Phase B（`manifest-core`）、Phase C（wasm 与构建期胶水脚本）。Phase 0–C 写到可直接执行的卡片粒度；Phase D（编译器与快照）写到里程碑粒度，开工前再细化。
+**范围：** 审查发现的修复与新方向的优先级（§2），以及 Phase 0（协议冻结）、Phase A（`manifest-parser`）、Phase B（`manifest-core`）、Phase C（wasm 与构建期胶水脚本）。Phase 0–C 写到可直接执行的卡片粒度；Phase D（编译器与快照）原为里程碑粒度，D0–D4 已于 2026-11-09 细化为卡片（§9）。
 **不在范围：** 见 §12。
 **权威顺序：** `AGENTS.md` > 本设计 > `tasks.md` > `docs/design/manifest-v2.md`（本 spec 的 S0a 卡会按 §5 修订它）。Rust 代码规则采用 clash-nyanpasu `docs/development/rust.md`（O-9），下文以 `rust.md §x` 引用。
 
@@ -679,17 +679,19 @@ kind 列表按 manifest 中 variant 顺序，仅列出支持目标平台的 `{ v
 
 ---
 
-## 9. Phase D：编译器与快照（里程碑粒度）
+## 9. Phase D：编译器与快照
 
-| 里程碑                         | 内容                                                                                                                          | 前置   | 完成判据                                                                                                                                                           |
-| ------------------------------ | ----------------------------------------------------------------------------------------------------------------------------- | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| D0 移除 Clash Premium          | 见 §9.3                                                                                                                       | —      | 快照、golden、一致性用例、可执行测试与生成的 manifest 中不再有 `clash_premium`；文档中的历史记录可保留                                                             |
-| D1 快照模型                    | `ReleaseSnapshot`：release 与资产 ID、digest、观测时间、来源 URL                                                              | B 完成 | Schema 生成；generator 写出快照文件                                                                                                                                |
-| D2 编译器移植                  | `compile(template, snapshot, now) -> ResourceManifest`，纯函数；按码点排序（V-4）；编译期检查模板可解析；写出 `CURRENT_MINOR` | D1     | 同一组输入两次编译的输出逐字节相同；`https://{missing}/{artifact}` 被拒                                                                                            |
-| D3 generator 接入              | Node 负责抓取，写快照，再经 wasm 调用 `compile`                                                                               | D2、C2 | 保留的 resource 与上游生成器的输出等价（`serde_json::Value` 相等）；有意的差异只有 `manifest_version`、`clash_premium` 不再生成（§9.3）与 Clash Rust alpha（§9.2） |
-| D4 Clash Rust alpha 的版本来源 | 多响应组合版本（§9.2，O-4）：parser、core、wasm、一致性用例与生成物                                                           | C 完成 | 组合版本的正反用例在 Rust 与 Node 两端通过；Clash Rust alpha 为 remote，版本由 `commits/latest` 与 `releases/latest` 组合，checksum 为 `parsed`                    |
-| D5 签名                        | minisign；`manifest-signature` 的 `sign` / `verify_sign` 接口（§9.1，O-2）                                                    | D3     | generator 输出的 manifest 带 `.minisig`；Rust 与 Node 宿主跑同一组用例，篡改字节、非可信公钥、损坏签名各有反例                                                     |
-| D6 退役上游脚本                | 在 clash-nyanpasu 侧跟踪                                                                                                      | D3、D4 | —                                                                                                                                                                  |
+D0–D4 在 2026-11-09 细化为卡片粒度（`tasks.md`），细则见 §9.2–§9.7；D5、D6 仍是里程碑。
+
+| 里程碑                         | 内容                                                                                                              | 前置   | 完成判据                                                                                                                                        |
+| ------------------------------ | ----------------------------------------------------------------------------------------------------------------- | ------ | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| D0 移除 Clash Premium          | 见 §9.3                                                                                                           | —      | 快照、golden、一致性用例、可执行测试与生成的 manifest 中不再有 `clash_premium`；文档中的历史记录可保留                                          |
+| D1 快照模型                    | 模板的 release 来源声明与 `ManifestSnapshot`（§9.5）                                                              | B 完成 | Schema 与 TS 类型生成；模板与快照严格解码                                                                                                       |
+| D2 编译器移植                  | `compile(template, snapshot, now)`，纯函数（§9.6）；按码点排序（V-4）；编译期预检模板可解析；写出 `CURRENT_MINOR` | D1     | 同一组输入两次编译的输出逐字节相同；`https://{missing}/{artifact}` 被拒；快照缺产物、来源类型不符各有反例                                       |
+| D3 generator 接入              | Node 抓取 GitHub，用 manifest 自身的 remote 版本计划观测 alpha 版本，写快照，再经 wasm 调用 `compile`（§9.7）     | D2、C2 | 生成的 manifest 符合 §9.4 的产物表；每个渲染出的产物名都在快照中；同一组 fixture 响应与固定的运行时间下两次运行输出逐字节相同                   |
+| D4 Clash Rust alpha 的版本来源 | 多响应组合版本（§9.2，O-4）：parser、core、wasm、runtime、downloader、一致性用例与生成物                          | C 完成 | 组合版本的正反用例在 Rust 与 Node 两端通过；Clash Rust alpha 为 remote，版本由 `commits/latest` 与 `releases/latest` 组合，checksum 为 `parsed` |
+| D5 签名                        | minisign；`manifest-signature` 的 `sign` / `verify_sign` 接口（§9.1，O-2）                                        | D3     | generator 输出的 manifest 带 `.minisig`；Rust 与 Node 宿主跑同一组用例，篡改字节、非可信公钥、损坏签名各有反例                                  |
+| D6 退役上游脚本                | 在 clash-nyanpasu 侧跟踪                                                                                          | D3、D4 | —                                                                                                                                               |
 
 ### 9.1 D5 签名接口（O-2）
 
@@ -782,12 +784,202 @@ kind 列表按 manifest 中 variant 顺序，仅列出支持目标平台的 `{ v
 6. **已知代价：**
    - 每次解析需要 2 次未认证的 GitHub API 请求，同一 IP 每小时限 60 次。clash-nyanpasu 目前的做法也是这样。
    - version 与 checksum 分别请求。上游在两次请求之间重新发布时，版本号可能落后一个构建，但下载的字节仍按 `expanded_assets` 的 digest 校验。
+7. **D4 细化（2026-11-09），取代第 1、3、4 条中留给 D4 卡的部分：**
+   - **serde：** compiled `Remote.version` 的类型改为 `RemoteVersionTemplate` 枚举：`Single(RemoteVersionResourceTemplate)` 与 `Composite { parts: BTreeMap<String, RemoteVersionResourceTemplate>, format: String }`。解码先读成 `serde_json::Value`，有 `format` 键按组合形式解码，否则按单响应形式解码；序列化为 untagged。TS 为 `RemoteVersionResourceTemplate | { parts: { [key in string]: RemoteVersionResourceTemplate }; format: string }`。part 内 parser 的宽松解码不变。
+   - **校验：** 新增 `validate.version_parts`，fields `{ reason, part }`：
+     - `count`：part 为 0 个或多于 4 个，`part` 为 null，path `<A>.version.version.parts`；
+     - `name`：名称不满足 `^[A-Za-z0-9_]+$`，或是内置变量，path `<A>.version.version.parts.<name>`；
+     - `unreferenced`：`format` 没有引用该 part，path `<A>.version.version.format`。
+
+     内置变量为 `resource`、`resource_id`、`variant`、`variant_id`、`tag_key`、`platform`、`version`、`artifact`，以及 mirror 的 URL 分量（`url`、`url_encoded`、`scheme`、`host`、`hostname`、`port`、`path`、`pathname`、`query`、`path_and_query`）。`format` 引用的变量不是 part 时报现有的 `validate.template_variable`，path `<A>.version.version.format`。每个 part 的 registry 引用、模板变量与 parser 编译沿用单响应规则，path 前缀为 `<A>.version.version.parts.<name>`。
+
+   - **计划：** `RemoteVersionPlan` 改为 `{ parts: VersionPartPlan[], format: string | null }`，`VersionPartPlan` 为 `{ name: string | null, request, parser }`。单响应形式是一个 `name: null` 的 part 加 `format: null`；组合形式按 part 名称的码点顺序排列。每个 part 的请求与 mirror 规则同单响应形式。
+   - **组合：** 新增 `finish_version(plan: &RemoteVersionPlan, responses: &[RemoteResponse]) -> Result<VersionLabel, FinishVersionError>`，宿主对两种形式都走这条路径；`parse_version` 保留为单个 parser 的底层 API。`responses` 按 `parts` 的顺序一一对应：
+     - 个数不符时，在解析任何响应之前报 `resolve.version_responses`，path `arg.responses`，fields `{ expected, actual }`；
+     - 第 i 个 part 解析失败时，转发 `ParseError` 的 code 与 fields，path 把开头的 `response.` 换成 `responses[<i>].`，例如 `responses[1].body`；单响应形式同样如此；
+     - 组合时 part 结果作为 Literal 代入 `format`。结果不满足 `VersionLabel` 时报 `parser.invalid_version`，path `parser.format`，fields `{}`；渲染错误保留原 code 与 fields，path 同为 `parser.format`。
+   - **wasm 与宿主：** 新增 `finishVersion(plan: VersionPlan, responses: RemoteResponseInput[]): string`；计划没有 remote 部分时报 `wasm.version_plan_missing`（`arg.plan`）。`@manifest/runtime` 导出它；`@manifest/downloader` 按 part 顺序请求（mirror 规则不变）后调用它。
+   - **kind：** 任一 part 的 parser 无法识别时，`artifact_checksum_kind` 得到 `none`，计划报 `resolve.unsupported_parser`（path `parser.type`）。
 
 ### 9.3 移除 Clash Premium
 
 - manifest 不再包含 `clash_premium`，generator（D3）不生成它。
 - D0 卡删除快照 `crates/manifest-metadata/tests/fixtures/resources.json`、`conformance/resolve/reference-golden.json`、`conformance/validate/manifest.json` 中的 `clash_premium`，以及以它为测试对象的用例（`crates/manifest-metadata/src/lib.rs`、`packages/manifest-metadata/main_test.ts`）；仍需同类覆盖的用例改用其他 resource。G5 的 golden 随之变化。
 - `D/` 的示例已在本次修订中删除。`files/` 是只读的上游参考，不改。
+
+### 9.4 收录的内核与平台产物
+
+2026-11-09 决定：manifest 只收录 clash-nyanpasu main 使用的三个内核：
+
+- `mihomo`：MetaCubeX/mihomo；
+- `meow`：meow-rs/meow-rs；
+- `clash_rs`：ibigbug/clash-rs。
+
+每个 resource 只有两个变体：`stable`（tag `channel:stable`，六个平台的默认）与 `alpha`（tag `channel:alpha`）。
+
+每个平台只取一个产物，取能在 clash-nyanpasu 最低支持系统上运行、且与 clash-nyanpasu 现有选择最接近的构建。最低支持系统按 2026-11-09 的 clash-nyanpasu main 核对：
+
+- macOS 12.6：`backend/tauri/tauri.conf.json` 的 `minimumSystemVersion`；
+- Windows 10：Rust MSVC 目标的下限；应用本身动态链接 MSVC 运行库；
+- Linux glibc 2.35：Linux 包在 `ubuntu-22.04` 上构建（`deps-build-linux.yaml`）；
+- x86_64 CPU 带 AES-NI：`.cargo/config.toml` 开了 `+aes`，因此满足 x86-64-v2。
+
+| 平台             | `mihomo`                                | `meow`                                             | `clash_rs`                                     |
+| ---------------- | --------------------------------------- | -------------------------------------------------- | ---------------------------------------------- |
+| `windows-x86_64` | `mihomo-windows-amd64-v2-{version}.zip` | `meow-{version}-x86_64-pc-windows-msvc.zip`        | `clash-rs-x86_64-pc-windows-msvc.exe`          |
+| `windows-arm64`  | `mihomo-windows-arm64-{version}.zip`    | `meow-{version}-aarch64-pc-windows-msvc.zip`       | `clash-rs-aarch64-pc-windows-msvc.exe`         |
+| `linux-aarch64`  | `mihomo-linux-arm64-{version}.gz`       | `meow-{version}-aarch64-unknown-linux-musl.tar.gz` | `clash-rs-aarch64-unknown-linux-musl`          |
+| `linux-amd64`    | `mihomo-linux-amd64-v2-{version}.gz`    | `meow-{version}-x86_64-unknown-linux-musl.tar.gz`  | `clash-rs-x86_64-unknown-linux-gnu-static-crt` |
+| `darwin-arm64`   | `mihomo-darwin-arm64-{version}.gz`      | `meow-{version}-aarch64-apple-darwin.tar.gz`       | `clash-rs-aarch64-apple-darwin`                |
+| `darwin-x64`     | `mihomo-darwin-amd64-v2-{version}.gz`   | `meow-{version}-x86_64-apple-darwin.tar.gz`        | `clash-rs-x86_64-apple-darwin`                 |
+
+| resource   | stable                                     | alpha 的 release       | alpha 的版本                                                                                       |
+| ---------- | ------------------------------------------ | ---------------------- | -------------------------------------------------------------------------------------------------- |
+| `mihomo`   | 最近 8 个正式 release，static，内嵌 digest | tag `Prerelease-Alpha` | `version.txt`，`text` parser                                                                       |
+| `meow`     | 同上                                       | tag `Prerelease-Alpha` | 上游没有版本文件；`regex` 从 `expanded_assets/Prerelease-Alpha` 中按本平台产物名取出 `alpha-<sha>` |
+| `clash_rs` | 同上                                       | tag `latest`           | 组合版本（§9.2）                                                                                   |
+
+alpha 的 checksum 都由 `github-release-assets` 从 `expanded_assets/<tag>` 解析（`parsed`）。registry 为 `github-api`（§9.2）、`github-release`、`github-release-metadata`。mirror `direct` 允许三者；`nyanpasu` 只允许后两者，因为它的 `{path_and_query}` 改写会丢掉 `api.github.com` 主机。
+
+取舍与依据：
+
+- mihomo 当前用 Go 1.26 构建，它支持 macOS 12、Windows 10 与 Linux 3.2 内核，因此不收录 go120–go125 的旧 Go 构建。AES-NI 蕴含 x86-64-v2，不收录 v1；v3 只是可选的性能提升，不收录。上游的 `amd64`、`amd64-compatible` 是 v3、v1 的旧文件名。
+- clash-rs 的 `*-linux-gnu` 动态构建要求 `GLIBC_2.39`（v0.10.11 的 `readelf -V`），高于 2.35。因此 x86_64 用完全静态的 `gnu-static-crt`；aarch64 没有 static-crt 构建，用 musl。clash-nyanpasu 现在在 linux-aarch64 上用的 gnu 构建无法在 Ubuntu 22.04 上运行。
+- clash-rs 在 Windows、macOS 不收录 static-crt：应用本身已依赖 MSVC 运行库。meow 的 Linux gnu 构建只要求 `GLIBC_2.28`，仍沿用 clash-nyanpasu 现在的 musl。
+- 不在 `SupportedPlatform` 中的 386、armv7、mips、freebsd 等，以及 deb、rpm 包，不收录。
+- 变体只带 channel tag：每个平台只有一个构建，没有可选的维度。以后增加可选构建时，新增带 `cpu`、`toolchain` 等 tag 的变体；已有变体的 tag 不变，宿主持久化的精确 tag 组合仍然有效。
+- 已知变化点：Go 1.26 是支持 macOS 12 的最后一版。mihomo 改用 Go 1.27 后，要么新增一个带 `toolchain` tag 的 Go 1.26 darwin 变体，要么把 clash-nyanpasu 的 macOS 下限提到 13。
+
+### 9.5 D1 模板的 release 来源与 `ManifestSnapshot`
+
+本节的"快照"指 generator 抓取的 release 记录 `ManifestSnapshot`，不同于 §10 的 fixture 快照，也不同于 `fallback` 的 `snapshot` kind。类型都在 `manifest-metadata`，由 schema generator 导出 JSON Schema 与 TS。
+
+**模板（authored，严格解码）：**
+
+```rust
+// ResourceTemplate 新增：release 来源 ID → 来源。
+pub releases: BTreeMap<String, TemplateReleaseSource>,
+
+#[serde(tag = "type", rename_all = "snake_case", deny_unknown_fields)]
+pub enum TemplateReleaseSource {
+    /// The newest `limit` (1..=50) non-draft, non-prerelease releases.
+    History { limit: u32 },
+    /// One release by tag, usually a mutable prerelease.
+    Tag { tag: String },
+}
+
+// ResourceVariantTemplate.artifacts 的值类型改为 TemplateArtifact。
+#[serde(deny_unknown_fields)]
+pub struct TemplateArtifact {
+    pub artifact: String,
+    pub source: Option<SourceVariables>,
+    pub version: TemplateArtifactVersion,
+}
+
+#[serde(tag = "type", rename_all = "snake_case", deny_unknown_fields)]
+pub enum TemplateArtifactVersion {
+    Static { releases: String },
+    Remote {
+        releases: String,
+        version: RemoteVersionTemplate,
+        checksum: Option<RemoteChecksumResourceTemplate>,
+    },
+}
+```
+
+- `releases` 引用本 resource 的 release 来源；static 必须引用 `history`，remote 必须引用 `tag`。static 的历史与 remote 的 fallback 都由编译器从快照得出，模板不能写。
+- `ResourceManifestTemplate` 删除 `updated_at`，改由 `now` 提供。
+- 抓取方式不进模板：generator 从 resource 的 `source.owner`、`source.repo` 读 GitHub（§9.7）。
+
+**快照（generator 写出，严格解码）：**
+
+```rust
+pub struct ManifestSnapshot {
+    /// RFC 3339 UTC time the capture started.
+    pub observed_at: String,
+    /// Resource ID → release source ID → captured records.
+    pub resources: BTreeMap<String, BTreeMap<String, ReleaseSourceSnapshot>>,
+}
+
+#[serde(tag = "type", rename_all = "snake_case")]
+pub enum ReleaseSourceSnapshot {
+    /// Newest first.
+    History { releases: Vec<ReleaseSnapshot> },
+    /// `version` is observed through the artifacts' remote version plans.
+    Tag { version: Option<String>, release: ReleaseSnapshot },
+}
+
+pub struct ReleaseSnapshot {
+    /// GitHub ID as a decimal string.
+    pub id: String,
+    pub tag: String,
+    /// API URL the record was read from.
+    pub url: String,
+    pub published_at: Option<String>,
+    /// Sorted by name in code-point order.
+    pub assets: Vec<AssetSnapshot>,
+}
+
+pub struct AssetSnapshot {
+    /// GitHub ID as a decimal string.
+    pub id: String,
+    pub name: String,
+    pub digest: Option<ResourceChecksum>,
+    pub updated_at: String,
+}
+```
+
+- GitHub 的 ID 以十进制字符串保存（`^[0-9]+$`）：JS number 不能表示完整的 `u64`，wasm 边界又拒绝 BigInt（§8.1）。
+
+### 9.6 D2 编译器
+
+`manifest_core::compile(template: &ResourceManifestTemplate, snapshot: &ManifestSnapshot, now: &str) -> Result<ResourceManifest, CompileErrors>` 是纯函数，收集全部错误；每项带 code、path、fields，形状同 `ValidationErrors`。编译有三个文档，path 按来源加前缀：模板以 `template.` 开头，快照以 `snapshot.` 开头，编译结果以 `output.` 开头。
+
+1. **展开：**
+   - variant ID 缺省时取 `tag_key`；按 resource 的 tag 目录展开 tag 并计算 `tag_key`；
+   - tag 目录按 ID 的码点顺序写出，variant 保持模板顺序；registry、mirror、resource 经 `BTreeMap` 按码点排序；
+   - `default_variants` 照抄模板；模板没写且只有一个变体支持该平台时推断；有多个时不写，由第 3 步的校验报 `validate.default_variant`；
+   - `manifest_version` 写当前的 `CURRENT_MINOR`；`updated_at` 写 `now`。`now` 由宿主传入 RFC 3339 UTC 字符串，编译器不解析。
+2. **绑定快照：**
+   - static：对 `History` 中的每个 release，以它的 `tag` 为版本渲染产物名，在该 release 的资产中按名称精确查找。找到的写成 `{ version: tag, checksum: digest, published_at }`，找不到的跳过。`latest` 是最新的 release，它必须包含该产物。
+   - remote：`fallback` 为 `{ version: Tag.version, checksum: digest, published_at: 资产的 updated_at }`。该版本渲染出的产物名必须在 tag release 的资产中；`Tag.version` 为空时不写 fallback，这样的结果只是临时的（见第 3 步）。mutable prerelease 本身的 `published_at` 早已过时，所以用资产时间。
+   - 产物名由 core 的同一渲染器（B2）生成，与宿主渲染的名称一致。
+3. **校验与预检：** 对结果运行 `validate_manifest`。随后对每个 resource × variant × platform 生成版本计划；再以 `latest`（static）或 fallback 版本（remote）生成下载计划；remote 没有 fallback 时用占位版本 `0`（满足 `VersionLabel`），保证产物模板在没有版本时也做过可解析性检查。只有带 `Tag.version` 的快照编译出的结果才是完整的；generator 只用临时结果观测版本，不写出它。canonical URL 与每个允许该 registry 的 mirror 各渲染一次，因此 `https://{missing}/{artifact}` 这类模板在编译期被拒（V-7）。
+4. **错误路径：**
+   - `validate_manifest` 的错误针对编译结果，path 加 `output.` 前缀，code 与 fields 不变，例如 `output.resources.<r>.tags[0].id`；
+   - 第 2 步按 release tag 渲染产物名出错时，path 为该 tag 在快照中的位置 `snapshot.resources.<r>.<source>.releases[<k>].tag`（remote 为 `snapshot.resources.<r>.<source>.version`），code 与 fields 不变；
+   - 预检的错误 path 为 `output.` 加原 path；原 path 以 `arg.` 开头时（版本、宿主变量），改为被预检产物的 `output.resources.<r>.variants[<i>].artifacts.<platform>.version`；
+   - 一致性用例固定上述每类 path 的代表值。
+5. **错误码：** 校验与渲染错误保留原 code 与 fields；新增：
+
+   | code                       | fields                                                | path                                                                         |
+   | -------------------------- | ----------------------------------------------------- | ---------------------------------------------------------------------------- |
+   | `compile.release_source`   | `{ releases, reason }`，reason 为 `unknown` 或 `kind` | `template.resources.<r>.variants[<i>].artifacts.<platform>.version.releases` |
+   | `compile.snapshot_missing` | `{ reason }`，reason 为 `missing` 或 `kind`           | `snapshot.resources.<r>.<source>`                                            |
+   | `compile.history_empty`    | `{}`                                                  | `snapshot.resources.<r>.<source>.releases`                                   |
+   | `compile.unknown_tag`      | `{ tag }`                                             | `template.resources.<r>.variants[<i>].tags`                                  |
+   | `compile.artifact_missing` | `{ release, artifact }`                               | `template.resources.<r>.variants[<i>].artifacts.<platform>`                  |
+
+6. **确定性：** 同一组输入两次编译，按 `serde_json` 的 pretty 格式序列化后逐字节相同。
+7. **wasm：** `compileManifest(template: ResourceManifestTemplate, snapshot: ManifestSnapshot, now: string): ResourceManifest`。失败时报 `compile.failed`（`arg.template`），fields 为 `{ errors }`，与 `validate.failed` 同形。
+
+### 9.7 D3 generator
+
+`@manifest/generator`（`packages/manifest-generator`）：
+
+1. **模板：** `src/template.ts` 以 TS 值写出 §9.4 的模板，类型来自 `@manifest/metadata`。
+2. **抓取：** 所有请求都在 `src/http.ts`。存在 `GITHUB_TOKEN` 时只对 `api.github.com` 附加。
+   - `history` 来源：分页读取 release，取前 `limit` 个非 draft、非 prerelease 的 release，再分页读取每个 release 的资产；
+   - `tag` 来源：读取该 tag 的 release 与资产。
+3. **观测 alpha 版本：** 先用不带 `Tag.version` 的快照编译一次，得到临时结果。对每个 `tag` 来源，取临时结果中引用它的每个产物，按版本计划请求 canonical URL，再调用 `finishVersion` 得到版本。
+   - 同一来源的所有产物必须得到同一版本；
+   - 观测完成后再读取一次该 tag 的 release 与资产，必须与观测前的记录相同（资产 ID、名称、digest、`updated_at`）。产物名不含版本时（如 clash-rs），资产的存在检查发现不了上游在两次读取之间重新发布，这一步把版本观测夹在两次相同的资产记录之间；
+   - 任一条件不满足，说明上游正在发布：本次失败，不写任何文件，由下一次计划运行重试；
+   - 版本端点本身可能落后于资产（§9.2 第 6 条），这一风险与宿主相同，下载的字节仍按 digest 校验。
+   - 这与宿主解析版本走同一路径，满足 D4 "生成端与消费端对同一组响应得到相同版本"。
+4. **编译与写出：** 写入观测到的版本后再编译一次，`now` 为本次运行开始的时间。在 `--out` 目录写 `resources.json` 与 `snapshot.json`。新 manifest 去掉 `updated_at` 后与已有文件相同时，两个文件都不写。
+5. **不写 v1 `version.json`：** v1 继续由 clash-nyanpasu 的上游脚本生成，直到 D6 退役。
+6. **测试：** 本地 HTTP fixture 覆盖分页、筛选、版本观测、版本不一致时的失败，以及两次读取之间资产变化时的失败。运行时间可注入：同一组响应与同一时间两次运行，输出逐字节相同；已有输出相同（除 `updated_at`）时不写文件。对真实上游的运行记录在 PR 描述中，作为手工验证，不进 CI。
 
 ---
 

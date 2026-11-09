@@ -36,8 +36,11 @@
 | PR-B2 | B2 → B3 → B4           | B1     | P2     | 模板引擎、计划与 `ChecksumKind`、参考差分 |
 | PR-C  | C1 → C2 → C3           | B2     | P2     | wasm、runtime、Node 一致性测试            |
 | PR-C4 | C4                     | C      | P2     | 构建期下载校验胶水脚本                    |
-| —     | D0                     | —      | P3     | 移除 Clash Premium（design §9.3）         |
-| —     | D1 到 D6               | C      | P3     | 里程碑卡，开工前细化                      |
+| PR-D0 | D0                     | —      | P3     | 移除 Clash Premium（design §9.3）         |
+| PR-D4 | D4a → D4b              | D0     | P3     | 计划 parts 化与组合版本（§9.2）           |
+| PR-D2 | D1 → D2                | D4     | P3     | 模板、快照与编译器（design §9.5、§9.6）   |
+| PR-D3 | D3                     | D2     | P3     | generator（design §9.4、§9.7）            |
+| —     | D5、D6                 | D3     | P3     | 里程碑卡，开工前细化                      |
 
 ---
 
@@ -341,12 +344,80 @@
 
 ---
 
-## 里程碑卡（开工前细化为同粒度卡）
+## D0 — 移除 Clash Premium
 
-### D0 到 D6 — 编译器、快照与签名
+- [ ] 按 design §9.3 从快照、golden、一致性用例与可执行测试中删除 `clash_premium`；仍需同类覆盖的用例改用其他 resource。
+- [ ] 重新生成 `conformance/resolve/reference-golden.json` 的方式与 B4 相同；只删除 `clash_premium` 的条目，其余条目逐字节不变。
 
-- 见 design §9 表格。
-- D2 的确定性判据：同一组输入两次编译，输出逐字节相同；写出 `"2.0"`。
-- D4 按 design §9.2 扩展多响应组合版本；采集 `ibigbug/clash-rs` 的 `commits/latest` 与 `releases/latest` 响应作为 fixture（O-4）。
-- D5 按 design §9.1 接入 minisign，范围只覆盖 manifest 本身（O-2）。
-- D0 按 design §9.3 移除 Clash Premium，不依赖其他 D 里程碑。
+**验证**
+
+- `rg -n "clash_premium|Clash-premium|Clash Premium" --glob '!docs/**' --glob '!files/**'` 退出码为 1。
+- Rust 与 Node 两端的用例数同步减少，`pnpm check:conformance` 通过。
+
+## D4a — 版本计划改为 parts 与 `finish_version`（行为卡）
+
+- [ ] `RemoteVersionPlan` 改为 `{ parts, format }`（design §9.2 第 7 条），单响应形式为一个 `name: null` 的 part 与 `format: null`。
+- [ ] `manifest-core` 新增 `finish_version` 与 `FinishVersionError`：个数不符、part 解析失败的 path 改写。
+- [ ] wasm 导出 `finishVersion`（计划没有 remote 部分时报 `wasm.version_plan_missing`），`@manifest/runtime` 导出；`@manifest/downloader` 按 part 顺序请求后调用它。
+- [ ] 一致性用例：计划形状改为 parts；version 操作改走 `finish_version`，既有用例的 path 从 `response.body` 变为 `responses[0].body`；新增个数不符的用例。
+- [ ] `pnpm run generate:schema`；runtime 类型出现 `VersionPartPlan` 与 `FinishVersionError`。
+
+**验证**
+
+- 除 `remote` 的形状与 version 操作的错误 path 外，既有用例不变；Rust 与 Node 两端结果相同。
+
+## D4b — 组合版本（行为卡）
+
+- [ ] `manifest-metadata`：新增 `RemoteVersionTemplate`，compiled `Remote.version` 改用它；解码按是否有 `format` 键分派。
+- [ ] `manifest-core` 校验：`validate.version_parts` 的三种 reason；`format` 引用非 part 变量时报 `validate.template_variable`；每个 part 的 registry 引用、模板变量与 parser 编译用 `parts.<name>` 前缀的 path。
+- [ ] `artifact_checksum_kind` 与计划的 `check_support` 覆盖 part parser；`plan_version` 为每个 part 生成请求；`finish_version` 按 `format` 组合，结果不满足 `VersionLabel` 时报 `parser.invalid_version`（`parser.format`）。
+- [ ] 采集 `ibigbug/clash-rs` 的 `releases/latest` 与 `commits/latest` 响应作为 `conformance/fixtures/github-api/` 下的 fixture（O-4）。
+- [ ] 一致性用例：组合形式解码、三种 reason、未知变量、part 的 parser 编译失败、part 中未知 parser 得到 `none`、组合计划的形状、part 解析失败的 path、组合结果不满足 `VersionLabel`；用 fixture 得到 `0.10.11-alpha+sha.bd22442`。
+- [ ] downloader 测试：组合版本的 remote 产物在 `--allow-parsed` 下成功。
+- [ ] `pnpm run generate:schema`；TS、Schema 出现组合形式，属预期变化。
+- [ ] 同步修订 `docs/design/manifest-v2.md` 的 remote 版本小节，加入组合形式。
+
+**验证**
+
+- 单响应形式的既有用例全部不变；`pnpm check:generated` 只出现组合形式相关的差异。
+
+## D1 — 模板的 release 来源与 `ManifestSnapshot`
+
+- [ ] `manifest-metadata` 按 design §9.5 新增 `TemplateReleaseSource`、`TemplateArtifact`、`TemplateArtifactVersion`、`ManifestSnapshot` 及其子类型；模板删除 `updated_at`。
+- [ ] 模板与快照都严格解码；`History.limit` 限制在 1 到 50。
+- [ ] schema generator 导出快照的 JSON Schema 与 TS；`pnpm run generate:schema`。
+- [ ] 单测：两种来源与两种快照的往返、未知字段与越界 `limit` 被拒、ID 必须是十进制字符串。
+
+**验证**
+
+- `pnpm check:generated` 只出现本卡的类型变化。
+
+## D2 — 编译器（行为卡）
+
+- [ ] `manifest-core` 新增 `compile` 与 `CompileErrors`，步骤与错误码按 design §9.6。
+- [ ] wasm 导出 `compileManifest`，`@manifest/runtime` 导出。
+- [ ] 同步修订 `docs/design/manifest-v2.md` 的编译与迁移小节：模板的 release 来源、快照与 generator 不再写 v1。
+- [ ] 一致性用例（`conformance/compile/`），固定 design §9.6 第 4 条每类 path 的代表值：static 历史跳过缺产物的 release、最新 release 缺产物、remote fallback 的 digest 与资产时间、`Tag.version` 为空不写 fallback 但仍以占位版本预检（产物模板循环被拒）、两种 `compile.release_source`、两种 `compile.snapshot_missing`、`compile.history_empty`、`compile.unknown_tag`、默认变体推断与缺失、`https://{missing}/{artifact}` 在预检中被拒、mirror 渲染失败在预检中被拒。
+
+**验证**
+
+- 同一组输入两次编译逐字节相同；输出的 `manifest_version` 为 `"2.0"`。
+- 编译结果再经 `validate_manifest` 通过。
+
+## D3 — generator（行为卡）
+
+- [ ] `packages/manifest-generator` 按 design §9.7 实现：`src/template.ts`、`src/http.ts`、抓取、alpha 版本观测、编译与写出；命令行用 `node:util` 的 `parseArgs`，`--out` 必填。
+- [ ] 模板按 design §9.4 的产物表与 release 来源。
+- [ ] 测试（本地 `node:http` 服务，不访问外网）：分页与筛选、`limit`、alpha 版本观测、同一来源版本不一致时失败且不写文件、两次读取之间资产变化时失败、manifest 无变化时不写、注入相同运行时间时两次运行逐字节相同。
+- [ ] 手工对真实上游运行一次；在 PR 描述中记录输出大小、每个产物名都在快照中，以及 alpha 的版本。
+
+**验证**
+
+- `pnpm test` 中上述用例通过；`rg -n "fetch\(" packages/manifest-generator` 只出现在 `src/http.ts`。
+
+## 里程碑卡
+
+### D5、D6 — 签名与退役上游脚本
+
+- D5 按 design §9.1 接入 minisign，范围只覆盖 manifest 本身（O-2）；开工前细化。
+- D6 在 clash-nyanpasu 侧跟踪。
