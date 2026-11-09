@@ -15,8 +15,10 @@ import type {
   ManifestSnapshot,
   ResourceManifest,
   ResourceManifestTemplate,
+  SupportedPlatform,
 } from "@manifest/metadata";
 import {
+  ManifestRuntimeError,
   compileManifest,
   finishVersion,
   planVersion,
@@ -554,10 +556,15 @@ test("the production template compiles and plans every alpha version", async () 
     mihomo: "alpha-478af2a",
   };
   for (const [resourceId, resource] of Object.entries(TEMPLATE.resources)) {
+    const artifacts = new Set(
+      resource.variants.flatMap((variant) =>
+        Object.values(variant.artifacts).map((artifact) => artifact.artifact),
+      ),
+    );
     const names = (tag: string) =>
-      Object.values(resource.variants[0]!.artifacts).map((artifact, index) => ({
+      [...artifacts].map((artifact, index) => ({
         id: String(index + 1),
-        name: artifact.artifact.replaceAll("{version}", tag),
+        name: artifact.replaceAll("{version}", tag),
         digest: `sha256:${"ab".repeat(32)}` as const,
         updated_at: NOW.toISOString(),
       }));
@@ -619,6 +626,86 @@ test("the production template compiles and plans every alpha version", async () 
     ],
   ]);
 
+  // Design §9.4: optional builds sit beside the defaults on the platforms
+  // where they differ, under the channel tag plus one cpu, libc or crt tag.
+  assert.deepEqual(
+    Object.fromEntries(
+      Object.entries(manifest.resources).map(([resourceId, resource]) => [
+        resourceId,
+        resource.variants.map(
+          (variant) =>
+            `${variant.tag_key} ${Object.keys(variant.artifacts).join(",")}`,
+        ),
+      ]),
+    ),
+    {
+      clash_rs: [
+        "channel:stable windows-x86_64,windows-arm64,linux-aarch64,linux-amd64,darwin-arm64,darwin-x64",
+        "channel:stable+libc:gnu linux-aarch64,linux-amd64",
+        "channel:stable+libc:musl linux-amd64",
+        "channel:stable+crt:static windows-x86_64,windows-arm64,darwin-arm64,darwin-x64",
+        "channel:alpha windows-x86_64,windows-arm64,linux-aarch64,linux-amd64,darwin-arm64,darwin-x64",
+        "channel:alpha+libc:gnu linux-aarch64,linux-amd64",
+        "channel:alpha+libc:musl linux-amd64",
+        "channel:alpha+crt:static windows-x86_64,windows-arm64,darwin-arm64,darwin-x64",
+      ],
+      meow: [
+        "channel:stable windows-x86_64,windows-arm64,linux-aarch64,linux-amd64,darwin-arm64,darwin-x64",
+        "channel:stable+libc:gnu linux-aarch64,linux-amd64",
+        "channel:alpha windows-x86_64,windows-arm64,linux-aarch64,linux-amd64,darwin-arm64,darwin-x64",
+        "channel:alpha+libc:gnu linux-aarch64,linux-amd64",
+      ],
+      mihomo: [
+        "channel:stable windows-x86_64,windows-arm64,linux-aarch64,linux-amd64,darwin-arm64,darwin-x64",
+        "channel:stable+cpu:x86-64-v3 windows-x86_64,linux-amd64,darwin-x64",
+        "channel:alpha windows-x86_64,windows-arm64,linux-aarch64,linux-amd64,darwin-arm64,darwin-x64",
+        "channel:alpha+cpu:x86-64-v3 windows-x86_64,linux-amd64,darwin-x64",
+      ],
+    },
+  );
+
+  // Hosts pick an optional build by its exact tags; the default needs none.
+  const pick = (
+    resourceId: string,
+    platform: SupportedPlatform,
+    tags?: string[],
+  ) => {
+    using selected = selectVariant(
+      validated,
+      resourceId,
+      platform,
+      tags ? { tags } : {},
+    );
+    return `${selected.value.id} ${selected.value.artifacts[platform]!.artifact}`;
+  };
+  assert.equal(
+    pick("mihomo", "linux-amd64"),
+    "stable mihomo-linux-amd64-v2-{version}.gz",
+  );
+  assert.equal(
+    pick("mihomo", "linux-amd64", ["channel:alpha"]),
+    "alpha mihomo-linux-amd64-v2-{version}.gz",
+  );
+  assert.equal(
+    pick("mihomo", "linux-amd64", ["channel:stable", "cpu:x86-64-v3"]),
+    "stable-x86-64-v3 mihomo-linux-amd64-v3-{version}.gz",
+  );
+  assert.equal(
+    pick("clash_rs", "linux-aarch64", ["channel:alpha", "libc:gnu"]),
+    "alpha-gnu clash-rs-aarch64-unknown-linux-gnu",
+  );
+  assert.equal(
+    pick("clash_rs", "windows-arm64", ["channel:stable", "crt:static"]),
+    "stable-static-crt clash-rs-aarch64-pc-windows-msvc-static-crt.exe",
+  );
+  // An optional build missing on a platform is rejected, never substituted.
+  assert.throws(
+    () => pick("mihomo", "linux-aarch64", ["channel:stable", "cpu:x86-64-v3"]),
+    (error: unknown) =>
+      error instanceof ManifestRuntimeError &&
+      error.code === "resolve.tags_rejected",
+  );
+
   // The recorded GitHub API responses (conformance fixtures) give the same
   // Clash Rust alpha version as clash-nyanpasu.
   const fixtures = fileURLToPath(
@@ -641,6 +728,24 @@ test("the production template compiles and plans every alpha version", async () 
     })),
   );
   assert.equal(finishVersion(plan, responses), version.clash_rs);
+
+  // Each optional alpha build reads its own asset name: on an asset page where
+  // the musl and glibc builds come from different commits, the glibc variant
+  // reports the glibc commit and the default the musl one.
+  const page = {
+    body: [
+      '<a href="/meow-rs/meow-rs/releases/download/Prerelease-Alpha/meow-alpha-1111111-x86_64-unknown-linux-musl.tar.gz">',
+      '<a href="/meow-rs/meow-rs/releases/download/Prerelease-Alpha/meow-alpha-2222222-x86_64-unknown-linux-gnu.tar.gz">',
+    ].join("\n"),
+    headers: [],
+  };
+  const meowAlpha = (tags: string[]) => {
+    using selected = selectVariant(validated, "meow", "linux-amd64", { tags });
+    using plan = planVersion(selected);
+    return finishVersion(plan, [page]);
+  };
+  assert.equal(meowAlpha(["channel:alpha"]), "alpha-1111111");
+  assert.equal(meowAlpha(["channel:alpha", "libc:gnu"]), "alpha-2222222");
 });
 
 test("summary.md lists every artifact with its version, source and kind", async (t) => {

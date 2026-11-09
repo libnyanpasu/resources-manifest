@@ -15,11 +15,15 @@ IDs are read from the response text, so the snapshot keeps every digit.
 
 ## What it produces
 
-[`template.ts`](template.ts) is the authored template (design §9.4): one build
-per platform that runs on clash-nyanpasu's minimum systems, a `stable` variant
-with the newest eight releases as static history, and an `alpha` variant
-resolved remotely. The template declares where releases come from; it carries
-no history, fallback or checksum.
+[`template.ts`](template.ts) is the authored template (design §9.4). Each
+resource has a `stable` variant with the newest eight releases as static
+history and an `alpha` variant resolved remotely; both hold, for every
+platform, the build that runs on clash-nyanpasu's minimum systems and are the
+platform defaults. Upstream builds that need more or link differently, such as
+Mihomo's x86-64-v3 or Clash Rust's glibc, musl and static-CRT builds, are
+optional variants beside them, tagged with `cpu`, `libc` or `crt` on top of the
+channel tag and covering only the platforms where they differ. The template
+declares where releases come from; it carries no history, fallback or checksum.
 
 A run:
 
