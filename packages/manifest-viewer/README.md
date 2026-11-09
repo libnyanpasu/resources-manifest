@@ -7,10 +7,14 @@ Built with Astro and one Svelte island; deployed to GitHub Pages at
 <https://libnyanpasu.github.io/resources-manifest/>.
 
 ```sh
+pnpm run dev:viewer                         # builds wasm, then serves with hot reload
 pnpm run build:viewer                       # builds wasm, then dist/
-pnpm --filter @manifest/viewer run dev      # local development server
 pnpm --filter @manifest/viewer run check    # svelte-check
 ```
+
+The development server is at <http://localhost:4321/resources-manifest/>. It
+reloads on page and runtime TypeScript changes; after changing Rust, rerun
+`pnpm run build:wasm`. To try a local manifest, open or drop the file.
 
 ## Loading a manifest
 

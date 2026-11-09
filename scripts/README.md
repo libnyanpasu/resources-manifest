@@ -8,6 +8,7 @@ there is no separate scripts workspace package.
 | ---------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
 | `pnpm run build:wasm`        | Checks the wasm-bindgen CLI version against Cargo.lock, builds the locked release wasm target, and generates runtime glue. |
 | `pnpm run build:viewer`      | Builds wasm, then the manifest viewer into `packages/manifest-viewer/dist/`.                                               |
+| `pnpm run dev:viewer`        | Builds wasm, then serves the manifest viewer with hot reload at `http://localhost:4321/resources-manifest/`.               |
 | `pnpm run generate:schema`   | Runs the Rust schema generator and formats metadata types, version constants, schemas, and runtime types.                  |
 | `pnpm run check:generated`   | Regenerates outputs and rejects tracked changes or untracked files in the generated targets.                               |
 | `pnpm run check:conformance` | Builds wasm, runs the four Rust corpus runners and the Node runner, and checks executed case-name parity.                  |
