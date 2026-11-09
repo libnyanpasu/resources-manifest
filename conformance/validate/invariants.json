@@ -7013,5 +7013,107 @@
     "expect": {
       "ok": true
     }
+  },
+  {
+    "name": "validate.parser_compile.json_pointer",
+    "input": {
+      "manifest_version": "2.0",
+      "registries": {
+        "github-release": {
+          "name": "GitHub Releases",
+          "url_template": "https://github.com/{owner}/{repo}/releases/download/{release}/{artifact}"
+        }
+      },
+      "mirrors": {},
+      "resources": {
+        "sample": {
+          "name": "Sample",
+          "registry": "github-release",
+          "source": {
+            "owner": "example",
+            "repo": "project"
+          },
+          "tags": [
+            {
+              "id": "channel:stable",
+              "name": "Stable",
+              "group": "channel"
+            }
+          ],
+          "default_variants": {
+            "windows-x86_64": "stable",
+            "linux-amd64": "stable"
+          },
+          "variants": [
+            {
+              "id": "stable",
+              "tag_key": "channel:stable",
+              "name": "Stable",
+              "tags": [
+                {
+                  "id": "channel:stable",
+                  "name": "Stable",
+                  "group": "channel"
+                }
+              ],
+              "source": {
+                "release": "{version}"
+              },
+              "artifacts": {
+                "windows-x86_64": {
+                  "artifact": "selected-{version}.zip",
+                  "version": {
+                    "type": "remote",
+                    "latest": {
+                      "resource": {
+                        "registry": "github-release",
+                        "artifact": "version.txt"
+                      },
+                      "parser": {
+                        "type": "json",
+                        "pointer": "tag_name"
+                      }
+                    },
+                    "checksum": {
+                      "resource": {
+                        "registry": "github-release",
+                        "artifact": "checksums.txt"
+                      },
+                      "parser": {
+                        "type": "gnu",
+                        "algorithm": "sha256"
+                      }
+                    }
+                  }
+                },
+                "linux-amd64": {
+                  "artifact": "selected-{version}.gz",
+                  "version": {
+                    "type": "static",
+                    "latest": "v1.2.3",
+                    "releases": [
+                      {
+                        "version": "v1.2.3",
+                        "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    "expect": {
+      "error": {
+        "code": "validate.parser_compile",
+        "path": "resources.sample.variants[0].artifacts.windows-x86_64.version.latest.parser.pointer",
+        "fields": {
+          "reason": "parser.invalid_pointer",
+          "details": {}
+        }
+      }
+    }
   }
 ]

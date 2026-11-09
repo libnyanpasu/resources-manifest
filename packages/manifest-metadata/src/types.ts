@@ -128,6 +128,21 @@ export type RemoteVersionParser =
        *  validator's non-negative integer rule.
        */
       group?: number;
+    }
+  /**
+   *  Decode the body as JSON and read the string at an RFC 6901 pointer,
+   *  optionally narrowed by a regular expression.
+   */
+  | {
+      type: "json";
+      pointer: string;
+      /**
+       *  Applied to the string like the `regex` parser; without it the
+       *  whole string is the version.
+       */
+      pattern?: string;
+      /**  Capture group of `pattern`. Defaults to 1; unused without `pattern`. */
+      group?: number;
     };
 
 export type RemoteVersionResourceTemplate = {

@@ -416,6 +416,30 @@
             }
           },
           "required": ["type", "pattern"]
+        },
+        {
+          "description": "Decode the body as JSON and read the string at an RFC 6901 pointer,\noptionally narrowed by a regular expression.",
+          "type": "object",
+          "properties": {
+            "pointer": {
+              "type": "string"
+            },
+            "pattern": {
+              "description": "Applied to the string like the `regex` parser; without it the\nwhole string is the version.",
+              "type": "string"
+            },
+            "group": {
+              "description": "Capture group of `pattern`. Defaults to 1; unused without `pattern`.",
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 4294967295
+            },
+            "type": {
+              "type": "string",
+              "const": "json"
+            }
+          },
+          "required": ["type", "pointer"]
         }
       ]
     },

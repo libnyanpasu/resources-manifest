@@ -331,6 +331,16 @@ single version.
   `VersionLabel`. `group` defaults to 1; 0 selects the entire match. Validation
   compiles the pattern, enforces the compilation size limit, and checks that
   `group` is less than the capture count, including group 0.
+- `json`: `{ pointer, pattern?, group? }`. Decode the body as JSON; a body that
+  is not valid JSON or repeats a key in any object fails with
+  `parser.invalid_json`. `pointer` is an RFC 6901 JSON Pointer: empty, or
+  starting with `/` with every `~` followed by `0` or `1`; otherwise
+  compilation fails with `parser.invalid_pointer`. Array indices follow RFC 6901,
+  so leading zeros and `-` select nothing. A missing value or one that is not a
+  string fails with `parser.not_found`. Without `pattern` the whole string is
+  the result and `group` is unused; with `pattern`, the string is matched
+  exactly like the `regex` parser matches a body, including its limits and
+  `group` rules. The result is trimmed and validated as a `VersionLabel`.
 
 Version parsers do not read headers. A future version-header parser would be a
 minor addition after release.
@@ -603,29 +613,30 @@ write array indices as `[<i>]`, for example `manifest_version` or
 for example `arg.version`, rather than a bare argument name. Parser response errors
 use `response.body` or `response.headers.<lowercase-name>`. Rule errors use
 `parser.pattern` for `parser.invalid_pattern`, `parser.group` for
-`parser.group_out_of_range`, and `parser.type` for `resolve.unsupported_parser`. The conformance
+`parser.group_out_of_range`, `parser.pointer` for `parser.invalid_pointer`, and
+`parser.type` for `resolve.unsupported_parser`. The conformance
 runner compares a declared `path` exactly.
 
 For `parser.ambiguous`, `name` is the requested artifact filename or the declared
 header name. For `parser.group_out_of_range`, `groups` includes group 0.
 
-| Prefix      | Codes                                                                                                                             | Fields                                                                                                                                  |
-| ----------- | --------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
-| `manifest.` | `unsupported_major`                                                                                                               | `{ major }`                                                                                                                             |
-| `manifest.` | `invalid_version_format`                                                                                                          | `{}`                                                                                                                                    |
-| `parser.`   | `body_too_large`                                                                                                                  | `{ limit, actual }`                                                                                                                     |
-| `parser.`   | `ambiguous`                                                                                                                       | `{ name }`                                                                                                                              |
-| `parser.`   | `group_out_of_range`                                                                                                              | `{ group, groups }`                                                                                                                     |
-| `parser.`   | `not_found`, `digest_missing`, `invalid_version`, `invalid_checksum`, `invalid_encoding`, `invalid_pattern`                       | Structured fields deferred to the implementing card                                                                                     |
-| `template.` | `unknown_variable`, `cycle`, `depth_exceeded`, `output_too_large`, `invalid_literal`                                              | See [B2 specification §5.6 "B2 渲染错误"](../spec/2026-11-06-manifest-core-parsers/design.md#b2-渲染错误)                               |
-| `url.`      | `invalid`, `unsupported_scheme`, `forbidden_component`                                                                            | See [B2 specification §5.6 "B2 渲染错误"](../spec/2026-11-06-manifest-core-parsers/design.md#b2-渲染错误)                               |
-| `resolve.`  | `unknown_resource`, `unsupported_platform`, `variant_not_found`, `tags_rejected`, `selection_conflict`, `default_variant_missing` | See [B3 specification §5.6 "B3 选择、计划与 VerifyError"](../spec/2026-11-06-manifest-core-parsers/design.md#b3-选择计划与-verifyerror) |
-| `resolve.`  | `unknown_mirror`, `mirror_not_allowed`, `snapshot_unavailable`                                                                    | See [B3 specification §5.6 "B3 选择、计划与 VerifyError"](../spec/2026-11-06-manifest-core-parsers/design.md#b3-选择计划与-verifyerror) |
-| `resolve.`  | `version_responses`                                                                                                               | `{ expected, actual }`                                                                                                                  |
-| `resolve.`  | `version_required`, `version_not_in_history`, `unsupported_parser`                                                                | See [B3 specification §5.6 "B3 选择、计划与 VerifyError"](../spec/2026-11-06-manifest-core-parsers/design.md#b3-选择计划与-verifyerror) |
-| `verify.`   | `kind_rejected`                                                                                                                   | `{ kind }`                                                                                                                              |
-| `verify.`   | `digest_mismatch`                                                                                                                 | `{ algorithm, expected, actual }`                                                                                                       |
-| `validate.` | One code per invariant                                                                                                            | See [B1 specification §5.6 "B1 校验错误"](../spec/2026-11-06-manifest-core-parsers/design.md#b1-校验错误)                               |
+| Prefix      | Codes                                                                                                                                          | Fields                                                                                                                                  |
+| ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| `manifest.` | `unsupported_major`                                                                                                                            | `{ major }`                                                                                                                             |
+| `manifest.` | `invalid_version_format`                                                                                                                       | `{}`                                                                                                                                    |
+| `parser.`   | `body_too_large`                                                                                                                               | `{ limit, actual }`                                                                                                                     |
+| `parser.`   | `ambiguous`                                                                                                                                    | `{ name }`                                                                                                                              |
+| `parser.`   | `group_out_of_range`                                                                                                                           | `{ group, groups }`                                                                                                                     |
+| `parser.`   | `not_found`, `digest_missing`, `invalid_version`, `invalid_checksum`, `invalid_encoding`, `invalid_pattern`, `invalid_json`, `invalid_pointer` | Structured fields deferred to the implementing card                                                                                     |
+| `template.` | `unknown_variable`, `cycle`, `depth_exceeded`, `output_too_large`, `invalid_literal`                                                           | See [B2 specification §5.6 "B2 渲染错误"](../spec/2026-11-06-manifest-core-parsers/design.md#b2-渲染错误)                               |
+| `url.`      | `invalid`, `unsupported_scheme`, `forbidden_component`                                                                                         | See [B2 specification §5.6 "B2 渲染错误"](../spec/2026-11-06-manifest-core-parsers/design.md#b2-渲染错误)                               |
+| `resolve.`  | `unknown_resource`, `unsupported_platform`, `variant_not_found`, `tags_rejected`, `selection_conflict`, `default_variant_missing`              | See [B3 specification §5.6 "B3 选择、计划与 VerifyError"](../spec/2026-11-06-manifest-core-parsers/design.md#b3-选择计划与-verifyerror) |
+| `resolve.`  | `unknown_mirror`, `mirror_not_allowed`, `snapshot_unavailable`                                                                                 | See [B3 specification §5.6 "B3 选择、计划与 VerifyError"](../spec/2026-11-06-manifest-core-parsers/design.md#b3-选择计划与-verifyerror) |
+| `resolve.`  | `version_responses`                                                                                                                            | `{ expected, actual }`                                                                                                                  |
+| `resolve.`  | `version_required`, `version_not_in_history`, `unsupported_parser`                                                                             | See [B3 specification §5.6 "B3 选择、计划与 VerifyError"](../spec/2026-11-06-manifest-core-parsers/design.md#b3-选择计划与-verifyerror) |
+| `verify.`   | `kind_rejected`                                                                                                                                | `{ kind }`                                                                                                                              |
+| `verify.`   | `digest_mismatch`                                                                                                                              | `{ algorithm, expected, actual }`                                                                                                       |
+| `validate.` | One code per invariant                                                                                                                         | See [B1 specification §5.6 "B1 校验错误"](../spec/2026-11-06-manifest-core-parsers/design.md#b1-校验错误)                               |
 
 ## Validation invariants
 

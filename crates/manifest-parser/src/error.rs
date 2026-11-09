@@ -45,6 +45,10 @@ pub enum ParseError {
     },
     #[snafu(display("checksum in header {name:?} is invalid"))]
     ValidateHeaderChecksum { name: String },
+    #[snafu(display("response body is not valid JSON: {source}"))]
+    DecodeJson { source: serde_json::Error },
+    #[snafu(display("JSON pointer is invalid"))]
+    ValidatePointer {},
 }
 
 impl ParseError {
@@ -66,6 +70,8 @@ impl ParseError {
                 "parser.invalid_checksum"
             }
             Self::DecodeHeader { .. } => "parser.invalid_encoding",
+            Self::DecodeJson { .. } => "parser.invalid_json",
+            Self::ValidatePointer { .. } => "parser.invalid_pointer",
             Self::ReadDigest { .. } => "parser.digest_missing",
             Self::ResolveParser { .. } => "resolve.unsupported_parser",
             Self::SelectHeader { .. } | Self::SelectChecksum { .. } => "parser.ambiguous",
@@ -79,6 +85,7 @@ impl ParseError {
                 Cow::Borrowed("parser.pattern")
             }
             Self::ValidateGroup { .. } => Cow::Borrowed("parser.group"),
+            Self::ValidatePointer { .. } => Cow::Borrowed("parser.pointer"),
             Self::ResolveParser { .. } => Cow::Borrowed("parser.type"),
             Self::FindHeader { name }
             | Self::SelectHeader { name }
@@ -111,7 +118,9 @@ impl ParseError {
             | Self::ValidateVersion {}
             | Self::ValidateChecksum {}
             | Self::DecodeHeader { .. }
-            | Self::ValidateHeaderChecksum { .. } => json!({}),
+            | Self::ValidateHeaderChecksum { .. }
+            | Self::DecodeJson { .. }
+            | Self::ValidatePointer {} => json!({}),
         }
     }
 }

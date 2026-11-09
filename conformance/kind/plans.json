@@ -4106,5 +4106,149 @@
         "fields": {}
       }
     }
+  },
+  {
+    "name": "kind.plan.composite_json_fixture",
+    "input": {
+      "operation": "version",
+      "manifest": {
+        "manifest_version": "2.0",
+        "registries": {
+          "main": {
+            "name": "Main",
+            "url_template": "https://origin.test/{artifact}"
+          },
+          "meta": {
+            "name": "Metadata",
+            "url_template": "https://meta.test/{artifact}"
+          }
+        },
+        "mirrors": {},
+        "resources": {
+          "sample": {
+            "name": "Sample",
+            "registry": "main",
+            "tags": [],
+            "default_variants": {
+              "linux-amd64": "stable"
+            },
+            "variants": [
+              {
+                "id": "stable",
+                "name": "Stable",
+                "tag_key": "",
+                "tags": [],
+                "artifacts": {
+                  "linux-amd64": {
+                    "artifact": "pkg-{version}.zip",
+                    "version": {
+                      "type": "remote",
+                      "fallback": {
+                        "version": "v1",
+                        "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+                        "source": {
+                          "release": "fallback-{version}"
+                        }
+                      },
+                      "latest": {
+                        "parts": {
+                          "stable": {
+                            "resource": {
+                              "registry": "meta",
+                              "artifact": "releases/latest"
+                            },
+                            "parser": {
+                              "type": "json",
+                              "pointer": "/tag_name",
+                              "pattern": "^v?([0-9].*)$"
+                            }
+                          },
+                          "commit": {
+                            "resource": {
+                              "registry": "meta",
+                              "artifact": "commits/{release}"
+                            },
+                            "parser": {
+                              "type": "json",
+                              "pointer": "/sha",
+                              "pattern": "^([0-9a-f]{7})[0-9a-f]{33}$"
+                            }
+                          }
+                        },
+                        "format": "{stable}-alpha+sha.{commit}"
+                      },
+                      "checksum": {
+                        "resource": {
+                          "registry": "meta",
+                          "artifact": "checksums.txt"
+                        },
+                        "parser": {
+                          "type": "gnu",
+                          "algorithm": "sha256"
+                        }
+                      }
+                    }
+                  }
+                },
+                "source": {
+                  "release": "latest"
+                }
+              }
+            ]
+          }
+        }
+      },
+      "resource": "sample",
+      "platform": "linux-amd64",
+      "responses": [
+        {
+          "body_file": "fixtures/github-api/clash-rs-commits-latest.txt"
+        },
+        {
+          "body_file": "fixtures/github-api/clash-rs-releases-latest.txt"
+        }
+      ]
+    },
+    "expect": {
+      "ok": {
+        "plan": {
+          "kind": "parsed",
+          "latest": null,
+          "releases": [],
+          "remote": {
+            "parts": [
+              {
+                "name": "commit",
+                "request": {
+                  "canonical_url": "https://meta.test/commits/latest",
+                  "mirror_url": null,
+                  "kind": "parsed"
+                },
+                "parser": {
+                  "type": "json",
+                  "pointer": "/sha",
+                  "pattern": "^([0-9a-f]{7})[0-9a-f]{33}$"
+                }
+              },
+              {
+                "name": "stable",
+                "request": {
+                  "canonical_url": "https://meta.test/releases/latest",
+                  "mirror_url": null,
+                  "kind": "parsed"
+                },
+                "parser": {
+                  "type": "json",
+                  "pointer": "/tag_name",
+                  "pattern": "^v?([0-9].*)$"
+                }
+              }
+            ],
+            "format": "{stable}-alpha+sha.{commit}"
+          }
+        },
+        "version": "0.10.11-alpha+sha.bd22442"
+      }
+    }
   }
 ]
