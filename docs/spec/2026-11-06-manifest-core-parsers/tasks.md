@@ -36,6 +36,7 @@
 | PR-B2 | B2 → B3 → B4           | B1     | P2     | 模板引擎、计划与 `ChecksumKind`、参考差分 |
 | PR-C  | C1 → C2 → C3           | B2     | P2     | wasm、runtime、Node 一致性测试            |
 | PR-C4 | C4                     | C      | P2     | 构建期下载校验胶水脚本                    |
+| —     | D0                     | —      | P3     | 移除 Clash Premium（design §9.3）         |
 | —     | D1 到 D6               | C      | P3     | 里程碑卡，开工前细化                      |
 
 ---
@@ -342,9 +343,10 @@
 
 ## 里程碑卡（开工前细化为同粒度卡）
 
-### D1 到 D6 — 编译器、快照与签名
+### D0 到 D6 — 编译器、快照与签名
 
 - 见 design §9 表格。
 - D2 的确定性判据：同一组输入两次编译，输出逐字节相同；写出 `"2.0"`。
-- D4 开工前先采集 `latest/version.txt` 的实际响应作为 fixture（O-4）。
-- D5 签名另出 spec，范围只覆盖 manifest 本身（O-2）。
+- D4 按 design §9.2 扩展多响应组合版本；采集 `ibigbug/clash-rs` 的 `commits/latest` 与 `releases/latest` 响应作为 fixture（O-4）。
+- D5 按 design §9.1 接入 minisign，范围只覆盖 manifest 本身（O-2）。
+- D0 按 design §9.3 移除 Clash Premium，不依赖其他 D 里程碑。
