@@ -7,7 +7,7 @@ use manifest_metadata::{
 };
 use manifest_parser::{
     CompiledVersionParser, Limits, ParseError, RemoteChecksumParser, RemoteResponse,
-    RemoteVersionParser, ResourceChecksum,
+    RemoteVersionParser, ResourceChecksum, VersionLabel,
 };
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
@@ -270,9 +270,12 @@ impl RequestPlan {
     }
 }
 
+/// One remote version request and the parser for its response.
 #[derive(Debug, Clone, Serialize, Type)]
 #[must_use]
-pub struct RemoteVersionPlan {
+pub struct VersionPartPlan {
+    /// The part name of a composite version; absent for a single response.
+    name: Option<String>,
     request: RequestPlan,
     parser: RemoteVersionParser,
     #[serde(skip)]
@@ -280,7 +283,11 @@ pub struct RemoteVersionPlan {
     compiled: CompiledVersionParser,
 }
 
-impl RemoteVersionPlan {
+impl VersionPartPlan {
+    #[must_use]
+    pub fn name(&self) -> Option<&str> {
+        self.name.as_deref()
+    }
     #[must_use = "request plans must be inspected"]
     pub fn request(&self) -> &RequestPlan {
         &self.request
@@ -288,6 +295,27 @@ impl RemoteVersionPlan {
     #[must_use]
     pub fn parser(&self) -> &CompiledVersionParser {
         &self.compiled
+    }
+}
+
+/// The requests that resolve a remote version. The host performs every part's
+/// request and passes the responses, in order, to [`finish_version`].
+#[derive(Debug, Clone, Serialize, Type)]
+#[must_use]
+pub struct RemoteVersionPlan {
+    parts: Vec<VersionPartPlan>,
+    /// Combines composite part results; absent for a single response.
+    format: Option<String>,
+}
+
+impl RemoteVersionPlan {
+    #[must_use = "request plans must be inspected"]
+    pub fn parts(&self) -> &[VersionPartPlan] {
+        &self.parts
+    }
+    #[must_use]
+    pub fn format(&self) -> Option<&str> {
+        self.format.as_deref()
     }
 }
 
@@ -491,9 +519,13 @@ pub fn plan_version(
                 latest: None,
                 releases: Vec::new(),
                 remote: Some(RemoteVersionPlan {
-                    request,
-                    parser: version.parser.clone(),
-                    compiled,
+                    parts: vec![VersionPartPlan {
+                        name: None,
+                        request,
+                        parser: version.parser.clone(),
+                        compiled,
+                    }],
+                    format: None,
                 }),
             })
         }
@@ -805,6 +837,88 @@ fn encode_uri_component(value: &str) -> String {
         }
     }
     encoded
+}
+
+#[derive(Debug, Snafu, Type)]
+#[non_exhaustive]
+#[must_use]
+pub enum FinishVersionError {
+    #[snafu(display("expected {expected} version responses, got {actual}"))]
+    CountResponses {
+        #[specta(type = u32)]
+        expected: usize,
+        #[specta(type = u32)]
+        actual: usize,
+    },
+    #[snafu(display("cannot parse version response {index}: {source}"))]
+    ParsePart {
+        #[specta(type = u32)]
+        index: usize,
+        #[specta(skip)]
+        source: ParseError,
+    },
+}
+
+impl FinishVersionError {
+    #[must_use]
+    pub fn code(&self) -> &'static str {
+        match self {
+            Self::CountResponses { .. } => "resolve.version_responses",
+            Self::ParsePart { source, .. } => source.code(),
+        }
+    }
+
+    /// Parser paths are rooted at `response`; they are re-rooted at the
+    /// failing entry of `responses`.
+    #[must_use]
+    pub fn path(&self) -> Cow<'_, str> {
+        match self {
+            Self::CountResponses { .. } => "arg.responses".into(),
+            Self::ParsePart { index, source } => {
+                let path = source.path();
+                match path.strip_prefix("response.") {
+                    Some(rest) => format!("responses[{index}].{rest}").into(),
+                    None => path.into_owned().into(),
+                }
+            }
+        }
+    }
+
+    #[must_use]
+    pub fn fields(&self) -> Value {
+        match self {
+            Self::CountResponses { expected, actual } => {
+                json!({ "expected": expected, "actual": actual })
+            }
+            Self::ParsePart { source, .. } => source.fields(),
+        }
+    }
+}
+
+/// Parses the responses of a remote version plan, one per part in plan order.
+#[must_use = "version parsing errors must be handled"]
+pub fn finish_version(
+    plan: &RemoteVersionPlan,
+    responses: &[RemoteResponse<'_>],
+) -> Result<VersionLabel, FinishVersionError> {
+    if responses.len() != plan.parts.len() {
+        return Err(FinishVersionError::CountResponses {
+            expected: plan.parts.len(),
+            actual: responses.len(),
+        });
+    }
+    let mut versions = plan
+        .parts
+        .iter()
+        .zip(responses)
+        .enumerate()
+        .map(|(index, (part, response))| {
+            part.compiled
+                .parse(response)
+                .map_err(|source| FinishVersionError::ParsePart { index, source })
+        })
+        .collect::<Result<Vec<_>, _>>()?;
+    Ok(versions.remove(0))
 }
 
 #[must_use = "checksum parsing errors must be handled"]

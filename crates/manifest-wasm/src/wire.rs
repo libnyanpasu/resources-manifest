@@ -78,7 +78,7 @@ impl LimitsInput {
 ///
 /// Each header entry is one header line or a client-combined comma list;
 /// duplicates and order are kept (design §5.3).
-#[derive(Debug, Type)]
+#[derive(Debug, Deserialize, Type)]
 pub struct RemoteResponseInput {
     pub body: String,
     #[specta(optional)]

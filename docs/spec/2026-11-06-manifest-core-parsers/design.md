@@ -571,7 +571,7 @@ kind 列表按 manifest 中 variant 顺序，仅列出支持目标平台的 `{ v
 
 ### 8.1 C1 `manifest-wasm`
 
-- `crate-type = ["cdylib", "rlib"]`（rlib 供 schema generator 导出边界类型）；导出 `validateManifest`、`artifactChecksumKind`、`selectVariant`、`planVersion`、`planDownload`、`parseVersion`、`finishChecksum`、`checkPolicy`。
+- `crate-type = ["cdylib", "rlib"]`（rlib 供 schema generator 导出边界类型）；导出 `validateManifest`、`artifactChecksumKind`、`selectVariant`、`planVersion`、`planDownload`、`parseVersion`、`finishVersion`（D4a）、`finishChecksum`、`checkPolicy`。
 - 值的转换全部在 Rust 中完成，crate 不含 inline JS：输入经 js-sys 读成 `serde_json::Value` 快照后由 serde 解码；
   输出用 `serde_json` 序列化为 JSON 文本，再由 `JSON.parse` 生成普通 JS 对象。
   任意键 map（source、resources、registries、mirrors 等）的 `__proto__` 键作为自有数据属性保留，不调用原型 setter。
@@ -589,6 +589,7 @@ kind 列表按 manifest 中 variant 顺序，仅列出支持目标平台的 `{ v
   | `planVersion(selected: SelectedArtifact, options?: { source?: SourceVariables, mirror?: string }, limits?: LimitsInput)`                                                            | `VersionPlan` 句柄                              |
   | `planDownload(selected: SelectedArtifact, options?: { version?: string, source?: SourceVariables, mirror?: string, checksum_mode?: "remote" \| "snapshot" }, limits?: LimitsInput)` | `DownloadPlan` 句柄                             |
   | `parseVersion(parser: RemoteVersionParser, response: RemoteResponseInput, limits?: LimitsInput)`                                                                                    | 经过 VersionLabel 校验的字符串                  |
+  | `finishVersion(plan: VersionPlan, responses: RemoteResponseInput[])`（D4a）                                                                                                         | 经过 VersionLabel 校验的字符串                  |
   | `finishChecksum(plan: DownloadPlan, response: RemoteResponseInput)`                                                                                                                 | `{ checksum, kind: "parsed" }`                  |
   | `checkPolicy(kind: ChecksumKind, policy?: VerifyPolicy)`                                                                                                                            | `void`（拒绝时抛出）                            |
   | `parseChecksum(parser: RemoteChecksumParser, response: RemoteResponseInput, artifact: string, limits?: LimitsInput)`                                                                | `ResourceChecksum` 字符串                       |
@@ -630,7 +631,7 @@ kind 列表按 manifest 中 variant 顺序，仅列出支持目标平台的 `{ v
   显式 null / undefined 的既有可选参数语义不变；有限 priority 在 ±2^53 边界及之外仍可往返，
   只有绝对值不超过 `Number.MAX_SAFE_INTEGER` 的整数使用 serde 整数序列化，其余使用 f64。
 - `parseVersion` 可直接接收规则以覆盖 C3 的独立 parser 语料（包括编译失败用例）；
-  解析版本请求时从 `versionPlan.value.remote.parser` 取得规则，并传入规划时相同的 Limits。
+  解析版本请求时宿主按 `versionPlan.value.remote.parts` 的顺序请求，把响应交给 `finishVersion`，它沿用规划时的规则与 Limits（D4a，§9.2 第 7 条）。
   它只返回已验证版本字符串，不接收或生成校验可信度。
 - 错误为普通对象（不是 JS Error），`message` 只用于展示，不保证文本稳定。
   `validateManifest` 的语义错误列表统一抛出
@@ -641,7 +642,7 @@ kind 列表按 manifest 中 variant 顺序，仅列出支持目标平台的 `{ v
   其余反序列化失败使用 `wasm.invalid_input`、`fields: {}`，path 为对应参数或字段
   （如 `arg.manifest`、`arg.platform`、`arg.options.checksum_mode`、`response.body`）。
   不含远端 checksum 请求的下载计划传给 `finishChecksum` 时，抛出
-  `wasm.checksum_plan_missing`、`path: "arg.plan"`、`fields: {}`。
+  `wasm.checksum_plan_missing`、`path: "arg.plan"`、`fields: {}`；不含远端版本请求的版本计划传给 `finishVersion` 时，抛出 `wasm.version_plan_missing`，path 与 fields 相同。
   输出序列化失败使用 `wasm.serialization_failed`、`path: "arg.result"`、`fields: {}`。
   core/parser 执行错误保留 §5.6 的 code/path/fields。句柄必须属于当前 wasm 实例且尚未释放。
 - 构建方式：`pnpm build:wasm` 依次执行 `cargo build -p manifest-wasm --target wasm32-unknown-unknown --release` 和 `wasm-bindgen --target web --out-dir packages/manifest-runtime/wasm`。crate 与 CLI 的版本必须一致，并且锁定。
@@ -666,7 +667,7 @@ kind 列表按 manifest 中 variant 顺序，仅列出支持目标平台的 `{ v
 ### 8.4 C4 构建期下载校验胶水脚本（`@manifest/downloader`）
 
 - 命令行用法：`manifest-download --manifest <path|url> --resource <id> --platform <p> [--variant <id> | --tags <a,b>] [--mirror <id>] [--allow-parsed] [--allow-snapshot] --out <dir>`。
-- 流程：获取 manifest → `validateManifest` → 选择 → 打印 kind 与宿主 `VerifyPolicy` 下的 `checkPolicy` 决定（接受或拒绝及原因）→ 按计划用 `globalThis.fetch` 请求 → `parseVersion` / `finishChecksum` → 下载到临时文件 → 用 `node:crypto` 计算 digest 并比对 → 原子地移入 `--out`。
+- 流程：获取 manifest → `validateManifest` → 选择 → 打印 kind 与宿主 `VerifyPolicy` 下的 `checkPolicy` 决定（接受或拒绝及原因）→ 按计划用 `globalThis.fetch` 请求 → `finishVersion` / `finishChecksum` → 下载到临时文件 → 用 `node:crypto` 计算 digest 并比对 → 原子地移入 `--out`。
 - 默认只接受 `authoritative`；遇到 `parsed` 时报 `verify.kind_rejected`，提示可以加 `--allow-parsed`。
 - HTTP 侧的上限（重定向次数、超时、body 大小）与 §5.5 一致；不读取任何未声明的响应头作为 checksum。
 - 所有请求仅接受无 userinfo、无 fragment 的 HTTP(S) URL；重定向的 HTTPS → HTTP 降级在发出下一跳之前报 `http.insecure_redirect`，覆盖 manifest、版本、checksum 和产物。

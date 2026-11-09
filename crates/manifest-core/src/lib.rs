@@ -13,9 +13,10 @@ pub use kind::{
     ChecksumKind, VariantChecksumKind, artifact_checksum_kind, list_variant_checksum_kinds,
 };
 pub use plan::{
-    ChecksumMode, ChecksumPlan, DownloadOptions, DownloadPlan, RemoteVersionPlan, RequestPlan,
-    ResolveError, ResolvedChecksum, VariantSelection, VersionOptions, VersionPlan, finish_checksum,
-    plan_download, plan_version, select_variant,
+    ChecksumMode, ChecksumPlan, DownloadOptions, DownloadPlan, FinishVersionError,
+    RemoteVersionPlan, RequestPlan, ResolveError, ResolvedChecksum, VariantSelection,
+    VersionOptions, VersionPartPlan, VersionPlan, finish_checksum, finish_version, plan_download,
+    plan_version, select_variant,
 };
 pub use verify::{VerifyError, VerifyPolicy, check_policy};
 

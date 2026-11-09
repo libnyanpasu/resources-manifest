@@ -25,7 +25,7 @@ pub use handles::{DownloadPlan, SelectedArtifact, ValidatedManifest, VersionPlan
 pub use manifest::{
     artifact_checksum_kind, list_variant_checksum_kinds, select_variant, validate_manifest,
 };
-pub use parse::{finish_checksum, parse_checksum, parse_version};
+pub use parse::{finish_checksum, finish_version, parse_checksum, parse_version};
 pub use plan::{plan_download, plan_version, render_artifact, render_template};
 pub use verify::{check_policy, compare_digest};
 pub use wire::{LimitsInput, RemoteResponseInput, RenderedArtifact, TemplateValue};

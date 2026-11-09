@@ -129,6 +129,7 @@ export const planDownload = bind(wasm.planDownload);
 export const renderArtifact = bind(wasm.renderArtifact);
 export const renderTemplate = bind(wasm.renderTemplate);
 export const parseVersion = bind(wasm.parseVersion);
+export const finishVersion = bind(wasm.finishVersion);
 export const parseChecksum = bind(wasm.parseChecksum);
 export const finishChecksum = bind(wasm.finishChecksum);
 export const checkPolicy = bind(wasm.checkPolicy);

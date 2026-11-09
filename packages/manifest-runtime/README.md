@@ -19,7 +19,8 @@ therefore builds wasm first.
 ## API and ownership
 
 Exports include `validateManifest`, `artifactChecksumKind`, `selectVariant`,
-`planVersion`, `planDownload`, `parseVersion`, `finishChecksum`, and `checkPolicy`.
+`planVersion`, `planDownload`, `parseVersion`, `finishVersion`, `finishChecksum`,
+and `checkPolicy`.
 Structured wasm errors become `ManifestRuntimeError`, retaining `code`, `path`,
 `message`, and `fields`; other exceptions are rethrown unchanged.
 

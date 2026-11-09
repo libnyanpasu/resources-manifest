@@ -40,6 +40,19 @@ export type DownloadPlan = {
   checksum_request: ChecksumPlan | null;
 };
 
+export type FinishVersionError =
+  | ({
+      CountResponses: {
+        expected: number;
+        actual: number;
+      };
+    } & { ParsePart?: never })
+  | ({
+      ParsePart: {
+        index: number;
+      };
+    } & { CountResponses?: never });
+
 /**
  *  Optional overrides that can only lower the default parser and render limits
  *  (design §5.5).
@@ -64,9 +77,14 @@ export type RemoteResponseInput = {
   headers?: [string, string][] | null;
 };
 
+/**
+ *  The requests that resolve a remote version. The host performs every part's
+ *  request and passes the responses, in order, to [`finish_version`].
+ */
 export type RemoteVersionPlan = {
-  request: RequestPlan;
-  parser: RemoteVersionParser;
+  parts: VersionPartPlan[];
+  /**  Combines composite part results; absent for a single response. */
+  format: string | null;
 };
 
 /**  A rendered artifact name and its canonical download URL. */
@@ -338,6 +356,14 @@ export type VerifyPolicy = {
 export type VersionOptions = {
   source?: { [key in string]: string } | null;
   mirror?: string | null;
+};
+
+/**  One remote version request and the parser for its response. */
+export type VersionPartPlan = {
+  /**  The part name of a composite version; absent for a single response. */
+  name: string | null;
+  request: RequestPlan;
+  parser: RemoteVersionParser;
 };
 
 export type VersionPlan = {

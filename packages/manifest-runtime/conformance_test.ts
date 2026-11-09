@@ -17,6 +17,7 @@ import {
   checkPolicy,
   compareDigest,
   finishChecksum,
+  finishVersion,
   listVariantChecksumKinds,
   parseChecksum,
   parseVersion,
@@ -57,6 +58,8 @@ interface PlanInput extends DownloadOptions {
   variant_id?: string;
   tags?: string[];
   response?: RemoteResponseInput;
+  /** Version responses, one per plan part; `response` is a single-part shorthand. */
+  responses?: RemoteResponseInput[];
   limits?: LimitsInput;
 }
 interface ArtifactInput extends PlanInput {
@@ -271,16 +274,10 @@ function kind(input: unknown): unknown {
         const plan = planVersion(selected, options, options.limits);
         try {
           const value = plan.value;
-          if (!options.response) return value;
-          assert.ok(value.remote);
-          return {
-            plan: value,
-            version: parseVersion(
-              value.remote.parser,
-              options.response,
-              options.limits,
-            ),
-          };
+          const responses =
+            options.responses ?? (options.response && [options.response]);
+          if (!responses) return value;
+          return { plan: value, version: finishVersion(plan, responses) };
         } finally {
           plan.free();
         }

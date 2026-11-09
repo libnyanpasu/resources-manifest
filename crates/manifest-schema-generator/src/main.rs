@@ -8,9 +8,9 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use manifest_core::{
-    ChecksumKind, ChecksumMode, ChecksumPlan, DownloadOptions, DownloadPlan, RemoteVersionPlan,
-    RequestPlan, ResolveError, ResolvedChecksum, RuntimeErrorShape, VariantChecksumKind,
-    VariantSelection, VerifyError, VerifyPolicy, VersionOptions, VersionPlan,
+    ChecksumKind, ChecksumMode, ChecksumPlan, DownloadOptions, DownloadPlan, FinishVersionError,
+    RemoteVersionPlan, RequestPlan, ResolveError, ResolvedChecksum, RuntimeErrorShape,
+    VariantChecksumKind, VariantSelection, VerifyError, VerifyPolicy, VersionOptions, VersionPlan,
 };
 use manifest_metadata::{
     FiniteF64, RESOURCE_MANIFEST_VERSION, ResourceManifest, ResourceManifestTemplate,
@@ -432,6 +432,7 @@ fn export_runtime_typescript() -> Result<PathBuf, Box<dyn Error>> {
         .register::<ChecksumPlan>()
         .register::<DownloadOptions<'_>>()
         .register::<DownloadPlan>()
+        .register::<FinishVersionError>()
         .register::<RemoteVersionPlan>()
         .register::<RequestPlan>()
         .register::<ResolveError>()

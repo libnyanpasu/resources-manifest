@@ -1,10 +1,10 @@
 use std::path::Path;
 
 use manifest_core::{
-    ChecksumKind, ChecksumMode, DownloadOptions, ResolveError, ValidationError, VariantSelection,
-    VerifyError, VerifyPolicy, VersionOptions, artifact_checksum_kind, check_policy,
-    finish_checksum, list_variant_checksum_kinds, plan_download, plan_version, select_variant,
-    validate_manifest,
+    ChecksumKind, ChecksumMode, DownloadOptions, FinishVersionError, ResolveError, ValidationError,
+    VariantSelection, VerifyError, VerifyPolicy, VersionOptions, artifact_checksum_kind,
+    check_policy, finish_checksum, finish_version, list_variant_checksum_kinds, plan_download,
+    plan_version, select_variant, validate_manifest,
 };
 use manifest_metadata::{ResourceManifest, SourceVariables, SupportedPlatform};
 use manifest_parser::{Limits, ParseError, RemoteResponse};
@@ -259,6 +259,15 @@ fn parse_result(result: Result<Value, ParseError>) -> Value {
     }
 }
 
+fn finish_version_result(result: Result<Value, FinishVersionError>) -> Value {
+    match result {
+        Ok(value) => json!({ "ok": value }),
+        Err(error) => {
+            json!({ "error": { "code": error.code(), "path": error.path(), "fields": error.fields() } })
+        }
+    }
+}
+
 fn verify_result(result: Result<(), VerifyError>) -> Value {
     match result {
         Ok(()) => json!({ "ok": true }),
@@ -352,14 +361,35 @@ fn kind_case(input: Value) -> Value {
             },
             &limits,
         );
+        // `response` is shorthand for a single-element `responses`.
+        let inputs: Option<Vec<Value>> = input
+            .get("responses")
+            .map(|responses| responses.as_array().unwrap().clone())
+            .or_else(|| input.get("response").map(|response| vec![response.clone()]));
         return match plan {
-            Ok(plan) if input.get("response").is_some() => parse_result(
-                plan.remote()
+            Ok(plan) if inputs.is_some() => {
+                let owned: Vec<(String, Vec<(String, String)>)> = inputs
                     .unwrap()
-                    .parser()
-                    .parse(&response)
-                    .map(|version| json!({ "plan": plan, "version": version.as_ref() })),
-            ),
+                    .iter()
+                    .map(|response| {
+                        (
+                            response["body"].as_str().unwrap().to_owned(),
+                            response
+                                .get("headers")
+                                .map(|headers| serde_json::from_value(headers.clone()).unwrap())
+                                .unwrap_or_default(),
+                        )
+                    })
+                    .collect();
+                let responses: Vec<_> = owned
+                    .iter()
+                    .map(|(body, headers)| RemoteResponse { body, headers })
+                    .collect();
+                finish_version_result(
+                    finish_version(plan.remote().unwrap(), &responses)
+                        .map(|version| json!({ "plan": plan, "version": version.as_ref() })),
+                )
+            }
             result => resolve_result(result.map(|plan| serde_json::to_value(plan).unwrap())),
         };
     }

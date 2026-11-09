@@ -7,6 +7,7 @@ import {
   artifactChecksumKind,
   checkPolicy,
   finishChecksum,
+  finishVersion,
   parseChecksum,
   parseVersion,
   planDownload,
@@ -282,7 +283,7 @@ test("arbitrary map keys round-trip as own properties", () => {
   using selected = selectVariant(manifest, "__proto__", "linux-amd64");
   using plan = planVersion(selected, { source });
   assert.equal(
-    plan.value.remote?.request.canonical_url,
+    plan.value.remote?.parts[0]?.request.canonical_url,
     "https://origin.test/version.txt",
   );
   value.resources.sample.name = "changed";
@@ -364,7 +365,7 @@ test("selection and checksum plans retain state after parents are freed", () => 
   manifest.free();
   assert.equal(selected.value.id, "stable");
   using version = planVersion(selected);
-  assert.equal(version.value.remote?.parser.type, "text");
+  assert.equal(version.value.remote?.parts[0]?.parser.type, "text");
   using plan = planDownload(selected, { version: "v1" });
   selected[Symbol.dispose]();
   assert.equal(plan.value.artifact, "pkg-v1.zip");
@@ -372,6 +373,33 @@ test("selection and checksum plans retain state after parents are freed", () => 
     checksum: `sha256:${digest}`,
     kind: "parsed",
   });
+});
+
+test("finishVersion parses part responses and needs a remote plan", () => {
+  using manifest = validateManifest(manifestInput());
+  using selected = selectVariant(manifest, "sample", "linux-amd64");
+  using version = planVersion(selected);
+  assert.equal(finishVersion(version, [{ body: " v2\n" }]), "v2");
+  invalid(() => finishVersion(version, "v2" as never), "arg.responses");
+
+  const input = manifestInput();
+  input.resources.sample!.variants[0]!.artifacts["linux-amd64"]!.version = {
+    type: "static",
+    latest: "v1",
+    releases: [{ version: "v1" }],
+  };
+  using staticManifest = validateManifest(input);
+  using staticSelected = selectVariant(staticManifest, "sample", "linux-amd64");
+  using staticVersion = planVersion(staticSelected);
+  assert.throws(
+    () => finishVersion(staticVersion, []),
+    (error: unknown) => {
+      assert.ok(error instanceof ManifestRuntimeError);
+      assert.equal(error.code, "wasm.version_plan_missing");
+      assert.equal(error.path, "arg.plan");
+      return true;
+    },
+  );
 });
 
 test("undefined object entries read as missing fields", () => {

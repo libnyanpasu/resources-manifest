@@ -435,18 +435,119 @@
           "latest": null,
           "releases": [],
           "remote": {
-            "request": {
-              "canonical_url": "https://meta.test/version.txt",
-              "mirror_url": null,
-              "kind": "parsed"
-            },
-            "parser": {
-              "type": "text",
-              "trim": true
-            }
+            "parts": [
+              {
+                "name": null,
+                "request": {
+                  "canonical_url": "https://meta.test/version.txt",
+                  "mirror_url": null,
+                  "kind": "parsed"
+                },
+                "parser": {
+                  "type": "text",
+                  "trim": true
+                }
+              }
+            ],
+            "format": null
           }
         },
         "version": "v3"
+      }
+    }
+  },
+  {
+    "name": "kind.plan.version_response_count",
+    "input": {
+      "operation": "version",
+      "manifest": {
+        "manifest_version": "2.0",
+        "registries": {
+          "main": {
+            "name": "Main",
+            "url_template": "https://origin.test/{artifact}"
+          },
+          "meta": {
+            "name": "Metadata",
+            "url_template": "https://meta.test/{artifact}"
+          }
+        },
+        "mirrors": {},
+        "resources": {
+          "sample": {
+            "name": "Sample",
+            "registry": "main",
+            "tags": [],
+            "default_variants": {
+              "linux-amd64": "stable"
+            },
+            "variants": [
+              {
+                "id": "stable",
+                "name": "Stable",
+                "tag_key": "",
+                "tags": [],
+                "artifacts": {
+                  "linux-amd64": {
+                    "artifact": "pkg-{version}.zip",
+                    "version": {
+                      "type": "remote",
+                      "fallback": {
+                        "version": "v1",
+                        "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+                        "source": {
+                          "release": "fallback-{version}"
+                        }
+                      },
+                      "version": {
+                        "resource": {
+                          "registry": "meta",
+                          "artifact": "version.txt"
+                        },
+                        "parser": {
+                          "type": "text",
+                          "trim": true
+                        }
+                      },
+                      "checksum": {
+                        "resource": {
+                          "registry": "meta",
+                          "artifact": "checksums.txt"
+                        },
+                        "parser": {
+                          "type": "gnu",
+                          "algorithm": "sha256"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "resource": "sample",
+      "platform": "linux-amd64",
+      "responses": [
+        {
+          "body": " v3\n",
+          "headers": []
+        },
+        {
+          "body": " v3\n",
+          "headers": []
+        }
+      ]
+    },
+    "expect": {
+      "error": {
+        "code": "resolve.version_responses",
+        "path": "arg.responses",
+        "fields": {
+          "expected": 1,
+          "actual": 2
+        }
       }
     }
   },
@@ -2476,15 +2577,21 @@
         "latest": null,
         "releases": [],
         "remote": {
-          "request": {
-            "canonical_url": "https://meta.test/version.txt",
-            "mirror_url": "https://edge.test/https://meta.test/version.txt",
-            "kind": "parsed"
-          },
-          "parser": {
-            "type": "text",
-            "trim": true
-          }
+          "parts": [
+            {
+              "name": null,
+              "request": {
+                "canonical_url": "https://meta.test/version.txt",
+                "mirror_url": "https://edge.test/https://meta.test/version.txt",
+                "kind": "parsed"
+              },
+              "parser": {
+                "type": "text",
+                "trim": true
+              }
+            }
+          ],
+          "format": null
         }
       }
     }
@@ -2881,15 +2988,21 @@
         "latest": null,
         "releases": [],
         "remote": {
-          "request": {
-            "canonical_url": "https://meta.test/sample-linux-amd64-remote.txt",
-            "mirror_url": null,
-            "kind": "parsed"
-          },
-          "parser": {
-            "type": "text",
-            "trim": true
-          }
+          "parts": [
+            {
+              "name": null,
+              "request": {
+                "canonical_url": "https://meta.test/sample-linux-amd64-remote.txt",
+                "mirror_url": null,
+                "kind": "parsed"
+              },
+              "parser": {
+                "type": "text",
+                "trim": true
+              }
+            }
+          ],
+          "format": null
         }
       }
     }
@@ -2980,16 +3093,22 @@
           "latest": null,
           "releases": [],
           "remote": {
-            "request": {
-              "canonical_url": "https://meta.test/version.txt",
-              "mirror_url": null,
-              "kind": "parsed"
-            },
-            "parser": {
-              "type": "regex",
-              "pattern": "v([0-9]+)",
-              "group": 0
-            }
+            "parts": [
+              {
+                "name": null,
+                "request": {
+                  "canonical_url": "https://meta.test/version.txt",
+                  "mirror_url": null,
+                  "kind": "parsed"
+                },
+                "parser": {
+                  "type": "regex",
+                  "pattern": "v([0-9]+)",
+                  "group": 0
+                }
+              }
+            ],
+            "format": null
           }
         },
         "version": "v42"
@@ -3080,7 +3199,7 @@
     "expect": {
       "error": {
         "code": "parser.body_too_large",
-        "path": "response.body",
+        "path": "responses[0].body",
         "fields": {
           "limit": 2,
           "actual": 3
