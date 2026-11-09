@@ -1,0 +1,23 @@
+---
+import Viewer from "../components/Viewer.svelte";
+import "../styles.css";
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="Inspect a clash-nyanpasu resource manifest: artifacts, versions, checksum kinds, download URLs and host selection."
+    />
+    <title>Manifest viewer</title>
+  </head>
+  <body>
+    <Viewer client:only="svelte" />
+    <noscript>
+      This viewer runs the manifest core in your browser and needs JavaScript.
+    </noscript>
+  </body>
+</html>

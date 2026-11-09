@@ -20,9 +20,10 @@ retirement of the upstream scripts are recorded in the design documents.
 | `crates/manifest-wasm`             | Thin wasm-bindgen adapter for the Rust semantics.                                                                                                                                                       |
 | `crates/manifest-schema-generator` | Generates metadata TS types, version constants, JSON schemas, and runtime plan types.                                                                                                                   |
 | `packages/manifest-metadata`       | Pure TypeScript structural contracts and generated schemas; see its [contract guide](packages/manifest-metadata/README.md).                                                                             |
-| `packages/manifest-runtime`        | Node facade loading wasm and exposing shared semantics and opaque handles.                                                                                                                              |
+| `packages/manifest-runtime`        | Node and browser facade loading wasm and exposing shared semantics and opaque handles.                                                                                                                  |
 | `packages/manifest-generator`      | Node CLI capturing GitHub releases, observing alpha versions through the manifest's own plans, and compiling through runtime; HTTP in `http.ts`.                                                        |
 | `packages/manifest-downloader`     | Node CLI selecting, planning, and verifying downloads through runtime; HTTP in `http.ts`, streaming temporary files, verified atomic output.                                                            |
+| `packages/manifest-viewer`         | Astro and Svelte page inspecting a manifest in the browser through runtime; deployed to GitHub Pages.                                                                                                   |
 | `scripts/src/`                     | Repository automation grouped by responsibility; see the [task table](scripts/README.md).                                                                                                               |
 | `conformance/`                     | Language-neutral corpus shared by Rust and Node, plus fixed HTML fixtures and reference goldens.                                                                                                        |
 | `docs/development/`                | Current development rules for contributors and agents.                                                                                                                                                  |
@@ -32,7 +33,8 @@ retirement of the upstream scripts are recorded in the design documents.
 Root `Cargo.toml` declares `crates/*` and centralizes dependency versions in
 `[workspace.dependencies]`. Root `pnpm-workspace.yaml` declares `packages/*`;
 cross-package dependencies use package names and `workspace:*`. Root `tsconfig.json`
-checks all packages and scripts with `module: nodenext`.
+checks all packages except the viewer, and scripts, with `module: nodenext`; the
+viewer is checked by its own `svelte-check` under `pnpm run typecheck`.
 
 ## Requirements
 
@@ -46,7 +48,8 @@ checks all packages and scripts with `module: nodenext`.
 TypeScript must use erasable syntax and `.ts` relative imports. Packages export
 source without a build step. Node does not strip types from `.ts` in `node_modules`,
 so these packages currently support workspace use; publishing needs a build step.
-Runtime targets Node build scripts, not browsers or Tauri webviews.
+Runtime's main entry targets Node build scripts; its `@manifest/runtime/web` entry
+serves pages bundled by Vite, such as the viewer. Tauri webviews are not supported.
 
 ## Get started
 

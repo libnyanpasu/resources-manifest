@@ -13,5 +13,6 @@
     "resolveJsonModule": true,
     "skipLibCheck": true
   },
-  "include": ["packages/*/**/*.ts", "scripts/src/**/*.ts"]
+  "include": ["packages/*/**/*.ts", "scripts/src/**/*.ts"],
+  "exclude": ["packages/manifest-viewer"]
 }

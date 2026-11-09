@@ -1,0 +1,23 @@
+{
+  "name": "@manifest/viewer",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview",
+    "check": "svelte-check --tsconfig ./tsconfig.json --fail-on-warnings"
+  },
+  "dependencies": {
+    "@manifest/metadata": "workspace:*",
+    "@manifest/runtime": "workspace:*"
+  },
+  "devDependencies": {
+    "@astrojs/svelte": "9.1.0",
+    "astro": "7.3.5",
+    "svelte": "5.57.2",
+    "svelte-check": "4.7.7",
+    "typescript": "6.0.3"
+  }
+}
