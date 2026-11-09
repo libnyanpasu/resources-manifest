@@ -158,7 +158,7 @@ test("compiled manifest schema accepts unknown fields at every object level", ()
     "mirror",
   ] as const) {
     const extended = structuredClone(referenceManifest);
-    const resource = extended.resources.clash_premium;
+    const resource = extended.resources.clash_rs;
     const variant = resource.variants[0];
     const nodes = {
       manifest: extended,

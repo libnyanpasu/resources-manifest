@@ -1033,9 +1033,9 @@ mod tests {
             serde_json::from_value(reference.clone()).expect("deserialize reference manifest");
         for path in [
             "",
-            "/resources/clash_premium",
-            "/resources/clash_premium/variants/0",
-            "/resources/clash_premium/variants/0/artifacts/windows-x86_64",
+            "/resources/clash_rs",
+            "/resources/clash_rs/variants/0",
+            "/resources/clash_rs/variants/0/artifacts/windows-x86_64",
             "/registries/github-release",
             "/mirrors/direct",
         ] {
