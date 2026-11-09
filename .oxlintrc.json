@@ -1,4 +1,10 @@
 {
   "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "ignorePatterns": ["files/", "target/", "packages/manifest-runtime/wasm/"]
+  "ignorePatterns": [
+    "files/",
+    "target/",
+    "packages/manifest-runtime/wasm/",
+    "packages/manifest-viewer/dist/",
+    "packages/manifest-viewer/.astro/"
+  ]
 }

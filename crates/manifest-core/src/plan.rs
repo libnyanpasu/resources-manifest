@@ -2,12 +2,12 @@ use std::borrow::Cow;
 use std::collections::BTreeSet;
 
 use manifest_metadata::{
-    RemoteResourceTemplate, ResourceArtifactVersionTemplate, ResourceStaticReleaseTemplate,
-    SourceVariables, SupportedPlatform,
+    RemoteResourceTemplate, RemoteVersionTemplate, ResourceArtifactVersionTemplate,
+    ResourceStaticReleaseTemplate, SourceVariables, SupportedPlatform,
 };
 use manifest_parser::{
     CompiledVersionParser, Limits, ParseError, RemoteChecksumParser, RemoteResponse,
-    RemoteVersionParser, ResourceChecksum,
+    RemoteVersionParser, ResourceChecksum, VersionLabel,
 };
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
@@ -19,7 +19,7 @@ use crate::render::{render, validate_literal, validate_url};
 use crate::scope::{Scope, merge, registry_scope};
 use crate::{
     ArtifactRenderOptions, ChecksumKind, RenderError, SelectedArtifact, TemplateValue,
-    ValidatedManifest, artifact_checksum_kind,
+    ValidatedManifest, artifact_checksum_kind, render_template,
 };
 
 #[derive(Debug, Snafu, Type)]
@@ -270,9 +270,12 @@ impl RequestPlan {
     }
 }
 
+/// One remote version request and the parser for its response.
 #[derive(Debug, Clone, Serialize, Type)]
 #[must_use]
-pub struct RemoteVersionPlan {
+pub struct VersionPartPlan {
+    /// The part name of a composite version; absent for a single response.
+    name: Option<String>,
     request: RequestPlan,
     parser: RemoteVersionParser,
     #[serde(skip)]
@@ -280,7 +283,11 @@ pub struct RemoteVersionPlan {
     compiled: CompiledVersionParser,
 }
 
-impl RemoteVersionPlan {
+impl VersionPartPlan {
+    #[must_use]
+    pub fn name(&self) -> Option<&str> {
+        self.name.as_deref()
+    }
     #[must_use = "request plans must be inspected"]
     pub fn request(&self) -> &RequestPlan {
         &self.request
@@ -288,6 +295,30 @@ impl RemoteVersionPlan {
     #[must_use]
     pub fn parser(&self) -> &CompiledVersionParser {
         &self.compiled
+    }
+}
+
+/// The requests that resolve a remote version. The host performs every part's
+/// request and passes the responses, in order, to [`finish_version`].
+#[derive(Debug, Clone, Serialize, Type)]
+#[must_use]
+pub struct RemoteVersionPlan {
+    parts: Vec<VersionPartPlan>,
+    /// Combines composite part results; absent for a single response.
+    format: Option<String>,
+    #[serde(skip)]
+    #[specta(skip)]
+    limits: Limits,
+}
+
+impl RemoteVersionPlan {
+    #[must_use = "request plans must be inspected"]
+    pub fn parts(&self) -> &[VersionPartPlan] {
+        &self.parts
+    }
+    #[must_use]
+    pub fn format(&self) -> Option<&str> {
+        self.format.as_deref()
     }
 }
 
@@ -434,11 +465,14 @@ impl DownloadPlan {
 #[must_use = "unsupported parsers must be handled"]
 fn check_support(selected: &SelectedArtifact<'_>) -> Result<(), ResolveError> {
     if let ResourceArtifactVersionTemplate::Remote {
-        version, checksum, ..
+        latest, checksum, ..
     } = &selected.artifact.version
     {
-        let unsupported = if let RemoteVersionParser::Unsupported { parser_type } = &version.parser
-        {
+        let unsupported = if let Some(parser_type) =
+            latest.parts().find_map(|(_, part)| match &part.parser {
+                RemoteVersionParser::Unsupported { parser_type } => Some(parser_type),
+                _ => None,
+            }) {
             Some(parser_type)
         } else if let Some(checksum) = checksum
             && let RemoteChecksumParser::Unsupported { parser_type } = &checksum.parser
@@ -456,10 +490,43 @@ fn check_support(selected: &SelectedArtifact<'_>) -> Result<(), ResolveError> {
     Ok(())
 }
 
+/// The mirror applied to a plan's requests.
+#[derive(Debug, Clone, Copy)]
+pub(crate) struct Mirror<'a> {
+    pub(crate) id: Option<&'a str>,
+    /// When set, requests whose registry the mirror does not serve keep only
+    /// their canonical URL instead of failing with `resolve.mirror_not_allowed`.
+    pub(crate) eligible_only: bool,
+}
+
+impl<'a> Mirror<'a> {
+    fn required(id: Option<&'a str>) -> Self {
+        Self {
+            id,
+            eligible_only: false,
+        }
+    }
+}
+
 #[must_use = "version planning errors must be handled"]
 pub fn plan_version(
     selected: &SelectedArtifact<'_>,
     options: VersionOptions<'_>,
+    limits: &Limits,
+) -> Result<VersionPlan, ResolveError> {
+    plan_version_with(
+        selected,
+        options.source,
+        Mirror::required(options.mirror),
+        limits,
+    )
+}
+
+#[must_use = "version planning errors must be handled"]
+pub(crate) fn plan_version_with(
+    selected: &SelectedArtifact<'_>,
+    source: Option<&SourceVariables>,
+    mirror: Mirror<'_>,
     limits: &Limits,
 ) -> Result<VersionPlan, ResolveError> {
     check_support(selected)?;
@@ -471,29 +538,48 @@ pub fn plan_version(
             releases: releases.clone(),
             remote: None,
         }),
-        ResourceArtifactVersionTemplate::Remote { version, .. } => {
-            let compiled = version
-                .parser
-                .compile(limits)
-                .map_err(|source| ResolveError::CompileParser { source })?;
-            let values = version_values(selected, options.source)?;
-            let request = remote_request(
-                selected,
-                &version.resource,
-                &values,
-                &format!("{}.version.version.resource", selected.path()),
-                options.mirror,
-                kind,
-                limits,
-            )?;
+        ResourceArtifactVersionTemplate::Remote { latest, .. } => {
+            let values = version_values(selected, source)?;
+            let parts = latest
+                .parts()
+                .map(|(name, part)| {
+                    let compiled = part
+                        .parser
+                        .compile(limits)
+                        .map_err(|source| ResolveError::CompileParser { source })?;
+                    let path = match name {
+                        Some(name) => format!("{}.version.latest.parts.{name}", selected.path()),
+                        None => format!("{}.version.latest", selected.path()),
+                    };
+                    let request = remote_request(
+                        selected,
+                        &part.resource,
+                        &values,
+                        &format!("{path}.resource"),
+                        mirror,
+                        kind,
+                        limits,
+                    )?;
+                    Ok(VersionPartPlan {
+                        name: name.map(str::to_owned),
+                        request,
+                        parser: part.parser.clone(),
+                        compiled,
+                    })
+                })
+                .collect::<Result<_, ResolveError>>()?;
+            let format = match latest {
+                RemoteVersionTemplate::Single(_) => None,
+                RemoteVersionTemplate::Composite { format, .. } => Some(format.clone()),
+            };
             Ok(VersionPlan {
                 kind,
                 latest: None,
                 releases: Vec::new(),
                 remote: Some(RemoteVersionPlan {
-                    request,
-                    parser: version.parser.clone(),
-                    compiled,
+                    parts,
+                    format,
+                    limits: *limits,
                 }),
             })
         }
@@ -557,6 +643,17 @@ fn insert_builtins<'a>(
 pub fn plan_download(
     selected: &SelectedArtifact<'_>,
     options: DownloadOptions<'_>,
+    limits: &Limits,
+) -> Result<DownloadPlan, ResolveError> {
+    plan_download_with(selected, options, Mirror::required(options.mirror), limits)
+}
+
+/// Like [`plan_download`], with `mirror` in place of `options.mirror`.
+#[must_use = "download planning errors must be handled"]
+pub(crate) fn plan_download_with(
+    selected: &SelectedArtifact<'_>,
+    options: DownloadOptions<'_>,
+    mirror: Mirror<'_>,
     limits: &Limits,
 ) -> Result<DownloadPlan, ResolveError> {
     check_support(selected)?;
@@ -628,7 +725,7 @@ pub fn plan_download(
         &selected.resource.registry,
         rendered.canonical_url(),
         &canonical,
-        options.mirror,
+        mirror,
         kind,
         limits,
     )?;
@@ -639,7 +736,7 @@ pub fn plan_download(
                 &remote.resource,
                 &values,
                 &format!("{}.version.checksum.resource", selected.path()),
-                options.mirror,
+                mirror,
                 kind,
                 limits,
             )
@@ -666,7 +763,7 @@ fn remote_request(
     remote: &RemoteResourceTemplate,
     base: &Scope<'_, TemplateValue<'_>>,
     path: &str,
-    mirror: Option<&str>,
+    mirror: Mirror<'_>,
     kind: ChecksumKind,
     limits: &Limits,
 ) -> Result<RequestPlan, ResolveError> {
@@ -727,65 +824,77 @@ fn request_plan(
     registry: &str,
     canonical_url: &str,
     values: &Scope<'_, TemplateValue<'_>>,
-    mirror: Option<&str>,
+    mirror: Mirror<'_>,
     kind: ChecksumKind,
     limits: &Limits,
 ) -> Result<RequestPlan, ResolveError> {
-    let mirror_url =
-        mirror
-            .map(|id| {
-                let mirror = manifest.manifest().mirrors.get(id).ok_or_else(|| {
+    let mirror =
+        match mirror.id {
+            Some(id) => {
+                let definition = manifest.manifest().mirrors.get(id).ok_or_else(|| {
                     ResolveError::ResolveMirror {
                         mirror: id.to_owned(),
                     }
                 })?;
-                if !crate::scope::mirror_allows(mirror, registry) {
-                    return Err(ResolveError::SelectMirror {
-                        mirror: id.to_owned(),
-                        registry: registry.to_owned(),
-                    });
+                match (
+                    crate::scope::mirror_allows(definition, registry),
+                    mirror.eligible_only,
+                ) {
+                    (true, _) => Some((id, definition)),
+                    (false, true) => None,
+                    (false, false) => {
+                        return Err(ResolveError::SelectMirror {
+                            mirror: id.to_owned(),
+                            registry: registry.to_owned(),
+                        });
+                    }
                 }
-                let url = Url::parse(canonical_url).expect("validated canonical URL");
-                let encoded = encode_uri_component(canonical_url);
-                let port = url.port().map(|port| port.to_string()).unwrap_or_default();
-                let hostname = url.host_str().unwrap_or_default();
-                let host = if port.is_empty() {
-                    hostname.to_owned()
-                } else {
-                    format!("{hostname}:{port}")
-                };
-                let query = url
-                    .query()
-                    .filter(|query| !query.is_empty())
-                    .map(|query| format!("?{query}"))
-                    .unwrap_or_default();
-                let path_and_query = format!("{}{query}", url.path());
-                let mut values = values.clone();
-                for (key, value) in [
-                    ("url", canonical_url),
-                    ("url_encoded", encoded.as_str()),
-                    ("scheme", url.scheme()),
-                    ("host", host.as_str()),
-                    ("hostname", hostname),
-                    ("port", port.as_str()),
-                    ("path", url.path()),
-                    ("pathname", url.path()),
-                    ("query", query.as_str()),
-                    ("path_and_query", path_and_query.as_str()),
-                ] {
-                    values.insert(key, (TemplateValue::Literal(value), format!("arg.{key}")));
-                }
-                let path = format!("mirrors.{id}.url_template");
-                let text = render(
-                    &mirror.url_template,
-                    &values,
-                    &path,
-                    limits,
-                    &mut Vec::new(),
-                )?;
-                Ok(validate_url(&text, &path)?.into())
-            })
-            .transpose()?;
+            }
+            None => None,
+        };
+    let mirror_url = mirror
+        .map(|(id, mirror)| {
+            let url = Url::parse(canonical_url).expect("validated canonical URL");
+            let encoded = encode_uri_component(canonical_url);
+            let port = url.port().map(|port| port.to_string()).unwrap_or_default();
+            let hostname = url.host_str().unwrap_or_default();
+            let host = if port.is_empty() {
+                hostname.to_owned()
+            } else {
+                format!("{hostname}:{port}")
+            };
+            let query = url
+                .query()
+                .filter(|query| !query.is_empty())
+                .map(|query| format!("?{query}"))
+                .unwrap_or_default();
+            let path_and_query = format!("{}{query}", url.path());
+            let mut values = values.clone();
+            for (key, value) in [
+                ("url", canonical_url),
+                ("url_encoded", encoded.as_str()),
+                ("scheme", url.scheme()),
+                ("host", host.as_str()),
+                ("hostname", hostname),
+                ("port", port.as_str()),
+                ("path", url.path()),
+                ("pathname", url.path()),
+                ("query", query.as_str()),
+                ("path_and_query", path_and_query.as_str()),
+            ] {
+                values.insert(key, (TemplateValue::Literal(value), format!("arg.{key}")));
+            }
+            let path = format!("mirrors.{id}.url_template");
+            let text = render(
+                &mirror.url_template,
+                &values,
+                &path,
+                limits,
+                &mut Vec::new(),
+            )?;
+            Ok::<String, ResolveError>(validate_url(&text, &path)?.into())
+        })
+        .transpose()?;
     Ok(RequestPlan {
         canonical_url: canonical_url.to_owned(),
         mirror_url,
@@ -805,6 +914,119 @@ fn encode_uri_component(value: &str) -> String {
         }
     }
     encoded
+}
+
+#[derive(Debug, Snafu, Type)]
+#[non_exhaustive]
+#[must_use]
+pub enum FinishVersionError {
+    #[snafu(display("expected {expected} version responses, got {actual}"))]
+    CountResponses {
+        #[specta(type = u32)]
+        expected: usize,
+        #[specta(type = u32)]
+        actual: usize,
+    },
+    #[snafu(display("cannot parse version response {index}: {source}"))]
+    ParsePart {
+        #[specta(type = u32)]
+        index: usize,
+        #[specta(skip)]
+        source: ParseError,
+    },
+    #[snafu(display("cannot render the version format: {source}"))]
+    RenderFormat {
+        #[specta(skip)]
+        source: RenderError,
+    },
+    #[snafu(display("composed version does not satisfy the version label charset"))]
+    ValidateVersion {},
+}
+
+impl FinishVersionError {
+    #[must_use]
+    pub fn code(&self) -> &'static str {
+        match self {
+            Self::CountResponses { .. } => "resolve.version_responses",
+            Self::ParsePart { source, .. } => source.code(),
+            Self::RenderFormat { source } => source.code(),
+            Self::ValidateVersion {} => "parser.invalid_version",
+        }
+    }
+
+    /// Parser paths are rooted at `response`; they are re-rooted at the
+    /// failing entry of `responses`.
+    #[must_use]
+    pub fn path(&self) -> Cow<'_, str> {
+        match self {
+            Self::CountResponses { .. } => "arg.responses".into(),
+            Self::ParsePart { index, source } => {
+                let path = source.path();
+                match path.strip_prefix("response.") {
+                    Some(rest) => format!("responses[{index}].{rest}").into(),
+                    None => path.into_owned().into(),
+                }
+            }
+            Self::RenderFormat { source } => source.path().into(),
+            Self::ValidateVersion {} => "parser.format".into(),
+        }
+    }
+
+    #[must_use]
+    pub fn fields(&self) -> Value {
+        match self {
+            Self::CountResponses { expected, actual } => {
+                json!({ "expected": expected, "actual": actual })
+            }
+            Self::ParsePart { source, .. } => source.fields(),
+            Self::RenderFormat { source } => source.fields(),
+            Self::ValidateVersion {} => json!({}),
+        }
+    }
+}
+
+/// Parses the responses of a remote version plan, one per part in plan order,
+/// and combines composite part results with the plan's format.
+#[must_use = "version parsing errors must be handled"]
+pub fn finish_version(
+    plan: &RemoteVersionPlan,
+    responses: &[RemoteResponse<'_>],
+) -> Result<VersionLabel, FinishVersionError> {
+    if responses.len() != plan.parts.len() {
+        return Err(FinishVersionError::CountResponses {
+            expected: plan.parts.len(),
+            actual: responses.len(),
+        });
+    }
+    let mut versions = plan
+        .parts
+        .iter()
+        .zip(responses)
+        .enumerate()
+        .map(|(index, (part, response))| {
+            part.compiled
+                .parse(response)
+                .map_err(|source| FinishVersionError::ParsePart { index, source })
+        })
+        .collect::<Result<Vec<_>, _>>()?;
+    let Some(format) = &plan.format else {
+        return Ok(versions.remove(0));
+    };
+    let values = plan
+        .parts
+        .iter()
+        .zip(&versions)
+        .map(|(part, version)| {
+            (
+                part.name.as_deref().expect("composite parts are named"),
+                TemplateValue::Literal(version.as_ref()),
+            )
+        })
+        .collect();
+    render_template(format, &values, "parser.format", &plan.limits)
+        .map_err(|source| FinishVersionError::RenderFormat { source })?
+        .parse()
+        .map_err(|_| FinishVersionError::ValidateVersion {})
 }
 
 #[must_use = "checksum parsing errors must be handled"]

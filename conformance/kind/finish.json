@@ -42,7 +42,7 @@
                           "release": "fallback-{version}"
                         }
                       },
-                      "version": {
+                      "latest": {
                         "resource": {
                           "registry": "meta",
                           "artifact": "version.txt"
@@ -128,7 +128,7 @@
                           "release": "fallback-{version}"
                         }
                       },
-                      "version": {
+                      "latest": {
                         "resource": {
                           "registry": "meta",
                           "artifact": "version.txt"
@@ -218,7 +218,7 @@
                           "release": "fallback-{version}"
                         }
                       },
-                      "version": {
+                      "latest": {
                         "resource": {
                           "registry": "meta",
                           "artifact": "version.txt"
@@ -311,7 +311,7 @@
                           "release": "fallback-{version}"
                         }
                       },
-                      "version": {
+                      "latest": {
                         "resource": {
                           "registry": "meta",
                           "artifact": "version.txt"
@@ -400,7 +400,7 @@
                           "release": "fallback-{version}"
                         }
                       },
-                      "version": {
+                      "latest": {
                         "resource": {
                           "registry": "meta",
                           "artifact": "version.txt"
@@ -493,7 +493,7 @@
                           "release": "fallback-{version}"
                         }
                       },
-                      "version": {
+                      "latest": {
                         "resource": {
                           "registry": "meta",
                           "artifact": "version.txt"

@@ -6,6 +6,8 @@
   "license": "GPL-3.0-only",
   "scripts": {
     "build:wasm": "node scripts/src/wasm/build-wasm.ts",
+    "build:viewer": "pnpm run build:wasm && pnpm --filter @manifest/viewer run build",
+    "dev:viewer": "pnpm run build:wasm && pnpm --filter @manifest/viewer run dev",
     "generate:schema": "cargo run -p manifest-schema-generator && prettier --write packages/manifest-metadata/src/types.ts packages/manifest-metadata/src/version.ts packages/manifest-metadata/schema packages/manifest-runtime/src/types.ts",
     "check:generated": "pnpm run generate:schema && node scripts/src/generate/check-generated-clean.ts packages/manifest-metadata packages/manifest-runtime/src/types.ts",
     "check:conformance": "pnpm run build:wasm && node scripts/src/conformance/check-conformance.ts",
@@ -13,13 +15,15 @@
     "fmt": "prettier --write .",
     "fmt:check": "prettier --check .",
     "lint": "oxlint",
-    "typecheck": "pnpm run build:wasm && tsc --noEmit -p tsconfig.json",
+    "typecheck": "pnpm run build:wasm && tsc --noEmit -p tsconfig.json && pnpm --filter @manifest/viewer run check",
     "test": "pnpm run build:wasm && node --test \"packages/*/*_test.ts\""
   },
   "devDependencies": {
     "@types/node": "26.6.6",
     "oxlint": "1.91.0",
     "prettier": "3.9.10",
+    "prettier-plugin-astro": "1.1.1",
+    "prettier-plugin-svelte": "4.1.1",
     "typescript": "7.0.2"
   },
   "packageManager": "pnpm@12.17.0",

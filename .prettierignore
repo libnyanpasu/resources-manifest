@@ -6,3 +6,5 @@ pnpm-lock.yaml
 crates/manifest-metadata/tests/fixtures/
 .serena/
 conformance/fixtures/github-expanded-assets/*.html
+packages/manifest-viewer/dist/
+packages/manifest-viewer/.astro/

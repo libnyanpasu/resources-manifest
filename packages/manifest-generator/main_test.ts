@@ -6,8 +6,8 @@ import templateSchema from "@manifest/metadata/schema/template" with { type: "js
 const ajv = new Ajv2020({ allErrors: true });
 const validateTemplate = ajv.compile(templateSchema);
 
-test("template schema accepts an authored template with normalizable checksum", () => {
-  const template = {
+function authoredTemplate() {
+  return {
     manifest_version: "2.0",
     registries: {
       "github-release": {
@@ -20,7 +20,12 @@ test("template schema accepts an authored template with normalizable checksum", 
       mihomo: {
         name: "Mihomo",
         registry: "github-release",
+        source: { owner: "MetaCubeX", repo: "mihomo" },
         tags: { "channel:stable": { name: "Stable" } },
+        releases: {
+          stable: { type: "history", limit: 8 },
+          alpha: { type: "tag", tag: "Prerelease-Alpha" },
+        },
         variants: [
           {
             name: "Stable",
@@ -28,14 +33,20 @@ test("template schema accepts an authored template with normalizable checksum", 
             artifacts: {
               "windows-x86_64": {
                 artifact: "mihomo-windows-amd64-{version}.zip",
+                version: { type: "static", releases: "stable" },
+              },
+              "linux-amd64": {
+                artifact: "mihomo-linux-amd64-{version}.gz",
                 version: {
-                  type: "static",
-                  latest: "v1.2.3",
-                  releases: [
-                    // Uppercase hex is accepted as compiler input; the
-                    // compiler normalizes to lowercase on output.
-                    { version: "v1.2.3", checksum: `sha256:${"A".repeat(64)}` },
-                  ],
+                  type: "remote",
+                  releases: "alpha",
+                  latest: {
+                    resource: {
+                      registry: "github-release",
+                      artifact: "version.txt",
+                    },
+                    parser: { type: "text" },
+                  },
                 },
               },
             },
@@ -44,25 +55,33 @@ test("template schema accepts an authored template with normalizable checksum", 
       },
     },
   };
+}
+
+test("template schema accepts release sources and authored artifacts", () => {
+  const template = authoredTemplate();
   assert.ok(
     validateTemplate(template),
     ajv.errorsText(validateTemplate.errors),
   );
 });
 
-test("template checksum accepts any casing the compiler can normalize", () => {
-  const checksum = templateSchema.$defs.ResourceChecksum;
-  const validateChecksum = ajv.compile(checksum);
-
-  assert.ok(validateChecksum(`sha256:${"a".repeat(64)}`));
-  assert.ok(validateChecksum(`SHA256:${"A".repeat(64)}`));
-  assert.ok(validateChecksum(`Sha256:${"Ab".repeat(32)}`));
-  assert.ok(validateChecksum(`MD5:${"F".repeat(32)}`));
-
-  // Still rejects malformed values.
-  assert.equal(validateChecksum("sha256:abcd"), false);
-  assert.equal(validateChecksum(`sha1:${"a".repeat(40)}`), false);
-  assert.equal(validateChecksum(`sha256:${"g".repeat(64)}`), false);
+test("template schema bounds history limits and rejects compiled versions", () => {
+  for (const [limit, valid] of [
+    [1, true],
+    [50, true],
+    [0, false],
+    [51, false],
+  ] as const) {
+    const template = authoredTemplate();
+    template.resources.mihomo.releases.stable.limit = limit;
+    assert.equal(validateTemplate(template), valid, `limit ${limit}`);
+  }
+  const template = authoredTemplate();
+  Object.assign(
+    template.resources.mihomo.variants[0]!.artifacts["windows-x86_64"].version,
+    { latest: "v1", releases: [{ version: "v1" }] },
+  );
+  assert.equal(validateTemplate(template), false);
 });
 
 test("template priority accepts fractions and rejects null", () => {

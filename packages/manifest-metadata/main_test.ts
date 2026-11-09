@@ -3,11 +3,13 @@ import { test } from "node:test";
 import { Ajv2020 } from "ajv/dist/2020.js";
 import templateSchema from "./schema/manifest-template.schema.json" with { type: "json" };
 import manifestSchema from "./schema/manifest.schema.json" with { type: "json" };
+import snapshotSchema from "./schema/manifest-snapshot.schema.json" with { type: "json" };
 import referenceManifest from "../../crates/manifest-metadata/tests/fixtures/resources.json" with { type: "json" };
 
 const ajv = new Ajv2020({ allErrors: true });
 const validateTemplate = ajv.compile(templateSchema);
 const validateManifest = ajv.compile(manifestSchema);
+const validateSnapshot = ajv.compile(snapshotSchema);
 
 const template = {
   manifest_version: "2.0",
@@ -23,17 +25,28 @@ const template = {
       name: "Example",
       registry: "example",
       tags: { stable: { name: "Stable" } },
+      releases: {
+        stable: { type: "history", limit: 8 },
+        alpha: { type: "tag", tag: "alpha" },
+      },
       variants: [
         {
           name: "Stable",
           tags: ["stable"],
           artifacts: {
             "windows-x86_64": {
-              artifact: "example.zip",
+              artifact: "example-{version}.zip",
+              version: { type: "static", releases: "stable" },
+            },
+            "linux-amd64": {
+              artifact: "example-{version}.gz",
               version: {
-                type: "static",
-                latest: "v1",
-                releases: [{ version: "v1" }],
+                type: "remote",
+                releases: "alpha",
+                latest: {
+                  resource: { registry: "example", artifact: "version.txt" },
+                  parser: { type: "text" } as { type: string },
+                },
               },
             },
           },
@@ -62,8 +75,9 @@ for (const schema of [manifestSchema, templateSchema]) {
 }
 
 test("schema IDs are distinct and include the current version path", () => {
-  assert.notEqual(manifestSchema.$id, templateSchema.$id);
-  for (const schema of [manifestSchema, templateSchema]) {
+  const ids = [manifestSchema.$id, templateSchema.$id, snapshotSchema.$id];
+  assert.equal(new Set(ids).size, ids.length);
+  for (const schema of [manifestSchema, templateSchema, snapshotSchema]) {
     assert.ok(schema.$id.includes("/schema/2.0/"), schema.$id);
   }
 });
@@ -73,11 +87,10 @@ test("both schemas reject unknown version parser types", () => {
   const authored = structuredClone(template);
   const remoteVersion =
     compiled.resources.clash_rs.variants[1].artifacts["windows-x86_64"].version;
-  assert.ok(remoteVersion.version);
-  Object.assign(
-    authored.resources.example.variants[0].artifacts["windows-x86_64"],
-    { version: remoteVersion },
-  );
+  assert.ok(typeof remoteVersion.latest === "object");
+  authored.resources.example.variants[0].artifacts[
+    "linux-amd64"
+  ].version.latest = remoteVersion.latest;
   const cases = [
     { validate: validateManifest, fixture: compiled },
     { validate: validateTemplate, fixture: authored },
@@ -86,12 +99,12 @@ test("both schemas reject unknown version parser types", () => {
     assert.ok(validate(fixture), ajv.errorsText(validate.errors));
   }
 
-  remoteVersion.version.parser.type = "future-parser";
+  remoteVersion.latest.parser.type = "future-parser";
   for (const { validate, fixture } of cases) {
     assert.equal(validate(fixture), false);
     assert.ok(
       validate.errors?.some((error) =>
-        error.instancePath.endsWith("/version/version/parser/type"),
+        error.instancePath.endsWith("/version/latest/parser/type"),
       ),
       ajv.errorsText(validate.errors),
     );
@@ -104,13 +117,30 @@ test("template schema rejects unknown fields in template-only types", () => {
     ajv.errorsText(validateTemplate.errors),
   );
 
-  for (const location of ["manifest", "resource", "variant", "tag"] as const) {
+  for (const location of [
+    "manifest",
+    "resource",
+    "variant",
+    "tag",
+    "history",
+    "tag_source",
+    "artifact",
+    "static",
+    "remote",
+  ] as const) {
     const invalid = structuredClone(template);
+    const resource = invalid.resources.example;
+    const artifacts = resource.variants[0].artifacts;
     const nodes = {
       manifest: invalid,
-      resource: invalid.resources.example,
-      variant: invalid.resources.example.variants[0],
-      tag: invalid.resources.example.tags.stable,
+      resource,
+      variant: resource.variants[0],
+      tag: resource.tags.stable,
+      history: resource.releases.stable,
+      tag_source: resource.releases.alpha,
+      artifact: artifacts["windows-x86_64"],
+      static: artifacts["windows-x86_64"].version,
+      remote: artifacts["linux-amd64"].version,
     };
     Object.assign(nodes[location], { unknown_field: true });
     assert.equal(validateTemplate(invalid), false, location);
@@ -158,7 +188,7 @@ test("compiled manifest schema accepts unknown fields at every object level", ()
     "mirror",
   ] as const) {
     const extended = structuredClone(referenceManifest);
-    const resource = extended.resources.clash_premium;
+    const resource = extended.resources.clash_rs;
     const variant = resource.variants[0];
     const nodes = {
       manifest: extended,
@@ -180,19 +210,17 @@ test("template schema accepts unknown fields in shared types", () => {
   for (const location of [
     "registry",
     "mirror",
-    "artifact",
-    "version",
-    "release",
+    "remote_version",
+    "remote_resource",
   ] as const) {
     const extended = structuredClone(template);
-    const artifact =
-      extended.resources.example.variants[0].artifacts["windows-x86_64"];
+    const remote =
+      extended.resources.example.variants[0].artifacts["linux-amd64"].version;
     const nodes = {
       registry: extended.registries.example,
       mirror: extended.mirrors.direct,
-      artifact,
-      version: artifact.version,
-      release: artifact.version.releases[0],
+      remote_version: remote.latest,
+      remote_resource: remote.latest.resource,
     };
     Object.assign(nodes[location], { unknown_field: true });
     assert.ok(
@@ -200,4 +228,41 @@ test("template schema accepts unknown fields in shared types", () => {
       `${location}: ${ajv.errorsText(validateTemplate.errors)}`,
     );
   }
+});
+
+test("snapshot schema accepts captured releases and requires decimal string IDs", () => {
+  const release = {
+    id: "9007199254740993",
+    tag: "v1",
+    url: "https://api.github.com/repos/o/r/releases/1",
+    assets: [
+      {
+        id: "301",
+        name: "pkg-v1.zip",
+        digest: `sha256:${"ab".repeat(32)}`,
+        updated_at: "2026-11-09T00:00:00Z",
+      },
+    ],
+  };
+  const snapshot = {
+    observed_at: "2026-11-09T00:00:00Z",
+    resources: {
+      sample: {
+        stable: { type: "history", releases: [release] },
+        alpha: { type: "tag", release },
+      },
+    },
+  };
+  assert.ok(
+    validateSnapshot(snapshot),
+    ajv.errorsText(validateSnapshot.errors),
+  );
+  for (const id of [1, "", "0x1"]) {
+    const invalid = structuredClone(snapshot);
+    (invalid.resources.sample.stable.releases[0] as { id: unknown }).id = id;
+    assert.equal(validateSnapshot(invalid), false, JSON.stringify(id));
+  }
+  const unknown = structuredClone(snapshot);
+  Object.assign(unknown.resources.sample.alpha, { unknown_field: true });
+  assert.equal(validateSnapshot(unknown), false);
 });

@@ -2,3 +2,5 @@ target/
 node_modules/
 packages/manifest-runtime/wasm/
 files/
+packages/manifest-viewer/dist/
+packages/manifest-viewer/.astro/

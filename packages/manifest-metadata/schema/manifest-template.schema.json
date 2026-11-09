@@ -25,9 +25,6 @@
       "additionalProperties": {
         "$ref": "#/$defs/ResourceTemplate"
       }
-    },
-    "updated_at": {
-      "type": "string"
     }
   },
   "additionalProperties": false,
@@ -131,6 +128,13 @@
           },
           "additionalProperties": false
         },
+        "releases": {
+          "description": "Release source ID → where the releases come from.",
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/$defs/TemplateReleaseSource"
+          }
+        },
         "variants": {
           "type": "array",
           "items": {
@@ -139,7 +143,7 @@
         }
       },
       "additionalProperties": false,
-      "required": ["name", "registry", "tags", "variants"]
+      "required": ["name", "registry", "tags", "releases", "variants"]
     },
     "ResourceTagDefinition": {
       "description": "A tag without its identifier, used by the per-resource tag catalog.",
@@ -157,6 +161,43 @@
       },
       "additionalProperties": false,
       "required": ["name"]
+    },
+    "TemplateReleaseSource": {
+      "description": "Where a resource's releases come from; the generator reads them from the\nGitHub repository named by the resource's `source.owner` and `source.repo`.",
+      "oneOf": [
+        {
+          "description": "The newest `limit` non-draft, non-prerelease releases.",
+          "type": "object",
+          "properties": {
+            "limit": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 50
+            },
+            "type": {
+              "type": "string",
+              "const": "history"
+            }
+          },
+          "additionalProperties": false,
+          "required": ["type", "limit"]
+        },
+        {
+          "description": "One release by tag, usually a mutable prerelease.",
+          "type": "object",
+          "properties": {
+            "tag": {
+              "type": "string"
+            },
+            "type": {
+              "type": "string",
+              "const": "tag"
+            }
+          },
+          "additionalProperties": false,
+          "required": ["type", "tag"]
+        }
+      ]
     },
     "ResourceVariantTemplate": {
       "description": "A variant as authored in the template.",
@@ -186,22 +227,22 @@
           "type": "object",
           "properties": {
             "darwin-arm64": {
-              "$ref": "#/$defs/ResourceArtifactTemplate"
+              "$ref": "#/$defs/TemplateArtifact"
             },
             "darwin-x64": {
-              "$ref": "#/$defs/ResourceArtifactTemplate"
+              "$ref": "#/$defs/TemplateArtifact"
             },
             "linux-aarch64": {
-              "$ref": "#/$defs/ResourceArtifactTemplate"
+              "$ref": "#/$defs/TemplateArtifact"
             },
             "linux-amd64": {
-              "$ref": "#/$defs/ResourceArtifactTemplate"
+              "$ref": "#/$defs/TemplateArtifact"
             },
             "windows-arm64": {
-              "$ref": "#/$defs/ResourceArtifactTemplate"
+              "$ref": "#/$defs/TemplateArtifact"
             },
             "windows-x86_64": {
-              "$ref": "#/$defs/ResourceArtifactTemplate"
+              "$ref": "#/$defs/TemplateArtifact"
             }
           },
           "additionalProperties": false
@@ -210,8 +251,8 @@
       "additionalProperties": false,
       "required": ["name", "tags", "artifacts"]
     },
-    "ResourceArtifactTemplate": {
-      "description": "A platform artifact. The historical string shorthand is intentionally not\nmodeled; the compiler rejects it.",
+    "TemplateArtifact": {
+      "description": "A platform artifact as authored in the template.",
       "type": "object",
       "properties": {
         "artifact": {
@@ -225,50 +266,42 @@
           }
         },
         "version": {
-          "description": "Static traceable versions, or a remote version/checksum resolution plan.",
-          "$ref": "#/$defs/ResourceArtifactVersionTemplate"
+          "$ref": "#/$defs/TemplateArtifactVersion"
         }
       },
+      "additionalProperties": false,
       "required": ["artifact", "version"]
     },
-    "ResourceArtifactVersionTemplate": {
-      "description": "How an artifact's version is resolved.\n\nThe `Remote` plan is intentionally inlined: these types describe a wire\nformat, not a hot data structure.",
+    "TemplateArtifactVersion": {
+      "description": "How an authored artifact is versioned. Static history and remote fallbacks\ncome from the release snapshot at compile time.",
       "oneOf": [
         {
-          "description": "The manifest contains a bounded, traceable release history.",
+          "description": "Bounded history from a `history` release source.",
           "type": "object",
           "properties": {
-            "latest": {
-              "type": "string"
-            },
             "releases": {
-              "description": "Ordered history; the latest entry need not be first, but must exist.",
-              "type": "array",
-              "items": {
-                "$ref": "#/$defs/ResourceStaticReleaseTemplate"
-              }
+              "description": "Release source ID.",
+              "type": "string"
             },
             "type": {
               "type": "string",
               "const": "static"
             }
           },
-          "required": ["type", "latest", "releases"]
+          "additionalProperties": false,
+          "required": ["type", "releases"]
         },
         {
-          "description": "The manifest tells the backend which URLs to request and how to parse\nthe latest version and checksum.",
+          "description": "Remote resolution; the fallback comes from a `tag` release source.",
           "type": "object",
           "properties": {
-            "fallback": {
-              "description": "Snapshot generated with the manifest; consumers should still query remote.",
-              "anyOf": [
-                {
-                  "$ref": "#/$defs/ResourceStaticReleaseTemplate"
-                }
-              ]
+            "releases": {
+              "description": "Release source ID.",
+              "type": "string"
             },
-            "version": {
-              "$ref": "#/$defs/RemoteVersionResourceTemplate"
+            "latest": {
+              "description": "How the latest version is requested and parsed.",
+              "$ref": "#/$defs/RemoteVersionTemplate"
             },
             "checksum": {
               "anyOf": [
@@ -282,40 +315,37 @@
               "const": "remote"
             }
           },
-          "required": ["type", "version"]
+          "additionalProperties": false,
+          "required": ["type", "releases", "latest"]
         }
       ]
     },
-    "ResourceStaticReleaseTemplate": {
-      "description": "A static, traceable release entry.",
-      "type": "object",
-      "properties": {
-        "version": {
-          "type": "string"
+    "RemoteVersionTemplate": {
+      "description": "How a remote artifact's version is requested and parsed.\n\nDecoding picks the composite form when the object has a `format` key and\nthe single-response form otherwise (design §9.2).",
+      "anyOf": [
+        {
+          "description": "One response parsed by one version parser.",
+          "$ref": "#/$defs/RemoteVersionResourceTemplate"
         },
-        "checksum": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/ResourceChecksum"
-            }
-          ]
-        },
-        "published_at": {
-          "type": "string"
-        },
-        "source": {
-          "description": "Per-release variables, for example a release tag that differs from version.",
+        {
+          "description": "Several responses, each parsed by its own part, combined by `format`.",
           "type": "object",
-          "additionalProperties": {
-            "type": "string"
-          }
+          "properties": {
+            "parts": {
+              "description": "Part name → request and parser.",
+              "type": "object",
+              "additionalProperties": {
+                "$ref": "#/$defs/RemoteVersionResourceTemplate"
+              }
+            },
+            "format": {
+              "description": "Authored template that references every part by name.",
+              "type": "string"
+            }
+          },
+          "required": ["parts", "format"]
         }
-      },
-      "required": ["version"]
-    },
-    "ResourceChecksum": {
-      "type": "string",
-      "pattern": "^([mM][dD]5:[a-fA-F0-9]{32}|[sS][hH][aA]256:[a-fA-F0-9]{64}|[sS][hH][aA]512:[a-fA-F0-9]{128})$"
+      ]
     },
     "RemoteVersionResourceTemplate": {
       "type": "object",
@@ -388,6 +418,30 @@
             }
           },
           "required": ["type", "pattern"]
+        },
+        {
+          "description": "Decode the body as JSON and read the string at an RFC 6901 pointer,\noptionally narrowed by a regular expression.",
+          "type": "object",
+          "properties": {
+            "pointer": {
+              "type": "string"
+            },
+            "pattern": {
+              "description": "Applied to the string like the `regex` parser; without it the\nwhole string is the version.",
+              "type": "string"
+            },
+            "group": {
+              "description": "Capture group of `pattern`. Defaults to 1; unused without `pattern`.",
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 4294967295
+            },
+            "type": {
+              "type": "string",
+              "const": "json"
+            }
+          },
+          "required": ["type", "pointer"]
         }
       ]
     },

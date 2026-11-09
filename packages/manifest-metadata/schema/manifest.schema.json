@@ -267,8 +267,9 @@
                 }
               ]
             },
-            "version": {
-              "$ref": "#/$defs/RemoteVersionResourceTemplate"
+            "latest": {
+              "description": "How the latest version is requested and parsed.",
+              "$ref": "#/$defs/RemoteVersionTemplate"
             },
             "checksum": {
               "anyOf": [
@@ -282,7 +283,7 @@
               "const": "remote"
             }
           },
-          "required": ["type", "version"]
+          "required": ["type", "latest"]
         }
       ]
     },
@@ -316,6 +317,33 @@
     "ResourceChecksum": {
       "type": "string",
       "pattern": "^(md5:[a-f0-9]{32}|sha256:[a-f0-9]{64}|sha512:[a-f0-9]{128})$"
+    },
+    "RemoteVersionTemplate": {
+      "description": "How a remote artifact's version is requested and parsed.\n\nDecoding picks the composite form when the object has a `format` key and\nthe single-response form otherwise (design §9.2).",
+      "anyOf": [
+        {
+          "description": "One response parsed by one version parser.",
+          "$ref": "#/$defs/RemoteVersionResourceTemplate"
+        },
+        {
+          "description": "Several responses, each parsed by its own part, combined by `format`.",
+          "type": "object",
+          "properties": {
+            "parts": {
+              "description": "Part name → request and parser.",
+              "type": "object",
+              "additionalProperties": {
+                "$ref": "#/$defs/RemoteVersionResourceTemplate"
+              }
+            },
+            "format": {
+              "description": "Authored template that references every part by name.",
+              "type": "string"
+            }
+          },
+          "required": ["parts", "format"]
+        }
+      ]
     },
     "RemoteVersionResourceTemplate": {
       "type": "object",
@@ -388,6 +416,30 @@
             }
           },
           "required": ["type", "pattern"]
+        },
+        {
+          "description": "Decode the body as JSON and read the string at an RFC 6901 pointer,\noptionally narrowed by a regular expression.",
+          "type": "object",
+          "properties": {
+            "pointer": {
+              "type": "string"
+            },
+            "pattern": {
+              "description": "Applied to the string like the `regex` parser; without it the\nwhole string is the version.",
+              "type": "string"
+            },
+            "group": {
+              "description": "Capture group of `pattern`. Defaults to 1; unused without `pattern`.",
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 4294967295
+            },
+            "type": {
+              "type": "string",
+              "const": "json"
+            }
+          },
+          "required": ["type", "pointer"]
         }
       ]
     },

@@ -69,7 +69,7 @@ Each corpus JSON file is an array of entries such as:
 `response.headers` is an array of `[name, value]` pairs, for example
 `[["X-Checksum-Sha256", "..."], ["x-checksum-sha256", "..."]]`. Preserve casing,
 order, and repeated values rather than converting to an object that merges them.
-Parser objects use manifest `type` tags and field names: version `text`/`regex`;
+Parser objects use manifest `type` tags and field names: version `text`/`regex`/`json`;
 checksum `checksum`/`gnu`/`bsd`/`github-release-assets` and the added `header`.
 Header encoding is `hex` or `base64`, with a lowercase algorithm name. Version
 cases include headers even though version parsers only read the body. Checksum
@@ -145,6 +145,14 @@ expecting `parser.invalid_pattern` with `{ limit, actual }`.
 with a short pattern; `.compiled_size_lowered` checks host lowering. Regex syntax
 or compiled-size failures have `{}` fields; dependency message text is not compared.
 Version-not-found and invalid-version fields are also `{}`.
+
+`version.json.*` cover the R2 `json` parser (design §9.8): pointer escapes and
+RFC 6901 array indices, `pattern` and `group` reuse of the regex rules, missing
+and non-string values (`parser.not_found`), malformed bodies and duplicate keys
+at any depth (`parser.invalid_json`), invalid pointers (`parser.invalid_pointer`
+at `parser.pointer`), and the body limit. `kind.plan.composite_json_fixture`
+derives `0.10.11-alpha+sha.bd22442` from the recorded GitHub API responses, and
+`validate.parser_compile.json_pointer` reports an invalid pointer in a manifest.
 
 Version parsers do not support headers; the helper is not a version parser type.
 `version.text.ignores_conflicting_headers` verifies they are ignored. Rust integration
@@ -254,6 +262,17 @@ are checked before HTML parsing. A `tl::parse` failure maps to invalid-checksum,
 Temporary `ParseError::Unsupported` was removed. Unknown types use
 `ResolveParser { parser_type }`, yielding `resolve.unsupported_parser`,
 `{ parser_type }` with the original tag, and `parser.type`.
+
+`compile/` cases give `{ template, snapshot, now }` and expect either the compiled
+manifest or its errors, compared as a multiset like `validate/`. Both runners
+compile twice and require identical output; Node expects the errors wrapped in
+`compile.failed` at `arg.template`.
+
+Version cases (`kind` plans with `operation: "version"`) pass their responses to
+`finish_version`. `responses` lists one response per plan part; the older
+`response` is shorthand for a single-element list. A response may give
+`body_file`, a path under `conformance/`, instead of an inline `body`; the
+[GitHub API fixtures](fixtures/github-api/README.md) are used this way.
 
 The [GitHub fixture README](fixtures/github-expanded-assets/README.md) records
 real URLs/UTC times, independent lists, and O-3 size measurements.

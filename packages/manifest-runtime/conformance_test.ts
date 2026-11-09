@@ -5,10 +5,12 @@ import { test } from "node:test";
 import { fileURLToPath } from "node:url";
 import type {
   ChecksumAlgorithm,
+  ManifestSnapshot,
   RemoteChecksumParser,
   RemoteVersionParser,
   ResourceArtifactTemplate,
   ResourceManifest,
+  ResourceManifestTemplate,
   SupportedPlatform,
 } from "@manifest/metadata";
 import {
@@ -16,7 +18,9 @@ import {
   artifactChecksumKind,
   checkPolicy,
   compareDigest,
+  compileManifest,
   finishChecksum,
+  finishVersion,
   listVariantChecksumKinds,
   parseChecksum,
   parseVersion,
@@ -49,6 +53,8 @@ interface ParserInput<Parser> {
   artifact: string;
   limits?: LimitsInput;
 }
+/** A response whose body is inline or a captured file under conformance/. */
+type ResponseInput = Partial<RemoteResponseInput> & { body_file?: string };
 interface PlanInput extends DownloadOptions {
   operation: string;
   manifest: unknown;
@@ -57,6 +63,8 @@ interface PlanInput extends DownloadOptions {
   variant_id?: string;
   tags?: string[];
   response?: RemoteResponseInput;
+  /** Version responses, one per plan part; `response` is a single-part shorthand. */
+  responses?: ResponseInput[];
   limits?: LimitsInput;
 }
 interface ArtifactInput extends PlanInput {
@@ -155,6 +163,34 @@ function validation(input: unknown, expect: Expectation): void {
   );
 }
 
+interface CompileInput {
+  template: ResourceManifestTemplate;
+  snapshot: ManifestSnapshot;
+  now: string;
+}
+
+/** Compiles twice, requiring identical results, and compares errors as a multiset. */
+function compilation(input: CompileInput, expect: Expectation): void {
+  const execute = (): Expectation =>
+    result(() => compileManifest(input.template, input.snapshot, input.now));
+  const actual = execute();
+  assert.deepEqual(actual, execute());
+  if ("ok" in expect) {
+    assert.deepEqual(actual, expect);
+    return;
+  }
+  assert.ok("error" in actual);
+  assert.equal(actual.error.code, "compile.failed");
+  assert.equal(actual.error.path, "arg.template");
+  const errors = (actual.error.fields as { errors: StableError[] }).errors.map(
+    ({ code, path, fields }) => ({ code, path, fields }),
+  );
+  assert.deepEqual(
+    errorMultiset(errors),
+    errorMultiset([expect.error, ...(expect.additional_errors ?? [])]),
+  );
+}
+
 function normalizeParser<Parser extends { type: string }>(
   parser: Parser,
 ): Parser {
@@ -212,7 +248,11 @@ function compat(input: ResourceManifest): unknown {
       for (const artifact of Object.values(variant.artifacts)) {
         if (artifact.version.type === "remote") {
           const remote = artifact.version;
-          remote.version.parser = normalizeParser(remote.version.parser);
+          const parts =
+            "parts" in remote.latest
+              ? Object.values(remote.latest.parts)
+              : [remote.latest];
+          for (const part of parts) part.parser = normalizeParser(part.parser);
           if (remote.checksum) {
             remote.checksum.parser = normalizeParser(remote.checksum.parser);
           }
@@ -271,14 +311,19 @@ function kind(input: unknown): unknown {
         const plan = planVersion(selected, options, options.limits);
         try {
           const value = plan.value;
-          if (!options.response) return value;
-          assert.ok(value.remote);
+          const responses: ResponseInput[] | undefined =
+            options.responses ?? (options.response && [options.response]);
+          if (!responses) return value;
           return {
             plan: value,
-            version: parseVersion(
-              value.remote.parser,
-              options.response,
-              options.limits,
+            version: finishVersion(
+              plan,
+              responses.map(({ body_file, ...response }) => ({
+                ...response,
+                body: body_file
+                  ? readFileSync(join(root, body_file), "utf8")
+                  : response.body!,
+              })),
             ),
           };
         } finally {
@@ -436,7 +481,9 @@ function walk(directory: string): void {
     }
     const group = file.split("/")[0];
     assert.ok(
-      ["parsers", "validate", "compat", "kind", "resolve"].includes(group),
+      ["parsers", "validate", "compat", "kind", "resolve", "compile"].includes(
+        group,
+      ),
       `unknown corpus directory: ${file}`,
     );
     if (group === "parsers") {
@@ -466,6 +513,10 @@ function walk(directory: string): void {
       register(item.name, () => {
         if (group === "validate") {
           validation(item.input, item.expect);
+          return;
+        }
+        if (group === "compile") {
+          compilation(item.input as CompileInput, item.expect);
           return;
         }
         const actual = result(() => {

@@ -1,0 +1,128 @@
+{
+  "$id": "https://libnyanpasu.github.io/resources-manifest/schema/2.0/manifest-snapshot.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ManifestSnapshot",
+  "description": "Releases captured by the generator, the second input of the compiler.",
+  "type": "object",
+  "properties": {
+    "observed_at": {
+      "description": "RFC 3339 UTC time the capture started.",
+      "type": "string"
+    },
+    "resources": {
+      "description": "Resource ID → release source ID → captured records.",
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": {
+          "$ref": "#/$defs/ReleaseSourceSnapshot"
+        }
+      }
+    }
+  },
+  "additionalProperties": false,
+  "required": ["observed_at", "resources"],
+  "$defs": {
+    "ReleaseSourceSnapshot": {
+      "description": "The records captured for one release source.",
+      "oneOf": [
+        {
+          "description": "Newest first.",
+          "type": "object",
+          "properties": {
+            "releases": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/ReleaseSnapshot"
+              }
+            },
+            "type": {
+              "type": "string",
+              "const": "history"
+            }
+          },
+          "additionalProperties": false,
+          "required": ["type", "releases"]
+        },
+        {
+          "description": "`version` is observed through the artifacts' remote version plans; a\nsnapshot without it compiles only to a provisional manifest.",
+          "type": "object",
+          "properties": {
+            "version": {
+              "type": "string"
+            },
+            "release": {
+              "$ref": "#/$defs/ReleaseSnapshot"
+            },
+            "type": {
+              "type": "string",
+              "const": "tag"
+            }
+          },
+          "additionalProperties": false,
+          "required": ["type", "release"]
+        }
+      ]
+    },
+    "ReleaseSnapshot": {
+      "description": "One captured GitHub release.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "description": "GitHub ID as a decimal string.",
+          "type": "string",
+          "pattern": "^[0-9]+$"
+        },
+        "tag": {
+          "type": "string"
+        },
+        "url": {
+          "description": "API URL the record was read from.",
+          "type": "string"
+        },
+        "published_at": {
+          "type": "string"
+        },
+        "assets": {
+          "description": "Sorted by name in code-point order.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/AssetSnapshot"
+          }
+        }
+      },
+      "additionalProperties": false,
+      "required": ["id", "tag", "url", "assets"]
+    },
+    "AssetSnapshot": {
+      "description": "One captured release asset.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "description": "GitHub ID as a decimal string.",
+          "type": "string",
+          "pattern": "^[0-9]+$"
+        },
+        "name": {
+          "type": "string"
+        },
+        "digest": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ResourceChecksum"
+            }
+          ]
+        },
+        "updated_at": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": ["id", "name", "updated_at"]
+    },
+    "ResourceChecksum": {
+      "type": "string",
+      "pattern": "^(md5:[a-f0-9]{32}|sha256:[a-f0-9]{64}|sha512:[a-f0-9]{128})$"
+    }
+  }
+}

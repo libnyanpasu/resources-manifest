@@ -224,7 +224,7 @@ A single-response plan looks like this:
     "fallback": {
       "version": "alpha-e911985"
     },
-    "version": {
+    "latest": {
       "resource": {
         "registry": "github-release",
         "artifact": "version.txt"
@@ -275,6 +275,52 @@ Header names are case-insensitive. A body exceeding the limit in
 [Limits](#limits) fails with `parser.body_too_large`. Body parsers do not read
 headers; only an explicitly declared `header` checksum parser does so.
 
+### Composite remote versions
+
+Some upstreams publish no version file. A remote `latest` may instead combine
+several responses: each named part is an ordinary remote version request with
+its own parser, and `format` joins the part results. Clash Rust alpha combines
+the latest stable tag with the commit of its rolling `latest` tag:
+
+```json
+{
+  "parts": {
+    "stable": {
+      "resource": { "registry": "github-api", "artifact": "releases/latest" },
+      "parser": {
+        "type": "json",
+        "pointer": "/tag_name",
+        "pattern": "^v?([0-9].*)$"
+      }
+    },
+    "commit": {
+      "resource": { "registry": "github-api", "artifact": "commits/{release}" },
+      "parser": {
+        "type": "json",
+        "pointer": "/sha",
+        "pattern": "^([0-9a-f]{7})[0-9a-f]{33}$"
+      }
+    }
+  },
+  "format": "{stable}-alpha+sha.{commit}"
+}
+```
+
+An object with a `format` key is a composite version; otherwise it is a single
+`{ resource, parser }`. A composite version has one to four parts, named
+`^[A-Za-z0-9_]+$` and not after a built-in variable, and `format` must reference
+every part and nothing else (`validate.version_parts`,
+`validate.template_variable`). Part results are inserted literally; the combined
+value must be a `VersionLabel`, otherwise `parser.invalid_version` at
+`parser.format`. Any failing part fails the whole version.
+
+A version plan lists one request per part, in code-point order of part names; a
+single version is one unnamed part. Hosts perform every request and pass the
+responses, in plan order, to `finish_version`. A wrong number of responses fails
+with `resolve.version_responses` before parsing, and a part's parser error is
+reported at `responses[<i>].body`. Mirrors and checksum kinds work as for a
+single version.
+
 ### Supported remote version parsers
 
 - `text`: `trim` defaults to `true`, removing leading and trailing whitespace
@@ -287,6 +333,16 @@ headers; only an explicitly declared `header` checksum parser does so.
   `VersionLabel`. `group` defaults to 1; 0 selects the entire match. Validation
   compiles the pattern, enforces the compilation size limit, and checks that
   `group` is less than the capture count, including group 0.
+- `json`: `{ pointer, pattern?, group? }`. Decode the body as JSON; a body that
+  is not valid JSON or repeats a key in any object fails with
+  `parser.invalid_json`. `pointer` is an RFC 6901 JSON Pointer: empty, or
+  starting with `/` with every `~` followed by `0` or `1`; otherwise
+  compilation fails with `parser.invalid_pointer`. Array indices follow RFC 6901,
+  so leading zeros and `-` select nothing. A missing value or one that is not a
+  string fails with `parser.not_found`. Without `pattern` the whole string is
+  the result and `group` is unused; with `pattern`, the string is matched
+  exactly like the `regex` parser matches a body, including its limits and
+  `group` rules. The result is trimmed and validated as a `VersionLabel`.
 
 Version parsers do not read headers. A future version-header parser would be a
 minor addition after release.
@@ -559,28 +615,30 @@ write array indices as `[<i>]`, for example `manifest_version` or
 for example `arg.version`, rather than a bare argument name. Parser response errors
 use `response.body` or `response.headers.<lowercase-name>`. Rule errors use
 `parser.pattern` for `parser.invalid_pattern`, `parser.group` for
-`parser.group_out_of_range`, and `parser.type` for `resolve.unsupported_parser`. The conformance
+`parser.group_out_of_range`, `parser.pointer` for `parser.invalid_pointer`, and
+`parser.type` for `resolve.unsupported_parser`. The conformance
 runner compares a declared `path` exactly.
 
 For `parser.ambiguous`, `name` is the requested artifact filename or the declared
 header name. For `parser.group_out_of_range`, `groups` includes group 0.
 
-| Prefix      | Codes                                                                                                                             | Fields                                                                                                                                  |
-| ----------- | --------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
-| `manifest.` | `unsupported_major`                                                                                                               | `{ major }`                                                                                                                             |
-| `manifest.` | `invalid_version_format`                                                                                                          | `{}`                                                                                                                                    |
-| `parser.`   | `body_too_large`                                                                                                                  | `{ limit, actual }`                                                                                                                     |
-| `parser.`   | `ambiguous`                                                                                                                       | `{ name }`                                                                                                                              |
-| `parser.`   | `group_out_of_range`                                                                                                              | `{ group, groups }`                                                                                                                     |
-| `parser.`   | `not_found`, `digest_missing`, `invalid_version`, `invalid_checksum`, `invalid_encoding`, `invalid_pattern`                       | Structured fields deferred to the implementing card                                                                                     |
-| `template.` | `unknown_variable`, `cycle`, `depth_exceeded`, `output_too_large`, `invalid_literal`                                              | See [B2 specification §5.6 "B2 渲染错误"](../spec/2026-11-06-manifest-core-parsers/design.md#b2-渲染错误)                               |
-| `url.`      | `invalid`, `unsupported_scheme`, `forbidden_component`                                                                            | See [B2 specification §5.6 "B2 渲染错误"](../spec/2026-11-06-manifest-core-parsers/design.md#b2-渲染错误)                               |
-| `resolve.`  | `unknown_resource`, `unsupported_platform`, `variant_not_found`, `tags_rejected`, `selection_conflict`, `default_variant_missing` | See [B3 specification §5.6 "B3 选择、计划与 VerifyError"](../spec/2026-11-06-manifest-core-parsers/design.md#b3-选择计划与-verifyerror) |
-| `resolve.`  | `unknown_mirror`, `mirror_not_allowed`, `snapshot_unavailable`                                                                    | See [B3 specification §5.6 "B3 选择、计划与 VerifyError"](../spec/2026-11-06-manifest-core-parsers/design.md#b3-选择计划与-verifyerror) |
-| `resolve.`  | `version_required`, `version_not_in_history`, `unsupported_parser`                                                                | See [B3 specification §5.6 "B3 选择、计划与 VerifyError"](../spec/2026-11-06-manifest-core-parsers/design.md#b3-选择计划与-verifyerror) |
-| `verify.`   | `kind_rejected`                                                                                                                   | `{ kind }`                                                                                                                              |
-| `verify.`   | `digest_mismatch`                                                                                                                 | `{ algorithm, expected, actual }`                                                                                                       |
-| `validate.` | One code per invariant                                                                                                            | See [B1 specification §5.6 "B1 校验错误"](../spec/2026-11-06-manifest-core-parsers/design.md#b1-校验错误)                               |
+| Prefix      | Codes                                                                                                                                          | Fields                                                                                                                                  |
+| ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| `manifest.` | `unsupported_major`                                                                                                                            | `{ major }`                                                                                                                             |
+| `manifest.` | `invalid_version_format`                                                                                                                       | `{}`                                                                                                                                    |
+| `parser.`   | `body_too_large`                                                                                                                               | `{ limit, actual }`                                                                                                                     |
+| `parser.`   | `ambiguous`                                                                                                                                    | `{ name }`                                                                                                                              |
+| `parser.`   | `group_out_of_range`                                                                                                                           | `{ group, groups }`                                                                                                                     |
+| `parser.`   | `not_found`, `digest_missing`, `invalid_version`, `invalid_checksum`, `invalid_encoding`, `invalid_pattern`, `invalid_json`, `invalid_pointer` | Structured fields deferred to the implementing card                                                                                     |
+| `template.` | `unknown_variable`, `cycle`, `depth_exceeded`, `output_too_large`, `invalid_literal`                                                           | See [B2 specification §5.6 "B2 渲染错误"](../spec/2026-11-06-manifest-core-parsers/design.md#b2-渲染错误)                               |
+| `url.`      | `invalid`, `unsupported_scheme`, `forbidden_component`                                                                                         | See [B2 specification §5.6 "B2 渲染错误"](../spec/2026-11-06-manifest-core-parsers/design.md#b2-渲染错误)                               |
+| `resolve.`  | `unknown_resource`, `unsupported_platform`, `variant_not_found`, `tags_rejected`, `selection_conflict`, `default_variant_missing`              | See [B3 specification §5.6 "B3 选择、计划与 VerifyError"](../spec/2026-11-06-manifest-core-parsers/design.md#b3-选择计划与-verifyerror) |
+| `resolve.`  | `unknown_mirror`, `mirror_not_allowed`, `snapshot_unavailable`                                                                                 | See [B3 specification §5.6 "B3 选择、计划与 VerifyError"](../spec/2026-11-06-manifest-core-parsers/design.md#b3-选择计划与-verifyerror) |
+| `resolve.`  | `version_responses`                                                                                                                            | `{ expected, actual }`                                                                                                                  |
+| `resolve.`  | `version_required`, `version_not_in_history`, `unsupported_parser`                                                                             | See [B3 specification §5.6 "B3 选择、计划与 VerifyError"](../spec/2026-11-06-manifest-core-parsers/design.md#b3-选择计划与-verifyerror) |
+| `verify.`   | `kind_rejected`                                                                                                                                | `{ kind }`                                                                                                                              |
+| `verify.`   | `digest_mismatch`                                                                                                                              | `{ algorithm, expected, actual }`                                                                                                       |
+| `validate.` | One code per invariant                                                                                                                         | See [B1 specification §5.6 "B1 校验错误"](../spec/2026-11-06-manifest-core-parsers/design.md#b1-校验错误)                               |
 
 ## Validation invariants
 
@@ -603,26 +661,55 @@ identifies its checking boundary:
 - a static `latest` version is absent from the artifact history —
   `validate_manifest`;
 - a history contains duplicate versions — `validate_manifest`;
-- a generated latest release snapshot does not contain the advertised artifact —
-  compile;
+- the newest captured release, or the captured tag release at the observed
+  version, does not contain the rendered artifact — compile
+  (`compile.artifact_missing`);
 - a checksum does not use a supported `<algorithm>:<hex>` representation —
-  compile (compiled decoding also enforces `ResourceChecksum`);
+  snapshot and compiled decoding (`ResourceChecksum`);
 - a registry or mirror reference does not exist — `validate_manifest`;
 - a known remote parser cannot compile — `validate_manifest` (an unknown parser
   is deferred to artifact resolution as `resolve.unsupported_parser`);
 - template variable dependencies are incomplete — `validate_manifest`;
 - a template cannot be rendered during compiler preflight — compile.
 
-Compiler preflight is a staged boundary: B1 checks only whether variable
-dependencies are complete in `validate_manifest`; D2 checks template
-resolvability at compile time. The reference compiler does not currently perform
-that preflight, so this is not a claim that it already rejects every unresolved
-variable.
+Compiler preflight is a staged boundary: `validate_manifest` checks only whether
+variable dependencies are complete; the compiler then plans every artifact
+version and download, canonically and through each mirror, so a template that
+cannot render fails at compile time.
 
 If only one variant supports a platform, its default is inferred.
 
 The compiler sorts keys and IDs by Unicode code point rather than
 `localeCompare`, so ordering does not depend on runtime locale.
+
+## Compilation
+
+The generator compiles an authored template with a release snapshot:
+`compile(template, snapshot, now)` is a pure function, and the same inputs
+produce byte-identical output.
+
+- **Template.** Each resource declares named release sources: `history` (the
+  newest `limit` releases, 1 to 50) or `tag` (one release, usually a mutable
+  prerelease). Each artifact binds to one: a `static` artifact to a history
+  source, a `remote` artifact to a tag source. Templates carry no history,
+  fallback or checksum, and reject unknown fields.
+- **Snapshot.** The generator records what it captured from the repository
+  named by the resource's `source.owner` and `source.repo`: each release's ID,
+  tag, API URL, publication time and assets (ID, name, digest, update time),
+  plus the version it observed for each tag source. IDs are decimal strings.
+- **Binding.** A static artifact's history lists every captured release whose
+  assets contain the artifact name rendered for that release; the newest one
+  must. A remote artifact's fallback is the observed version with the matching
+  asset's digest and update time. Without an observed version the result is
+  provisional and has no fallback; it only serves to plan the version requests
+  that observe the version.
+- **Checks.** The result passes `validate_manifest`, then every version and
+  download plan is built canonically and through each mirror; a remote
+  artifact without a fallback is planned with the placeholder version `0`.
+
+Errors carry a path rooted at `template.`, `snapshot.` or `output.` (the
+compiled manifest), with the `compile.*` codes in the
+[D2 specification](../spec/2026-11-06-manifest-core-parsers/design.md#96-d2-编译器).
 
 ## Consumers
 
@@ -646,12 +733,14 @@ scripts in this protocol.
 
 ## Migration from manifest v1
 
-The generator writes both files:
+Two files are published side by side:
 
-- `manifest/version.json`: unchanged v1 schema and five legacy channel keys for
-  existing updater/build code;
+- `manifest/version.json`: unchanged v1 schema and legacy channel keys for
+  existing updater/build code, still produced by clash-nyanpasu's upstream
+  scripts until they are retired;
 - `manifest/resources.json`: v2 schema with one key per core family, channel
-  tags, static history and remote resolution instructions.
+  tags, static history and remote resolution instructions, produced by
+  `@manifest/generator`, which does not write v1.
 
 This makes schema rollout independent from the updater UI/backend migration.
 Once every consumer resolves resources through v2, the legacy `latest`,

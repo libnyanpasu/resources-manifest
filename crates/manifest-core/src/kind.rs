@@ -49,9 +49,12 @@ pub fn artifact_checksum_kind(artifact: &ResourceArtifactTemplate) -> ChecksumKi
             }
         }
         ResourceArtifactVersionTemplate::Remote {
-            version, checksum, ..
+            latest, checksum, ..
         } => {
-            if matches!(version.parser, RemoteVersionParser::Unsupported { .. }) {
+            if latest
+                .parts()
+                .any(|(_, part)| matches!(part.parser, RemoteVersionParser::Unsupported { .. }))
+            {
                 return ChecksumKind::None;
             }
             match checksum {

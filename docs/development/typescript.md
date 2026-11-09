@@ -2,7 +2,9 @@
 
 This guide applies to handwritten Node.js packages and repository scripts. It
 adapts the reference repository's module, naming, reuse, and review conventions to
-this workspace. There is no React/UI layer here.
+this workspace. The only UI is `packages/manifest-viewer`, an Astro page with one
+Svelte island; its components render values computed by its `src/model.ts`, which
+follows this guide.
 
 ## Runtime and workspace
 
@@ -23,9 +25,11 @@ this workspace. There is no React/UI layer here.
 ## Formatting, names, and module grouping
 
 Prettier currently uses its defaults: two spaces, double quotes, semicolons, and
-trailing commas. Preserve LF. This repository has no import-sorting or Tailwind
-plugin configuration; do not copy the reference's quote or semicolon settings.
-Oxlint uses `.oxlintrc.json`; root TypeScript checking includes every package and
+trailing commas. `.prettierrc.json` only adds the Svelte and Astro plugins.
+Preserve LF. This repository has no import-sorting or Tailwind plugin
+configuration; do not copy the reference's quote or semicolon settings. Oxlint
+uses `.oxlintrc.json`; root TypeScript checking includes every package except the
+viewer, which `pnpm run typecheck` checks with `svelte-check`, and
 `scripts/src/**/*.ts`.
 
 Keep imports at the top, grouped as Node built-ins, external/workspace packages,
@@ -52,9 +56,9 @@ with different meanings do not imply a common constant.
 
 Keep constants immutable and safe to import. Runtime-varying values need functions
 or explicit inputs rather than stale module-level snapshots. Do not turn a constant
-module into hidden mutable state or eager IO. The runtime facade deliberately
-initializes wasm on import; preserve that documented boundary rather than spreading
-it to unrelated modules.
+module into hidden mutable state or eager IO. The runtime's Node entry deliberately
+initializes wasm on import, and its browser entry only through `initRuntime()`;
+preserve that documented boundary rather than spreading it to unrelated modules.
 
 ## Errors and host boundaries
 

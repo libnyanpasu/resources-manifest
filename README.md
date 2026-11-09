@@ -6,33 +6,35 @@ types and generates TypeScript definitions, version constants, and JSON Schema.
 Native Rust hosts use `manifest-core`; Node hosts call the same semantics through
 `@manifest/runtime` and WebAssembly.
 
-The current `@manifest/generator` executable is a scaffold for complete manifest
-generation. The parser, core, runtime, and downloader have their own implementations
-and tests; future compiler work is recorded in the design documents.
+`@manifest/generator` captures upstream releases into a snapshot and compiles the
+manifest for the cores clash-nyanpasu ships through the same core. Signing and the
+retirement of the upstream scripts are recorded in the design documents.
 
 ## Workspace layout
 
-| Path                               | Responsibility                                                                                                                                                                             |
-| ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `crates/manifest-parser`           | Checksum/parser wire types and pure implementations, `ResourceChecksum`, limits, responses, and parser errors; no IO/async dependencies.                                                   |
-| `crates/manifest-metadata`         | Manifest/template types annotated with Serde, Schemars, and Specta; validated manifest versions and finite numbers. Depends on parser.                                                     |
-| `crates/manifest-core`             | Pure semantic validation, validated manifests, templates, variant selection, version/download plans, checksum kinds, and policy. Depends on metadata and parser; no IO/async dependencies. |
-| `crates/manifest-wasm`             | Thin wasm-bindgen adapter for the Rust semantics.                                                                                                                                          |
-| `crates/manifest-schema-generator` | Generates metadata TS types, version constants, JSON schemas, and runtime plan types.                                                                                                      |
-| `packages/manifest-metadata`       | Pure TypeScript structural contracts and generated schemas; see its [contract guide](packages/manifest-metadata/README.md).                                                                |
-| `packages/manifest-runtime`        | Node facade loading wasm and exposing shared semantics and opaque handles.                                                                                                                 |
-| `packages/manifest-generator`      | Node executable reserved for complete manifest generation; currently reports the manifest version.                                                                                         |
-| `packages/manifest-downloader`     | Node CLI selecting, planning, and verifying downloads through runtime; HTTP in `http.ts`, streaming temporary files, verified atomic output.                                               |
-| `scripts/src/`                     | Repository automation grouped by responsibility; see the [task table](scripts/README.md).                                                                                                  |
-| `conformance/`                     | Language-neutral corpus shared by Rust and Node, plus fixed HTML fixtures and reference goldens.                                                                                           |
-| `docs/development/`                | Current development rules for contributors and agents.                                                                                                                                     |
-| `docs/spec/`, `docs/design/`       | Historical specifications, normative protocol contracts, and design decisions.                                                                                                             |
-| `files/`                           | Read-only upstream implementation/design references, untracked and excluded from lint, formatting, and tests.                                                                              |
+| Path                               | Responsibility                                                                                                                                                                                          |
+| ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `crates/manifest-parser`           | Checksum/parser wire types and pure implementations, `ResourceChecksum`, limits, responses, and parser errors; no IO/async dependencies.                                                                |
+| `crates/manifest-metadata`         | Manifest/template types annotated with Serde, Schemars, and Specta; validated manifest versions and finite numbers. Depends on parser.                                                                  |
+| `crates/manifest-core`             | Pure compilation, semantic validation, validated manifests, templates, variant selection, version/download plans, checksum kinds, and policy. Depends on metadata and parser; no IO/async dependencies. |
+| `crates/manifest-wasm`             | Thin wasm-bindgen adapter for the Rust semantics.                                                                                                                                                       |
+| `crates/manifest-schema-generator` | Generates metadata TS types, version constants, JSON schemas, and runtime plan types.                                                                                                                   |
+| `packages/manifest-metadata`       | Pure TypeScript structural contracts and generated schemas; see its [contract guide](packages/manifest-metadata/README.md).                                                                             |
+| `packages/manifest-runtime`        | Node and browser facade loading wasm and exposing shared semantics and opaque handles.                                                                                                                  |
+| `packages/manifest-generator`      | Node CLI capturing GitHub releases, observing alpha versions through the manifest's own plans, and compiling through runtime; HTTP in `http.ts`.                                                        |
+| `packages/manifest-downloader`     | Node CLI selecting, planning, and verifying downloads through runtime; HTTP in `http.ts`, streaming temporary files, verified atomic output.                                                            |
+| `packages/manifest-viewer`         | Astro and Svelte page inspecting a manifest in the browser through runtime; deployed to GitHub Pages.                                                                                                   |
+| `scripts/src/`                     | Repository automation grouped by responsibility; see the [task table](scripts/README.md).                                                                                                               |
+| `conformance/`                     | Language-neutral corpus shared by Rust and Node, plus fixed HTML fixtures and reference goldens.                                                                                                        |
+| `docs/development/`                | Current development rules for contributors and agents.                                                                                                                                                  |
+| `docs/spec/`, `docs/design/`       | Historical specifications, normative protocol contracts, and design decisions.                                                                                                                          |
+| `files/`                           | Read-only upstream implementation/design references, untracked and excluded from lint, formatting, and tests.                                                                                           |
 
 Root `Cargo.toml` declares `crates/*` and centralizes dependency versions in
 `[workspace.dependencies]`. Root `pnpm-workspace.yaml` declares `packages/*`;
 cross-package dependencies use package names and `workspace:*`. Root `tsconfig.json`
-checks all packages and scripts with `module: nodenext`.
+checks all packages except the viewer, and scripts, with `module: nodenext`; the
+viewer is checked by its own `svelte-check` under `pnpm run typecheck`.
 
 ## Requirements
 
@@ -46,7 +48,8 @@ checks all packages and scripts with `module: nodenext`.
 TypeScript must use erasable syntax and `.ts` relative imports. Packages export
 source without a build step. Node does not strip types from `.ts` in `node_modules`,
 so these packages currently support workspace use; publishing needs a build step.
-Runtime targets Node build scripts, not browsers or Tauri webviews.
+Runtime's main entry targets Node build scripts; its `@manifest/runtime/web` entry
+serves pages bundled by Vite, such as the viewer. Tauri webviews are not supported.
 
 ## Get started
 

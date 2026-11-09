@@ -28,136 +28,6 @@
         }
       },
       "resources": {
-        "clash_premium": {
-          "name": "Clash Premium",
-          "registry": "github-release",
-          "source": {
-            "owner": "zhongfly",
-            "repo": "Clash-premium-backup"
-          },
-          "tags": [
-            {
-              "id": "channel:stable",
-              "name": "Stable",
-              "group": "channel"
-            },
-            {
-              "id": "toolchain:go",
-              "name": "Go",
-              "group": "toolchain"
-            }
-          ],
-          "default_variants": {
-            "windows-x86_64": "stable-default",
-            "windows-arm64": "stable-default",
-            "linux-aarch64": "stable-default",
-            "linux-amd64": "stable-default",
-            "darwin-arm64": "stable-default",
-            "darwin-x64": "stable-default"
-          },
-          "variants": [
-            {
-              "id": "stable-default",
-              "tag_key": "channel:stable+toolchain:go",
-              "name": "Stable · Default",
-              "tags": [
-                {
-                  "id": "channel:stable",
-                  "name": "Stable",
-                  "group": "channel"
-                },
-                {
-                  "id": "toolchain:go",
-                  "name": "Go",
-                  "group": "toolchain"
-                }
-              ],
-              "source": {
-                "release": "{version}"
-              },
-              "artifacts": {
-                "windows-x86_64": {
-                  "artifact": "clash-windows-amd64-n{version}.zip",
-                  "version": {
-                    "type": "static",
-                    "latest": "2023-09-05-gdcc8d87",
-                    "releases": [
-                      {
-                        "version": "2023-09-05-gdcc8d87",
-                        "published_at": "2023-09-05T00:00:00Z"
-                      }
-                    ]
-                  }
-                },
-                "windows-arm64": {
-                  "artifact": "clash-windows-arm64-n{version}.zip",
-                  "version": {
-                    "type": "static",
-                    "latest": "2023-09-05-gdcc8d87",
-                    "releases": [
-                      {
-                        "version": "2023-09-05-gdcc8d87",
-                        "published_at": "2023-09-05T00:00:00Z"
-                      }
-                    ]
-                  }
-                },
-                "linux-aarch64": {
-                  "artifact": "clash-linux-arm64-n{version}.gz",
-                  "version": {
-                    "type": "static",
-                    "latest": "2023-09-05-gdcc8d87",
-                    "releases": [
-                      {
-                        "version": "2023-09-05-gdcc8d87",
-                        "published_at": "2023-09-05T00:00:00Z"
-                      }
-                    ]
-                  }
-                },
-                "linux-amd64": {
-                  "artifact": "clash-linux-amd64-n{version}.gz",
-                  "version": {
-                    "type": "static",
-                    "latest": "2023-09-05-gdcc8d87",
-                    "releases": [
-                      {
-                        "version": "2023-09-05-gdcc8d87",
-                        "published_at": "2023-09-05T00:00:00Z"
-                      }
-                    ]
-                  }
-                },
-                "darwin-arm64": {
-                  "artifact": "clash-darwin-arm64-n{version}.gz",
-                  "version": {
-                    "type": "static",
-                    "latest": "2023-09-05-gdcc8d87",
-                    "releases": [
-                      {
-                        "version": "2023-09-05-gdcc8d87",
-                        "published_at": "2023-09-05T00:00:00Z"
-                      }
-                    ]
-                  }
-                },
-                "darwin-x64": {
-                  "artifact": "clash-darwin-amd64-n{version}.gz",
-                  "version": {
-                    "type": "static",
-                    "latest": "2023-09-05-gdcc8d87",
-                    "releases": [
-                      {
-                        "version": "2023-09-05-gdcc8d87",
-                        "published_at": "2023-09-05T00:00:00Z"
-                      }
-                    ]
-                  }
-                }
-              }
-            }
-          ]
-        },
         "clash_rs": {
           "name": "Clash Rust",
           "registry": "github-release",
@@ -318,7 +188,7 @@
                     "fallback": {
                       "version": "0.10.7-alpha+sha.85fc166"
                     },
-                    "version": {
+                    "latest": {
                       "resource": {
                         "registry": "github-release",
                         "artifact": "version.txt"
@@ -345,7 +215,7 @@
                     "fallback": {
                       "version": "0.10.7-alpha+sha.85fc166"
                     },
-                    "version": {
+                    "latest": {
                       "resource": {
                         "registry": "github-release",
                         "artifact": "version.txt"
@@ -372,7 +242,7 @@
                     "fallback": {
                       "version": "0.10.7-alpha+sha.85fc166"
                     },
-                    "version": {
+                    "latest": {
                       "resource": {
                         "registry": "github-release",
                         "artifact": "version.txt"
@@ -399,7 +269,7 @@
                     "fallback": {
                       "version": "0.10.7-alpha+sha.85fc166"
                     },
-                    "version": {
+                    "latest": {
                       "resource": {
                         "registry": "github-release",
                         "artifact": "version.txt"
@@ -426,7 +296,7 @@
                     "fallback": {
                       "version": "0.10.7-alpha+sha.85fc166"
                     },
-                    "version": {
+                    "latest": {
                       "resource": {
                         "registry": "github-release",
                         "artifact": "version.txt"
@@ -453,7 +323,7 @@
                     "fallback": {
                       "version": "0.10.7-alpha+sha.85fc166"
                     },
-                    "version": {
+                    "latest": {
                       "resource": {
                         "registry": "github-release",
                         "artifact": "version.txt"
@@ -935,7 +805,7 @@
                     "fallback": {
                       "version": "alpha-e911985"
                     },
-                    "version": {
+                    "latest": {
                       "resource": {
                         "registry": "github-release",
                         "artifact": "version.txt"
@@ -962,7 +832,7 @@
                     "fallback": {
                       "version": "alpha-e911985"
                     },
-                    "version": {
+                    "latest": {
                       "resource": {
                         "registry": "github-release",
                         "artifact": "version.txt"
@@ -989,7 +859,7 @@
                     "fallback": {
                       "version": "alpha-e911985"
                     },
-                    "version": {
+                    "latest": {
                       "resource": {
                         "registry": "github-release",
                         "artifact": "version.txt"
@@ -1045,7 +915,7 @@
                     "fallback": {
                       "version": "alpha-e911985"
                     },
-                    "version": {
+                    "latest": {
                       "resource": {
                         "registry": "github-release",
                         "artifact": "version.txt"
@@ -1072,7 +942,7 @@
                     "fallback": {
                       "version": "alpha-e911985"
                     },
-                    "version": {
+                    "latest": {
                       "resource": {
                         "registry": "github-release",
                         "artifact": "version.txt"
@@ -1099,7 +969,7 @@
                     "fallback": {
                       "version": "alpha-e911985"
                     },
-                    "version": {
+                    "latest": {
                       "resource": {
                         "registry": "github-release",
                         "artifact": "version.txt"
@@ -1155,7 +1025,7 @@
                     "fallback": {
                       "version": "alpha-e911985"
                     },
-                    "version": {
+                    "latest": {
                       "resource": {
                         "registry": "github-release",
                         "artifact": "version.txt"
@@ -1182,7 +1052,7 @@
                     "fallback": {
                       "version": "alpha-e911985"
                     },
-                    "version": {
+                    "latest": {
                       "resource": {
                         "registry": "github-release",
                         "artifact": "version.txt"
@@ -1209,7 +1079,7 @@
                     "fallback": {
                       "version": "alpha-e911985"
                     },
-                    "version": {
+                    "latest": {
                       "resource": {
                         "registry": "github-release",
                         "artifact": "version.txt"
@@ -1264,7 +1134,7 @@
                     "fallback": {
                       "version": "alpha-e911985"
                     },
-                    "version": {
+                    "latest": {
                       "resource": {
                         "registry": "github-release",
                         "artifact": "version.txt"
@@ -1291,7 +1161,7 @@
                     "fallback": {
                       "version": "alpha-e911985"
                     },
-                    "version": {
+                    "latest": {
                       "resource": {
                         "registry": "github-release",
                         "artifact": "version.txt"
@@ -1318,7 +1188,7 @@
                     "fallback": {
                       "version": "alpha-e911985"
                     },
-                    "version": {
+                    "latest": {
                       "resource": {
                         "registry": "github-release",
                         "artifact": "version.txt"

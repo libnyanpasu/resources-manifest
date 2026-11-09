@@ -8,8 +8,8 @@ import {
   checkPolicy,
   compareDigest,
   finishChecksum,
+  finishVersion,
   ManifestRuntimeError,
-  parseVersion,
   planDownload,
   planVersion,
   selectVariant,
@@ -135,18 +135,21 @@ export async function run(
       log,
     );
   }
-  const version = versionPlan.remote
-    ? parseVersion(
-        versionPlan.remote.parser,
+  let version = versionPlan.latest!;
+  if (versionPlan.remote) {
+    const responses = [];
+    for (const part of versionPlan.remote.parts) {
+      responses.push(
         await readResponse(
-          versionPlan.remote.request.mirror_url ??
-            versionPlan.remote.request.canonical_url,
-          versionPlan.remote.parser,
+          part.request.mirror_url ?? part.request.canonical_url,
+          part.parser,
           deps.timeoutMs,
           "http.version",
         ),
-      )
-    : versionPlan.latest!;
+      );
+    }
+    version = finishVersion(versionHandle, responses);
+  }
   using planHandle = planDownload(selected, {
     version,
     mirror: values.mirror,

@@ -6,7 +6,7 @@ use wasm_bindgen::prelude::*;
 
 use crate::bridge::{decode, encode};
 use crate::error::{core_error, error};
-use crate::handles::DownloadPlan;
+use crate::handles::{DownloadPlan, VersionPlan};
 use crate::wire::{LimitsInput, RemoteResponseInput};
 
 /// Compiles a version parser and runs it on a response. Returns only the
@@ -28,6 +28,33 @@ pub fn parse_version(
             })
         })
         .map_err(core_error)?;
+    encode(&version.as_ref())
+}
+
+/// Completes the remote version request bound to a version plan: one response
+/// per part, in the order of `plan.value.remote.parts`.
+#[wasm_bindgen(js_name = finishVersion, unchecked_return_type = "string")]
+pub fn finish_version(
+    plan: &VersionPlan,
+    #[wasm_bindgen(unchecked_param_type = "RemoteResponseInput[]")] responses: JsValue,
+) -> Result<JsValue, JsValue> {
+    let remote = plan.inner.remote().ok_or_else(|| {
+        error(
+            "wasm.version_plan_missing",
+            "arg.plan",
+            "version plan has no remote version request",
+            json!({}),
+        )
+    })?;
+    let responses: Vec<RemoteResponseInput> = decode(&responses, "arg.responses")?;
+    let responses: Vec<_> = responses
+        .iter()
+        .map(|response| RemoteResponse {
+            body: &response.body,
+            headers: response.headers(),
+        })
+        .collect();
+    let version = manifest_core::finish_version(remote, &responses).map_err(core_error)?;
     encode(&version.as_ref())
 }
 

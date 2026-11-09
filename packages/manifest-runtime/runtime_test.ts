@@ -7,6 +7,7 @@ import {
   artifactChecksumKind,
   checkPolicy,
   finishChecksum,
+  finishVersion,
   parseChecksum,
   parseVersion,
   planDownload,
@@ -44,7 +45,7 @@ function manifestInput(): ResourceManifest {
                 artifact: "pkg-{version}.zip",
                 version: {
                   type: "remote",
-                  version: {
+                  latest: {
                     resource: { registry: "main", artifact: "version.txt" },
                     parser: { type: "text" },
                   },
@@ -191,10 +192,11 @@ test("non-finite host numbers are rejected at their input paths", () => {
       manifestInput().resources.sample.variants[0].artifacts["linux-amd64"]!;
     assert.equal(artifact.version.type, "remote");
     if (artifact.version.type !== "remote") assert.fail();
-    artifact.version.version.parser = parser;
+    if (!("parser" in artifact.version.latest)) assert.fail();
+    artifact.version.latest.parser = parser;
     invalid(
       () => artifactChecksumKind(artifact),
-      "arg.artifact.version.version.parser.group",
+      "arg.artifact.version.latest.parser.group",
     );
     for (const key of limitKeys) {
       const limits = { [key]: number };
@@ -282,7 +284,7 @@ test("arbitrary map keys round-trip as own properties", () => {
   using selected = selectVariant(manifest, "__proto__", "linux-amd64");
   using plan = planVersion(selected, { source });
   assert.equal(
-    plan.value.remote?.request.canonical_url,
+    plan.value.remote?.parts[0]?.request.canonical_url,
     "https://origin.test/version.txt",
   );
   value.resources.sample.name = "changed";
@@ -364,7 +366,7 @@ test("selection and checksum plans retain state after parents are freed", () => 
   manifest.free();
   assert.equal(selected.value.id, "stable");
   using version = planVersion(selected);
-  assert.equal(version.value.remote?.parser.type, "text");
+  assert.equal(version.value.remote?.parts[0]?.parser.type, "text");
   using plan = planDownload(selected, { version: "v1" });
   selected[Symbol.dispose]();
   assert.equal(plan.value.artifact, "pkg-v1.zip");
@@ -372,6 +374,55 @@ test("selection and checksum plans retain state after parents are freed", () => 
     checksum: `sha256:${digest}`,
     kind: "parsed",
   });
+});
+
+test("finishVersion parses part responses and needs a remote plan", () => {
+  using manifest = validateManifest(manifestInput());
+  using selected = selectVariant(manifest, "sample", "linux-amd64");
+  using version = planVersion(selected);
+  assert.equal(finishVersion(version, [{ body: " v2\n" }]), "v2");
+  invalid(() => finishVersion(version, "v2" as never), "arg.responses");
+
+  const input = manifestInput();
+  input.resources.sample!.variants[0]!.artifacts["linux-amd64"]!.version = {
+    type: "static",
+    latest: "v1",
+    releases: [{ version: "v1" }],
+  };
+  using staticManifest = validateManifest(input);
+  using staticSelected = selectVariant(staticManifest, "sample", "linux-amd64");
+  using staticVersion = planVersion(staticSelected);
+  assert.throws(
+    () => finishVersion(staticVersion, []),
+    (error: unknown) => {
+      assert.ok(error instanceof ManifestRuntimeError);
+      assert.equal(error.code, "wasm.version_plan_missing");
+      assert.equal(error.path, "arg.plan");
+      return true;
+    },
+  );
+});
+
+test("a format key selects the composite version form", () => {
+  const version = () => {
+    const input = manifestInput();
+    const artifact =
+      input.resources.sample!.variants[0]!.artifacts["linux-amd64"]!;
+    assert.equal(artifact.version.type, "remote");
+    if (artifact.version.type !== "remote") assert.fail();
+    return { input, remote: artifact.version };
+  };
+
+  const ignored = version();
+  Object.assign(ignored.remote.latest, { parts: 42 });
+  using single = validateManifest(ignored.input);
+  assert.equal(single.value.resources.sample!.variants.length, 1);
+
+  for (const format of [null, 1]) {
+    const bad = version();
+    Object.assign(bad.remote.latest, { format });
+    invalid(() => validateManifest(bad.input), "arg.manifest");
+  }
 });
 
 test("undefined object entries read as missing fields", () => {
@@ -466,4 +517,18 @@ test("policies must be objects and maps reject entry arrays", () => {
     () => renderTemplate("{a}", [["a", { literal: "kept" }]] as never, "test"),
     "arg.values",
   );
+});
+
+test("the browser entry exports the bindings of the Node entry", async () => {
+  const node = await import("@manifest/runtime");
+  const web = await import("@manifest/runtime/web");
+  const { initRuntime, ...bindings } = web;
+  assert.equal(typeof initRuntime, "function");
+  assert.deepEqual(Object.keys(bindings).sort(), Object.keys(node).sort());
+  for (const [name, value] of Object.entries(bindings)) {
+    assert.equal(value, node[name as keyof typeof node], name);
+  }
+  // The Node entry initialized the shared glue, so browser bindings work too.
+  using validated = web.validateManifest(manifestInput());
+  assert.equal(validated.newerMinor, false);
 });

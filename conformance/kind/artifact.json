@@ -46,7 +46,7 @@
           "version": "v1.2.3",
           "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
         },
-        "version": {
+        "latest": {
           "resource": {
             "registry": "github-release",
             "artifact": "version.txt"
@@ -82,7 +82,7 @@
           "version": "v1.2.3",
           "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
         },
-        "version": {
+        "latest": {
           "resource": {
             "registry": "github-release",
             "artifact": "version.txt"
@@ -108,7 +108,7 @@
           "version": "v1.2.3",
           "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
         },
-        "version": {
+        "latest": {
           "resource": {
             "registry": "github-release",
             "artifact": "version.txt"
@@ -135,6 +135,107 @@
     }
   },
   {
+    "name": "kind.remote.composite",
+    "input": {
+      "artifact": "selected-{version}.zip",
+      "version": {
+        "type": "remote",
+        "fallback": {
+          "version": "v1.2.3",
+          "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+        },
+        "latest": {
+          "parts": {
+            "stable": {
+              "resource": {
+                "registry": "github-release",
+                "artifact": "releases.json"
+              },
+              "parser": {
+                "type": "regex",
+                "pattern": "\"tag_name\":\\s*\"v?([0-9][^\"]*)\""
+              }
+            },
+            "commit": {
+              "resource": {
+                "registry": "github-release",
+                "artifact": "commit.json"
+              },
+              "parser": {
+                "type": "regex",
+                "pattern": "\"sha\":\\s*\"([0-9a-f]{7})[0-9a-f]{33}\""
+              }
+            }
+          },
+          "format": "{stable}-alpha+sha.{commit}"
+        },
+        "checksum": {
+          "resource": {
+            "registry": "github-release",
+            "artifact": "checksums.txt"
+          },
+          "parser": {
+            "type": "gnu",
+            "algorithm": "sha256"
+          }
+        }
+      }
+    },
+    "expect": {
+      "ok": "parsed"
+    }
+  },
+  {
+    "name": "kind.remote.composite_unsupported_part",
+    "input": {
+      "artifact": "selected-{version}.zip",
+      "version": {
+        "type": "remote",
+        "fallback": {
+          "version": "v1.2.3",
+          "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+        },
+        "latest": {
+          "parts": {
+            "stable": {
+              "resource": {
+                "registry": "github-release",
+                "artifact": "releases.json"
+              },
+              "parser": {
+                "type": "regex",
+                "pattern": "\"tag_name\":\\s*\"v?([0-9][^\"]*)\""
+              }
+            },
+            "commit": {
+              "resource": {
+                "registry": "github-release",
+                "artifact": "commit.json"
+              },
+              "parser": {
+                "type": "future-version"
+              }
+            }
+          },
+          "format": "{stable}-alpha+sha.{commit}"
+        },
+        "checksum": {
+          "resource": {
+            "registry": "github-release",
+            "artifact": "checksums.txt"
+          },
+          "parser": {
+            "type": "gnu",
+            "algorithm": "sha256"
+          }
+        }
+      }
+    },
+    "expect": {
+      "ok": "none"
+    }
+  },
+  {
     "name": "kind.remote.unsupported_version_parser",
     "input": {
       "artifact": "pkg-{version}.zip",
@@ -147,7 +248,7 @@
             "release": "fallback-{version}"
           }
         },
-        "version": {
+        "latest": {
           "resource": {
             "registry": "meta",
             "artifact": "version.txt"

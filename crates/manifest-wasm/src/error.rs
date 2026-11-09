@@ -53,6 +53,7 @@ macro_rules! structured_error {
 }
 
 structured_error!(
+    manifest_core::FinishVersionError,
     manifest_core::RenderError,
     manifest_core::ResolveError,
     manifest_core::ValidationError,

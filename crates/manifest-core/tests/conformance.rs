@@ -1,10 +1,10 @@
 use std::path::Path;
 
 use manifest_core::{
-    ChecksumKind, ChecksumMode, DownloadOptions, ResolveError, ValidationError, VariantSelection,
-    VerifyError, VerifyPolicy, VersionOptions, artifact_checksum_kind, check_policy,
-    finish_checksum, list_variant_checksum_kinds, plan_download, plan_version, select_variant,
-    validate_manifest,
+    ChecksumKind, ChecksumMode, DownloadOptions, FinishVersionError, ResolveError, ValidationError,
+    VariantSelection, VerifyError, VerifyPolicy, VersionOptions, artifact_checksum_kind,
+    check_policy, finish_checksum, finish_version, list_variant_checksum_kinds, plan_download,
+    plan_version, select_variant, validate_manifest,
 };
 use manifest_metadata::{ResourceManifest, SourceVariables, SupportedPlatform};
 use manifest_parser::{Limits, ParseError, RemoteResponse};
@@ -126,7 +126,7 @@ mod validate {
             }
         }
         assert!(failures.is_empty(), "{}", failures.join("\n"));
-        assert_eq!(negative_codes.len(), 10, "all invariant codes covered");
+        assert_eq!(negative_codes.len(), 11, "all invariant codes covered");
         for code in &negative_codes {
             assert!(positive_codes.contains(*code), "positive case for {code}");
         }
@@ -221,7 +221,7 @@ fn compat() {
                     .unwrap()
                     .remove("future-os-cpu");
                 for artifact in variant["artifacts"].as_object_mut().unwrap().values_mut() {
-                    for field in ["version", "checksum"] {
+                    for field in ["latest", "checksum"] {
                         if let Some(parser) =
                             artifact.pointer_mut(&format!("/version/{field}/parser"))
                             && parser["type"]
@@ -251,6 +251,15 @@ fn resolve_result(result: Result<Value, ResolveError>) -> Value {
 }
 
 fn parse_result(result: Result<Value, ParseError>) -> Value {
+    match result {
+        Ok(value) => json!({ "ok": value }),
+        Err(error) => {
+            json!({ "error": { "code": error.code(), "path": error.path(), "fields": error.fields() } })
+        }
+    }
+}
+
+fn finish_version_result(result: Result<Value, FinishVersionError>) -> Value {
     match result {
         Ok(value) => json!({ "ok": value }),
         Err(error) => {
@@ -352,14 +361,45 @@ fn kind_case(input: Value) -> Value {
             },
             &limits,
         );
+        // `response` is shorthand for a single-element `responses`.
+        let inputs: Option<Vec<Value>> = input
+            .get("responses")
+            .map(|responses| responses.as_array().unwrap().clone())
+            .or_else(|| input.get("response").map(|response| vec![response.clone()]));
         return match plan {
-            Ok(plan) if input.get("response").is_some() => parse_result(
-                plan.remote()
+            Ok(plan) if inputs.is_some() => {
+                let owned: Vec<(String, Vec<(String, String)>)> = inputs
                     .unwrap()
-                    .parser()
-                    .parse(&response)
-                    .map(|version| json!({ "plan": plan, "version": version.as_ref() })),
-            ),
+                    .iter()
+                    .map(|response| {
+                        // `body_file` names a captured response under conformance/.
+                        let body = match response.get("body_file") {
+                            Some(file) => std::fs::read_to_string(
+                                Path::new(env!("CARGO_MANIFEST_DIR"))
+                                    .join("../../conformance")
+                                    .join(file.as_str().unwrap()),
+                            )
+                            .unwrap(),
+                            None => response["body"].as_str().unwrap().to_owned(),
+                        };
+                        (
+                            body,
+                            response
+                                .get("headers")
+                                .map(|headers| serde_json::from_value(headers.clone()).unwrap())
+                                .unwrap_or_default(),
+                        )
+                    })
+                    .collect();
+                let responses: Vec<_> = owned
+                    .iter()
+                    .map(|(body, headers)| RemoteResponse { body, headers })
+                    .collect();
+                finish_version_result(
+                    finish_version(plan.remote().unwrap(), &responses)
+                        .map(|version| json!({ "plan": plan, "version": version.as_ref() })),
+                )
+            }
             result => resolve_result(result.map(|plan| serde_json::to_value(plan).unwrap())),
         };
     }
@@ -400,4 +440,73 @@ fn kind() {
         println!("PASS {}", case.name);
     }
     println!("kind: {count} cases");
+}
+
+mod compile {
+    use super::*;
+    use manifest_core::{CompileErrors, compile};
+    use manifest_metadata::{ManifestSnapshot, ResourceManifestTemplate};
+
+    fn errors_value(errors: &CompileErrors) -> Vec<Value> {
+        let mut values: Vec<_> = errors
+            .errors()
+            .iter()
+            .map(|error| json!({ "code": error.code(), "path": error.path(), "fields": error.fields() }))
+            .collect();
+        values.sort_by_key(Value::to_string);
+        values
+    }
+
+    #[test]
+    fn corpus() {
+        let cases = cases("compile");
+        let count = cases.len();
+        for case in cases {
+            let template: ResourceManifestTemplate =
+                serde_json::from_value(case.input["template"].clone())
+                    .unwrap_or_else(|error| panic!("{}: template: {error}", case.name));
+            let snapshot: ManifestSnapshot = serde_json::from_value(case.input["snapshot"].clone())
+                .unwrap_or_else(|error| panic!("{}: snapshot: {error}", case.name));
+            let now = case.input["now"].as_str().unwrap();
+            let result = compile(&template, &snapshot, now);
+            match (&result, case.expect.get("ok")) {
+                (Ok(manifest), Some(expected)) => {
+                    assert_eq!(
+                        &serde_json::to_value(manifest).unwrap(),
+                        expected,
+                        "{}",
+                        case.name
+                    );
+                    let again = compile(&template, &snapshot, now).unwrap();
+                    assert_eq!(
+                        serde_json::to_string_pretty(manifest).unwrap(),
+                        serde_json::to_string_pretty(&again).unwrap(),
+                        "{}: compilation is deterministic",
+                        case.name
+                    );
+                }
+                (Err(errors), None) => {
+                    let mut expected = vec![case.expect["error"].clone()];
+                    if let Some(additional) = case.expect.get("additional_errors") {
+                        expected.extend(additional.as_array().unwrap().iter().cloned());
+                    }
+                    expected.sort_by_key(Value::to_string);
+                    assert_eq!(errors_value(errors), expected, "{}", case.name);
+                }
+                (Ok(manifest), None) => panic!(
+                    "{}: expected errors, got {}",
+                    case.name,
+                    serde_json::to_string(manifest).unwrap()
+                ),
+                (Err(errors), Some(_)) => panic!(
+                    "{}: expected a manifest, got {}",
+                    case.name,
+                    serde_json::to_string(&errors_value(errors)).unwrap()
+                ),
+            }
+            record_case(&case.name);
+            println!("PASS {}", case.name);
+        }
+        println!("compile: {count} cases");
+    }
 }

@@ -1,0 +1,392 @@
+:root {
+  color-scheme: light dark;
+  --bg: #f7f7f8;
+  --panel: #ffffff;
+  --text: #1d1d22;
+  --muted: #6a6a75;
+  --border: #dedee3;
+  --accent: #3b5bdb;
+  --code-bg: #f0f0f3;
+  --row-hover: #f3f5ff;
+  --focus: #fff4d6;
+  --ok: #2b8a3e;
+  --info: #1971c2;
+  --warn: #e67700;
+  --bad: #c92a2a;
+  font-family:
+    system-ui,
+    -apple-system,
+    "Segoe UI",
+    sans-serif;
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #141417;
+    --panel: #1c1c21;
+    --text: #e6e6ea;
+    --muted: #9a9aa6;
+    --border: #33333b;
+    --accent: #91a7ff;
+    --code-bg: #26262d;
+    --row-hover: #23263a;
+    --focus: #3a3220;
+    --ok: #69db7c;
+    --info: #74c0fc;
+    --warn: #ffc078;
+    --bad: #ff8787;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+}
+
+main,
+.bar {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 0 16px;
+}
+
+.bar {
+  padding-top: 20px;
+}
+
+h1 {
+  font-size: 1.4rem;
+  margin: 0;
+}
+
+h2 {
+  font-size: 1.1rem;
+}
+
+h3 {
+  font-size: 1rem;
+  margin: 1rem 0 0.4rem;
+}
+
+code {
+  font-family: ui-monospace, "Cascadia Code", Consolas, monospace;
+  font-size: 0.88em;
+  background: var(--code-bg);
+  padding: 0.05em 0.3em;
+  border-radius: 4px;
+}
+
+code.wrap {
+  overflow-wrap: anywhere;
+}
+
+pre {
+  background: var(--code-bg);
+  padding: 12px;
+  border-radius: 6px;
+  overflow: auto;
+  max-height: 480px;
+}
+
+a {
+  color: var(--accent);
+}
+
+.muted {
+  color: var(--muted);
+}
+
+.small {
+  font-size: 0.85em;
+}
+
+.meta {
+  margin: 4px 0 0;
+  color: var(--muted);
+}
+
+.warn {
+  color: var(--warn);
+}
+
+.error-text {
+  color: var(--bad);
+}
+
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 14px 16px;
+  margin: 16px 0;
+}
+
+.loader.dragging {
+  border-style: dashed;
+  border-color: var(--accent);
+}
+
+.row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.loader label[for] {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.secondary {
+  margin-top: 10px;
+}
+
+input,
+select,
+textarea,
+button {
+  font: inherit;
+  color: inherit;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 6px 10px;
+}
+
+input[type="url"],
+input[type="search"] {
+  flex: 1 1 280px;
+  min-width: 0;
+}
+
+textarea {
+  width: 100%;
+  font-family: ui-monospace, Consolas, monospace;
+  margin: 8px 0;
+}
+
+button {
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+
+button[type="submit"] {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: white;
+}
+
+/* Hidden from view but still focusable and announced. */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+.file {
+  position: relative;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 6px 10px;
+  cursor: pointer;
+}
+
+.file:focus-within {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+details {
+  margin-top: 10px;
+}
+
+summary {
+  cursor: pointer;
+}
+
+.source {
+  margin: 10px 0 0;
+}
+
+.errors ul {
+  padding-left: 18px;
+}
+
+.errors li {
+  margin-bottom: 8px;
+}
+
+.tabs {
+  display: flex;
+  gap: 4px;
+  margin-top: 16px;
+  border-bottom: 1px solid var(--border);
+  overflow-x: auto;
+}
+
+.tabs button {
+  border: none;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  background: none;
+  white-space: nowrap;
+}
+
+.tabs button.active {
+  border-bottom-color: var(--accent);
+  font-weight: 600;
+}
+
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.count {
+  margin-left: auto;
+}
+
+.scroll {
+  overflow-x: auto;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+th,
+td {
+  text-align: left;
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: top;
+}
+
+th {
+  font-size: 0.85em;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+tr.artifact-row {
+  cursor: pointer;
+}
+
+tr.artifact-row:hover {
+  background: var(--row-hover);
+}
+
+tr.focused {
+  background: var(--focus);
+}
+
+tr.detail > td {
+  background: var(--bg);
+  padding: 4px 16px 16px;
+}
+
+table.compact td,
+table.compact th {
+  padding: 4px 6px;
+  font-size: 0.9em;
+}
+
+tr.latest td:first-child code {
+  font-weight: 700;
+}
+
+.disclosure {
+  border: none;
+  background: none;
+  padding: 0 4px 0 0;
+}
+
+.badge,
+.tag,
+.kind {
+  display: inline-block;
+  font-size: 0.78em;
+  border-radius: 999px;
+  padding: 0 7px;
+  margin-left: 4px;
+  border: 1px solid var(--border);
+  white-space: nowrap;
+}
+
+.badge {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.tag {
+  color: var(--muted);
+}
+
+.kind {
+  margin-left: 0;
+  font-weight: 600;
+}
+
+.kind-authoritative {
+  color: var(--ok);
+  border-color: var(--ok);
+}
+
+.kind-parsed {
+  color: var(--info);
+  border-color: var(--info);
+}
+
+.kind-snapshot {
+  color: var(--warn);
+  border-color: var(--warn);
+}
+
+.kind-none {
+  color: var(--bad);
+  border-color: var(--bad);
+}
+
+.selection fieldset {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  margin: 8px 0;
+}
+
+.selection label {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.check {
+  display: flex !important;
+  margin: 4px 0;
+}
+
+.result {
+  margin-top: 12px;
+}

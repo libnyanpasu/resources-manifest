@@ -1,16 +1,19 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use manifest_metadata::{
-    ResourceArtifactVersionTemplate, ResourceDefinition, ResourceManifest, ResourceTag,
-    SupportedPlatform,
+    RemoteVersionTemplate, ResourceArtifactVersionTemplate, ResourceDefinition, ResourceManifest,
+    ResourceTag, SupportedPlatform,
 };
 use manifest_parser::{Limits, RemoteChecksumParser, RemoteVersionParser};
 use serde_json::json;
 
+use crate::scope::{BUILTINS, URL_COMPONENTS, variables};
 use crate::{
     ExpandTagReason, ReadHistoryReason, ResolveDefaultReason, ResolveReferenceKind,
-    ValidateIdsKind, ValidateIdsReason, ValidationError,
+    ValidateIdsKind, ValidateIdsReason, ValidationError, VersionPartsReason,
 };
+
+const MAX_VERSION_PARTS: usize = 4;
 
 mod templates;
 
@@ -126,22 +129,36 @@ pub(super) fn collect(manifest: &ResourceManifest) -> Vec<ValidationError> {
                         }
                     }
                     ResourceArtifactVersionTemplate::Remote {
-                        version, checksum, ..
+                        latest, checksum, ..
                     } => {
-                        check_registry(
-                            manifest,
-                            &version.resource.registry,
-                            format!("{path}.version.resource.registry"),
-                            &mut errors,
-                        );
-                        if !matches!(version.parser, RemoteVersionParser::Unsupported { .. })
-                            && let Err(error) = version.parser.compile(&Limits::default())
-                        {
-                            errors.push(ValidationError::CompileParser {
-                                path: format!("{path}.version.{}", error.path()),
-                                reason: error.code(),
-                                details: error.fields(),
-                            });
+                        if let RemoteVersionTemplate::Composite { parts, format } = latest {
+                            check_version_parts(
+                                parts,
+                                format,
+                                &format!("{path}.latest"),
+                                &mut errors,
+                            );
+                        }
+                        for (name, part) in latest.parts() {
+                            let path = match name {
+                                Some(name) => format!("{path}.latest.parts.{name}"),
+                                None => format!("{path}.latest"),
+                            };
+                            check_registry(
+                                manifest,
+                                &part.resource.registry,
+                                format!("{path}.resource.registry"),
+                                &mut errors,
+                            );
+                            if !matches!(part.parser, RemoteVersionParser::Unsupported { .. })
+                                && let Err(error) = part.parser.compile(&Limits::default())
+                            {
+                                errors.push(ValidationError::CompileParser {
+                                    path: format!("{path}.{}", error.path()),
+                                    reason: error.code(),
+                                    details: error.fields(),
+                                });
+                            }
                         }
                         if let Some(checksum) = checksum {
                             check_registry(
@@ -172,6 +189,58 @@ pub(super) fn collect(manifest: &ResourceManifest) -> Vec<ValidationError> {
     }
     templates::check(manifest, &mut errors);
     errors
+}
+
+/// Checks the part count, part names, and `format` references of a composite
+/// version (design §9.2). `path` locates the version object.
+fn check_version_parts<V>(
+    parts: &BTreeMap<String, V>,
+    format: &str,
+    path: &str,
+    errors: &mut Vec<ValidationError>,
+) {
+    if parts.is_empty() || parts.len() > MAX_VERSION_PARTS {
+        errors.push(ValidationError::ValidateVersionParts {
+            path: format!("{path}.parts"),
+            reason: VersionPartsReason::Count,
+            part: None,
+        });
+    }
+    let referenced: BTreeSet<&str> = variables(format).collect();
+    for name in parts.keys() {
+        let reserved = BUILTINS
+            .iter()
+            .chain(URL_COMPONENTS)
+            .chain(&["artifact"])
+            .any(|builtin| builtin == name);
+        if reserved
+            || name.is_empty()
+            || !name
+                .bytes()
+                .all(|byte| byte.is_ascii_alphanumeric() || byte == b'_')
+        {
+            errors.push(ValidationError::ValidateVersionParts {
+                path: format!("{path}.parts.{name}"),
+                reason: VersionPartsReason::Name,
+                part: Some(name.clone()),
+            });
+        }
+        if !referenced.contains(name.as_str()) {
+            errors.push(ValidationError::ValidateVersionParts {
+                path: format!("{path}.format"),
+                reason: VersionPartsReason::Unreferenced,
+                part: Some(name.clone()),
+            });
+        }
+    }
+    for variable in referenced {
+        if !parts.contains_key(variable) {
+            errors.push(ValidationError::ResolveVariable {
+                path: format!("{path}.format"),
+                variable: variable.to_owned(),
+            });
+        }
+    }
 }
 
 fn check_registry(

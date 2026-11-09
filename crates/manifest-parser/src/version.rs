@@ -3,8 +3,9 @@ use std::str::FromStr;
 
 use regex::{Regex, RegexBuilder};
 use schemars::JsonSchema;
-use serde::de::{MapAccess, Visitor};
+use serde::de::{MapAccess, SeqAccess, Visitor};
 use serde::{Deserialize, Deserializer, Serialize};
+use serde_json::Value;
 use specta::Type;
 
 use crate::{Limits, ParseError, RemoteResponse};
@@ -57,8 +58,17 @@ pub struct CompiledVersionParser {
 
 #[derive(Debug, Clone)]
 enum VersionParser {
-    Text { trim: bool },
-    Regex { regex: Regex, group: usize },
+    Text {
+        trim: bool,
+    },
+    Regex {
+        regex: Regex,
+        group: usize,
+    },
+    Json {
+        pointer: String,
+        capture: Option<(Regex, usize)>,
+    },
 }
 
 impl CompiledVersionParser {
@@ -70,7 +80,7 @@ impl CompiledVersionParser {
                 actual: response.body.len(),
             });
         }
-        let version = match &self.parser {
+        match &self.parser {
             VersionParser::Text { trim } => {
                 if *trim {
                     response.body.trim()
@@ -78,19 +88,146 @@ impl CompiledVersionParser {
                     response.body
                 }
             }
+            .parse(),
             VersionParser::Regex { regex, group } => {
-                let captures = regex
-                    .captures(response.body)
-                    .ok_or(ParseError::FindVersion {})?;
-                captures
-                    .get(*group)
-                    .ok_or(ParseError::FindVersion {})?
-                    .as_str()
-                    .trim()
+                capture(regex, *group, response.body)?.trim().parse()
             }
-        };
-        version.parse()
+            VersionParser::Json {
+                pointer,
+                capture: rule,
+            } => {
+                let document = decode_json(response.body)?;
+                let value = document
+                    .pointer(pointer)
+                    .and_then(Value::as_str)
+                    .ok_or(ParseError::FindVersion {})?;
+                match rule {
+                    Some((regex, group)) => capture(regex, *group, value)?,
+                    None => value,
+                }
+                .trim()
+                .parse()
+            }
+        }
     }
+}
+
+fn capture<'a>(regex: &Regex, group: usize, text: &'a str) -> Result<&'a str, ParseError> {
+    Ok(regex
+        .captures(text)
+        .and_then(|captures| captures.get(group))
+        .ok_or(ParseError::FindVersion {})?
+        .as_str())
+}
+
+/// Compiles a version regex and resolves its capture group, defaulting to 1.
+fn compile_capture(
+    pattern: &str,
+    group: Option<u32>,
+    limits: &Limits,
+) -> Result<(Regex, usize), ParseError> {
+    if pattern.len() > limits.regex_pattern_bytes() {
+        return Err(ParseError::ValidatePatternSize {
+            limit: limits.regex_pattern_bytes(),
+            actual: pattern.len(),
+        });
+    }
+    let regex = RegexBuilder::new(pattern)
+        .size_limit(limits.regex_size_bytes())
+        .build()
+        .map_err(|source| ParseError::CompilePattern { source })?;
+    let group = group.unwrap_or(1);
+    let groups = regex.captures_len();
+    let index = usize::try_from(group)
+        .ok()
+        .filter(|&index| index < groups)
+        .ok_or(ParseError::ValidateGroup { group, groups })?;
+    Ok((regex, index))
+}
+
+/// Whether `pointer` is an RFC 6901 JSON Pointer: empty, or `/`-prefixed
+/// with every `~` starting a `~0` or `~1` escape.
+fn is_json_pointer(pointer: &str) -> bool {
+    let bytes = pointer.as_bytes();
+    (bytes.is_empty() || bytes[0] == b'/')
+        && bytes
+            .iter()
+            .enumerate()
+            .all(|(index, &byte)| byte != b'~' || matches!(bytes.get(index + 1), Some(b'0' | b'1')))
+}
+
+/// Decodes a JSON response body, rejecting duplicate object keys so that a
+/// pointer never picks one of several conflicting values.
+fn decode_json(body: &str) -> Result<Value, ParseError> {
+    struct Unique(Value);
+
+    impl<'de> Deserialize<'de> for Unique {
+        fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+            deserializer.deserialize_any(UniqueVisitor).map(Unique)
+        }
+    }
+
+    struct UniqueVisitor;
+
+    impl<'de> Visitor<'de> for UniqueVisitor {
+        type Value = Value;
+
+        fn expecting(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+            formatter.write_str("a JSON value")
+        }
+
+        fn visit_bool<E>(self, value: bool) -> Result<Value, E> {
+            Ok(Value::Bool(value))
+        }
+
+        fn visit_i64<E>(self, value: i64) -> Result<Value, E> {
+            Ok(Value::from(value))
+        }
+
+        fn visit_u64<E>(self, value: u64) -> Result<Value, E> {
+            Ok(Value::from(value))
+        }
+
+        fn visit_f64<E>(self, value: f64) -> Result<Value, E> {
+            Ok(Value::from(value))
+        }
+
+        fn visit_str<E>(self, value: &str) -> Result<Value, E> {
+            Ok(Value::String(value.to_owned()))
+        }
+
+        fn visit_string<E>(self, value: String) -> Result<Value, E> {
+            Ok(Value::String(value))
+        }
+
+        fn visit_unit<E>(self) -> Result<Value, E> {
+            Ok(Value::Null)
+        }
+
+        fn visit_seq<A: SeqAccess<'de>>(self, mut seq: A) -> Result<Value, A::Error> {
+            let mut values = Vec::new();
+            while let Some(Unique(value)) = seq.next_element()? {
+                values.push(value);
+            }
+            Ok(Value::Array(values))
+        }
+
+        fn visit_map<A: MapAccess<'de>>(self, mut map: A) -> Result<Value, A::Error> {
+            let mut object = serde_json::Map::new();
+            while let Some(key) = map.next_key::<String>()? {
+                if object.contains_key(&key) {
+                    return Err(serde::de::Error::custom(format!("duplicate key {key:?}")));
+                }
+                let Unique(value) = map.next_value()?;
+                object.insert(key, value);
+            }
+            Ok(Value::Object(object))
+        }
+    }
+
+    serde_json::from_str::<Unique>(body)
+        .map(|Unique(value)| value)
+        .map_err(|source| ParseError::DecodeJson { source })
 }
 
 pub(crate) fn deserialize_parser_object<'de, D: Deserializer<'de>>(
@@ -143,6 +280,21 @@ pub enum RemoteVersionParser {
         #[schemars(range(max = 4_294_967_295_u32))]
         group: Option<u32>,
     },
+    /// Decode the body as JSON and read the string at an RFC 6901 pointer,
+    /// optionally narrowed by a regular expression.
+    Json {
+        pointer: String,
+        /// Applied to the string like the `regex` parser; without it the
+        /// whole string is the version.
+        #[serde(skip_serializing_if = "Option::is_none")]
+        #[specta(optional)]
+        pattern: Option<String>,
+        /// Capture group of `pattern`. Defaults to 1; unused without `pattern`.
+        #[serde(skip_serializing_if = "Option::is_none")]
+        #[specta(optional)]
+        #[schemars(range(max = 4_294_967_295_u32))]
+        group: Option<u32>,
+    },
     #[schemars(skip, !untagged)]
     #[specta(skip)]
     #[serde(untagged)]
@@ -160,25 +312,23 @@ impl RemoteVersionParser {
                 trim: trim.unwrap_or(true),
             },
             Self::Regex { pattern, group } => {
-                if pattern.len() > limits.regex_pattern_bytes() {
-                    return Err(ParseError::ValidatePatternSize {
-                        limit: limits.regex_pattern_bytes(),
-                        actual: pattern.len(),
-                    });
+                let (regex, group) = compile_capture(pattern, *group, limits)?;
+                VersionParser::Regex { regex, group }
+            }
+            Self::Json {
+                pointer,
+                pattern,
+                group,
+            } => {
+                if !is_json_pointer(pointer) {
+                    return Err(ParseError::ValidatePointer {});
                 }
-                let regex = RegexBuilder::new(pattern)
-                    .size_limit(limits.regex_size_bytes())
-                    .build()
-                    .map_err(|source| ParseError::CompilePattern { source })?;
-                let group = group.unwrap_or(1);
-                let groups = regex.captures_len();
-                let index = usize::try_from(group)
-                    .ok()
-                    .filter(|&index| index < groups)
-                    .ok_or(ParseError::ValidateGroup { group, groups })?;
-                VersionParser::Regex {
-                    regex,
-                    group: index,
+                VersionParser::Json {
+                    pointer: pointer.clone(),
+                    capture: pattern
+                        .as_deref()
+                        .map(|pattern| compile_capture(pattern, *group, limits))
+                        .transpose()?,
                 }
             }
             Self::Unsupported { parser_type } => {
@@ -199,8 +349,18 @@ impl<'de> Deserialize<'de> for RemoteVersionParser {
         #[derive(Deserialize)]
         #[serde(tag = "type", rename_all = "snake_case")]
         enum Known {
-            Text { trim: Option<bool> },
-            Regex { pattern: String, group: Option<u32> },
+            Text {
+                trim: Option<bool>,
+            },
+            Regex {
+                pattern: String,
+                group: Option<u32>,
+            },
+            Json {
+                pointer: String,
+                pattern: Option<String>,
+                group: Option<u32>,
+            },
         }
 
         let value = deserialize_parser_object(deserializer)?;
@@ -208,7 +368,7 @@ impl<'de> Deserialize<'de> for RemoteVersionParser {
             .get("type")
             .and_then(serde_json::Value::as_str)
             .ok_or_else(|| serde::de::Error::custom("parser type must be a string"))?;
-        if !matches!(parser_type, "text" | "regex") {
+        if !matches!(parser_type, "text" | "regex" | "json") {
             return Ok(Self::Unsupported {
                 parser_type: parser_type.to_owned(),
             });
@@ -216,6 +376,15 @@ impl<'de> Deserialize<'de> for RemoteVersionParser {
         match Known::deserialize(value).map_err(serde::de::Error::custom)? {
             Known::Text { trim } => Ok(Self::Text { trim }),
             Known::Regex { pattern, group } => Ok(Self::Regex { pattern, group }),
+            Known::Json {
+                pointer,
+                pattern,
+                group,
+            } => Ok(Self::Json {
+                pointer,
+                pattern,
+                group,
+            }),
         }
     }
 }
@@ -285,6 +454,10 @@ mod tests {
             json!({"type": "regex", "pattern": "(.*)", "group": -1}),
             json!({"type": "regex", "pattern": "(.*)", "group": 0.5}),
             json!({"type": "regex", "pattern": "(.*)", "group": 4_294_967_296_u64}),
+            json!({"type": "json"}),
+            json!({"type": "json", "pointer": 1}),
+            json!({"type": "json", "pointer": "/a", "pattern": 1}),
+            json!({"type": "json", "pointer": "/a", "group": -1}),
         ] {
             assert!(
                 serde_json::from_value::<RemoteVersionParser>(input.clone()).is_err(),
@@ -306,6 +479,8 @@ mod tests {
             json!({"type": "text"}),
             json!({"type": "text", "trim": false}),
             json!({"type": "regex", "pattern": "(.*)", "group": 0}),
+            json!({"type": "json", "pointer": ""}),
+            json!({"type": "json", "pointer": "/a", "pattern": "(.*)", "group": 0}),
         ] {
             assert!(
                 serde_json::from_value::<RemoteVersionParser>(input.clone()).is_ok(),

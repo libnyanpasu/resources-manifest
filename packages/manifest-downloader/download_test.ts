@@ -126,7 +126,7 @@ async function fixture(t: TestContext, remote = false) {
     ? {
         type: "remote",
         fallback: { version: "v1", checksum },
-        version: {
+        latest: {
           resource: { registry: "main", artifact: "version.txt" },
           parser: { type: "text" },
         },
@@ -353,6 +353,35 @@ test("allow-parsed resolves version and checksum then downloads with WARN", asyn
       (line) => line.startsWith("WARN") && line.includes("--allow-parsed"),
     ),
   );
+  assert.deepEqual(await readFile(join(f.out, "pkg-v1.zip")), payload);
+});
+
+test("composite versions request every part in plan order", async (t) => {
+  const f = await fixture(t, true);
+  assert.equal(f.version.type, "remote");
+  f.version.latest = {
+    parts: {
+      major: {
+        resource: { registry: "main", artifact: "major.txt" },
+        parser: { type: "text" },
+      },
+      build: {
+        resource: { registry: "main", artifact: "build.txt" },
+        parser: { type: "text" },
+      },
+    },
+    format: "{major}{build}",
+  };
+  f.routes["/major.txt"] = { body: "v" };
+  f.routes["/build.txt"] = { body: "1\n" };
+  await f.run(["--allow-parsed"]);
+  assert.deepEqual(f.requests, [
+    "/build.txt",
+    "/major.txt",
+    "/checksums.txt",
+    "/pkg-v1.zip",
+  ]);
+  assert.match(f.logs.join("\n"), /version=v1 kind=parsed policy=accept/);
   assert.deepEqual(await readFile(join(f.out, "pkg-v1.zip")), payload);
 });
 
@@ -622,7 +651,9 @@ test("HTTPS downgrade redirects fail before requesting HTTP for manifest, metada
         name: "Secure",
         url_template: `${secureBase}/{artifact}`,
       };
-      f.version[kind]!.resource.registry = "secure";
+      const target = f.version[kind === "version" ? "latest" : kind]!;
+      assert.ok("resource" in target);
+      target.resource.registry = "secure";
     }
     await f.save();
     const certificatePath = join(f.out, "..", "ca.pem");

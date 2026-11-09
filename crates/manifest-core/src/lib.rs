@@ -2,6 +2,7 @@ use manifest_metadata::ResourceManifest;
 use serde_json::{Value, json};
 use snafu::Snafu;
 
+mod compile;
 mod kind;
 mod plan;
 mod render;
@@ -9,13 +10,15 @@ mod scope;
 mod validate;
 mod verify;
 
+pub use compile::{CompileError, CompileErrors, ReleaseSourceReason, SnapshotReason, compile};
 pub use kind::{
     ChecksumKind, VariantChecksumKind, artifact_checksum_kind, list_variant_checksum_kinds,
 };
 pub use plan::{
-    ChecksumMode, ChecksumPlan, DownloadOptions, DownloadPlan, RemoteVersionPlan, RequestPlan,
-    ResolveError, ResolvedChecksum, VariantSelection, VersionOptions, VersionPlan, finish_checksum,
-    plan_download, plan_version, select_variant,
+    ChecksumMode, ChecksumPlan, DownloadOptions, DownloadPlan, FinishVersionError,
+    RemoteVersionPlan, RequestPlan, ResolveError, ResolvedChecksum, VariantSelection,
+    VersionOptions, VersionPartPlan, VersionPlan, finish_checksum, finish_version, plan_download,
+    plan_version, select_variant,
 };
 pub use verify::{VerifyError, VerifyPolicy, check_policy};
 
@@ -170,6 +173,31 @@ impl std::fmt::Display for ReadHistoryReason {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[non_exhaustive]
+pub enum VersionPartsReason {
+    Count,
+    Name,
+    Unreferenced,
+}
+
+impl VersionPartsReason {
+    #[must_use]
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Count => "count",
+            Self::Name => "name",
+            Self::Unreferenced => "unreferenced",
+        }
+    }
+}
+
+impl std::fmt::Display for VersionPartsReason {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter.write_str(self.as_str())
+    }
+}
+
 #[derive(Debug, Clone, PartialEq)]
 #[must_use]
 pub struct ValidatedManifest {
@@ -264,6 +292,12 @@ pub enum ValidationError {
     },
     #[snafu(display("unknown template variable {variable:?} at {path}"))]
     ResolveVariable { path: String, variable: String },
+    #[snafu(display("invalid composite version parts at {path}: {reason}"))]
+    ValidateVersionParts {
+        path: String,
+        reason: VersionPartsReason,
+        part: Option<String>,
+    },
 }
 
 impl ValidationError {
@@ -280,6 +314,7 @@ impl ValidationError {
             Self::ReadHistory { .. } => "validate.static_history",
             Self::CompileParser { .. } => "validate.parser_compile",
             Self::ResolveVariable { .. } => "validate.template_variable",
+            Self::ValidateVersionParts { .. } => "validate.version_parts",
         }
     }
 
@@ -295,7 +330,8 @@ impl ValidationError {
             | Self::ResolveReference { path, .. }
             | Self::ReadHistory { path, .. }
             | Self::CompileParser { path, .. }
-            | Self::ResolveVariable { path, .. } => path,
+            | Self::ResolveVariable { path, .. }
+            | Self::ValidateVersionParts { path, .. } => path,
         }
     }
 
@@ -341,6 +377,9 @@ impl ValidationError {
                 json!({ "reason": reason, "details": details })
             }
             Self::ResolveVariable { variable, .. } => json!({ "variable": variable }),
+            Self::ValidateVersionParts { reason, part, .. } => {
+                json!({ "reason": reason.as_str(), "part": part })
+            }
         }
     }
 }

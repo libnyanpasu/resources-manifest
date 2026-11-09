@@ -687,5 +687,434 @@
         }
       }
     }
+  },
+  {
+    "name": "version.json.string",
+    "input": {
+      "parser": {
+        "type": "json",
+        "pointer": "/tag_name"
+      },
+      "response": {
+        "body": "{\"tag_name\": \" v1.2.3\\n\", \"id\": 1}",
+        "headers": []
+      }
+    },
+    "expect": {
+      "ok": "v1.2.3"
+    }
+  },
+  {
+    "name": "version.json.pattern",
+    "input": {
+      "parser": {
+        "type": "json",
+        "pointer": "/tag_name",
+        "pattern": "^v?([0-9].*)$"
+      },
+      "response": {
+        "body": "{\"tag_name\": \"v0.10.11\"}",
+        "headers": []
+      }
+    },
+    "expect": {
+      "ok": "0.10.11"
+    }
+  },
+  {
+    "name": "version.json.pattern_group_zero",
+    "input": {
+      "parser": {
+        "type": "json",
+        "pointer": "/sha",
+        "pattern": "^[0-9a-f]{7}",
+        "group": 0
+      },
+      "response": {
+        "body": "{\"sha\": \"bd22442a6f0bb6d6b5bdf3a3f0f7d0a54cbb8a2e\"}",
+        "headers": []
+      }
+    },
+    "expect": {
+      "ok": "bd22442"
+    }
+  },
+  {
+    "name": "version.json.group_without_pattern",
+    "input": {
+      "parser": {
+        "type": "json",
+        "pointer": "/tag_name",
+        "group": 5
+      },
+      "response": {
+        "body": "{\"tag_name\": \"v1\"}",
+        "headers": []
+      }
+    },
+    "expect": {
+      "ok": "v1"
+    }
+  },
+  {
+    "name": "version.json.escaped_pointer",
+    "input": {
+      "parser": {
+        "type": "json",
+        "pointer": "/a~1b/m~0n/1"
+      },
+      "response": {
+        "body": "{\"a/b\": {\"m~n\": [\"v1\", \"v2\"]}, \"a\": {\"b\": {\"m~n\": [\"x\", \"x\"]}}}",
+        "headers": []
+      }
+    },
+    "expect": {
+      "ok": "v2"
+    }
+  },
+  {
+    "name": "version.json.empty_pointer",
+    "input": {
+      "parser": {
+        "type": "json",
+        "pointer": ""
+      },
+      "response": {
+        "body": " \"v3\" ",
+        "headers": []
+      }
+    },
+    "expect": {
+      "ok": "v3"
+    }
+  },
+  {
+    "name": "version.json.nested_duplicate_names_in_different_objects",
+    "input": {
+      "parser": {
+        "type": "json",
+        "pointer": "/commit/sha"
+      },
+      "response": {
+        "body": "{\"sha\": \"outer\", \"commit\": {\"sha\": \"bd22442\"}}",
+        "headers": []
+      }
+    },
+    "expect": {
+      "ok": "bd22442"
+    }
+  },
+  {
+    "name": "version.json.missing",
+    "input": {
+      "parser": {
+        "type": "json",
+        "pointer": "/tag"
+      },
+      "response": {
+        "body": "{\"tag_name\": \"v1\"}",
+        "headers": []
+      }
+    },
+    "expect": {
+      "error": {
+        "code": "parser.not_found",
+        "path": "response.body",
+        "fields": {}
+      }
+    }
+  },
+  {
+    "name": "version.json.not_string",
+    "input": {
+      "parser": {
+        "type": "json",
+        "pointer": "/id"
+      },
+      "response": {
+        "body": "{\"id\": 1}",
+        "headers": []
+      }
+    },
+    "expect": {
+      "error": {
+        "code": "parser.not_found",
+        "path": "response.body",
+        "fields": {}
+      }
+    }
+  },
+  {
+    "name": "version.json.leading_zero_index",
+    "input": {
+      "parser": {
+        "type": "json",
+        "pointer": "/01"
+      },
+      "response": {
+        "body": "[\"v0\", \"v1\"]",
+        "headers": []
+      }
+    },
+    "expect": {
+      "error": {
+        "code": "parser.not_found",
+        "path": "response.body",
+        "fields": {}
+      }
+    }
+  },
+  {
+    "name": "version.json.pattern_no_match",
+    "input": {
+      "parser": {
+        "type": "json",
+        "pointer": "/tag_name",
+        "pattern": "^v([0-9]+)$"
+      },
+      "response": {
+        "body": "{\"tag_name\": \"nightly\"}",
+        "headers": []
+      }
+    },
+    "expect": {
+      "error": {
+        "code": "parser.not_found",
+        "path": "response.body",
+        "fields": {}
+      }
+    }
+  },
+  {
+    "name": "version.json.invalid_version",
+    "input": {
+      "parser": {
+        "type": "json",
+        "pointer": "/tag_name"
+      },
+      "response": {
+        "body": "{\"tag_name\": \"v1/2\"}",
+        "headers": []
+      }
+    },
+    "expect": {
+      "error": {
+        "code": "parser.invalid_version",
+        "path": "response.body",
+        "fields": {}
+      }
+    }
+  },
+  {
+    "name": "version.json.invalid_json",
+    "input": {
+      "parser": {
+        "type": "json",
+        "pointer": "/tag_name"
+      },
+      "response": {
+        "body": "{\"tag_name\": \"v1\"",
+        "headers": []
+      }
+    },
+    "expect": {
+      "error": {
+        "code": "parser.invalid_json",
+        "path": "response.body",
+        "fields": {}
+      }
+    }
+  },
+  {
+    "name": "version.json.trailing_characters",
+    "input": {
+      "parser": {
+        "type": "json",
+        "pointer": "/tag_name"
+      },
+      "response": {
+        "body": "{\"tag_name\": \"v1\"} x",
+        "headers": []
+      }
+    },
+    "expect": {
+      "error": {
+        "code": "parser.invalid_json",
+        "path": "response.body",
+        "fields": {}
+      }
+    }
+  },
+  {
+    "name": "version.json.duplicate_key",
+    "input": {
+      "parser": {
+        "type": "json",
+        "pointer": "/tag_name"
+      },
+      "response": {
+        "body": "{\"tag_name\": \"v1\", \"tag_name\": \"v2\"}",
+        "headers": []
+      }
+    },
+    "expect": {
+      "error": {
+        "code": "parser.invalid_json",
+        "path": "response.body",
+        "fields": {}
+      }
+    }
+  },
+  {
+    "name": "version.json.nested_duplicate_key",
+    "input": {
+      "parser": {
+        "type": "json",
+        "pointer": "/tag_name"
+      },
+      "response": {
+        "body": "{\"tag_name\": \"v1\", \"author\": {\"id\": 1, \"id\": 2}}",
+        "headers": []
+      }
+    },
+    "expect": {
+      "error": {
+        "code": "parser.invalid_json",
+        "path": "response.body",
+        "fields": {}
+      }
+    }
+  },
+  {
+    "name": "version.json.relative_pointer",
+    "input": {
+      "parser": {
+        "type": "json",
+        "pointer": "tag_name"
+      },
+      "response": {
+        "body": "{\"tag_name\": \"v1\"}",
+        "headers": []
+      }
+    },
+    "expect": {
+      "error": {
+        "code": "parser.invalid_pointer",
+        "path": "parser.pointer",
+        "fields": {}
+      }
+    }
+  },
+  {
+    "name": "version.json.invalid_escape",
+    "input": {
+      "parser": {
+        "type": "json",
+        "pointer": "/a~2"
+      },
+      "response": {
+        "body": "{\"a~2\": \"v1\"}",
+        "headers": []
+      }
+    },
+    "expect": {
+      "error": {
+        "code": "parser.invalid_pointer",
+        "path": "parser.pointer",
+        "fields": {}
+      }
+    }
+  },
+  {
+    "name": "version.json.trailing_tilde",
+    "input": {
+      "parser": {
+        "type": "json",
+        "pointer": "/a~"
+      },
+      "response": {
+        "body": "{\"a~\": \"v1\"}",
+        "headers": []
+      }
+    },
+    "expect": {
+      "error": {
+        "code": "parser.invalid_pointer",
+        "path": "parser.pointer",
+        "fields": {}
+      }
+    }
+  },
+  {
+    "name": "version.json.invalid_pattern",
+    "input": {
+      "parser": {
+        "type": "json",
+        "pointer": "/tag_name",
+        "pattern": "("
+      },
+      "response": {
+        "body": "{\"tag_name\": \"v1\"}",
+        "headers": []
+      }
+    },
+    "expect": {
+      "error": {
+        "code": "parser.invalid_pattern",
+        "path": "parser.pattern",
+        "fields": {}
+      }
+    }
+  },
+  {
+    "name": "version.json.group_out_of_range",
+    "input": {
+      "parser": {
+        "type": "json",
+        "pointer": "/tag_name",
+        "pattern": "v(1)",
+        "group": 2
+      },
+      "response": {
+        "body": "{\"tag_name\": \"v1\"}",
+        "headers": []
+      }
+    },
+    "expect": {
+      "error": {
+        "code": "parser.group_out_of_range",
+        "path": "parser.group",
+        "fields": {
+          "group": 2,
+          "groups": 2
+        }
+      }
+    }
+  },
+  {
+    "name": "version.json.body_limit",
+    "input": {
+      "parser": {
+        "type": "json",
+        "pointer": "/a"
+      },
+      "response": {
+        "body": "{\"a\": \"v1\"}",
+        "headers": []
+      },
+      "limits": {
+        "body_bytes": 10
+      }
+    },
+    "expect": {
+      "error": {
+        "code": "parser.body_too_large",
+        "path": "response.body",
+        "fields": {
+          "limit": 10,
+          "actual": 11
+        }
+      }
+    }
   }
 ]

@@ -19,6 +19,8 @@ pnpm run generate:schema
 - `@manifest/metadata/schema/manifest`: JSON Schema for compiled `ResourceManifest`.
 - `@manifest/metadata/schema/template`: JSON Schema for compiler input
   `ResourceManifestTemplate`.
+- `@manifest/metadata/schema/snapshot`: JSON Schema for the generator's release
+  snapshot `ManifestSnapshot`, the compiler's second input.
 
 ## Contract layers
 
@@ -31,9 +33,10 @@ TypeScript and JSON Schema are structural contracts aligned with the wire format
   than TS alone. Rust also requires the minor to fit `u32`. The generated version
   constant is `"2.0"`; both schema `$id` values include `/schema/2.0/`.
 - `ResourceChecksum` permits only `<algorithm>:<hex>` through its TS template
-  literal/schema pattern. Compiled schemas require normalized lowercase; template
-  schemas accept casing the compiler can normalize, consistent with Rust
-  `ResourceChecksum::new` and reference `parseResourceChecksum`.
+  literal/schema pattern, and schemas require normalized lowercase. Templates carry
+  no checksums: static history and remote fallbacks come from the snapshot.
+- Snapshot IDs are decimal strings (`^[0-9]+$`), because a JS number cannot hold
+  every GitHub ID. Templates and snapshots reject unknown fields.
 - Optional TS/schema fields accept absence or a concrete value, never null.
 
 Semantic and cross-field rules are outside this package: tag-combination
