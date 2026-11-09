@@ -160,13 +160,18 @@ const clashRs = resource({
     parts: {
       stable: {
         resource: { registry: "github-api", artifact: "releases/latest" },
-        parser: { type: "regex", pattern: '"tag_name":\\s*"v?([0-9][^"]*)"' },
+        parser: {
+          type: "json",
+          pointer: "/tag_name",
+          pattern: "^v?([0-9].*)$",
+        },
       },
       commit: {
         resource: { registry: "github-api", artifact: "commits/{release}" },
         parser: {
-          type: "regex",
-          pattern: '"sha":\\s*"([0-9a-f]{7})[0-9a-f]{33}"',
+          type: "json",
+          pointer: "/sha",
+          pattern: "^([0-9a-f]{7})[0-9a-f]{33}$",
         },
       },
     },

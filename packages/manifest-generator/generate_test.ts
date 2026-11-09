@@ -18,6 +18,7 @@ import type {
 } from "@manifest/metadata";
 import {
   compileManifest,
+  finishVersion,
   planVersion,
   selectVariant,
   validateManifest,
@@ -539,7 +540,7 @@ test("a latest stable release without a digest fails without writing", async (t)
   assert.deepEqual(await readdir(out), []);
 });
 
-test("the production template compiles and plans every alpha version", () => {
+test("the production template compiles and plans every alpha version", async () => {
   const snapshot: ManifestSnapshot = {
     observed_at: NOW.toISOString(),
     resources: {},
@@ -606,4 +607,27 @@ test("the production template compiles and plans every alpha version", () => {
       ],
     ],
   ]);
+
+  // The recorded GitHub API responses (conformance fixtures) give the same
+  // Clash Rust alpha version as clash-nyanpasu.
+  const fixtures = fileURLToPath(
+    new URL("../../conformance/fixtures/github-api/", import.meta.url),
+  );
+  using selected = selectVariant(validated, "clash_rs", "linux-amd64", {
+    tags: ["channel:alpha"],
+  });
+  using plan = planVersion(selected);
+  const responses = await Promise.all(
+    plan.value.remote!.parts.map(async (part) => ({
+      body: await readFile(
+        join(
+          fixtures,
+          `clash-rs-${part.name === "commit" ? "commits" : "releases"}-latest.txt`,
+        ),
+        "utf8",
+      ),
+      headers: [],
+    })),
+  );
+  assert.equal(finishVersion(plan, responses), version.clash_rs);
 });
