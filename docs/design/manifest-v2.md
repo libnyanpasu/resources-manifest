@@ -648,26 +648,55 @@ identifies its checking boundary:
 - a static `latest` version is absent from the artifact history —
   `validate_manifest`;
 - a history contains duplicate versions — `validate_manifest`;
-- a generated latest release snapshot does not contain the advertised artifact —
-  compile;
+- the newest captured release, or the captured tag release at the observed
+  version, does not contain the rendered artifact — compile
+  (`compile.artifact_missing`);
 - a checksum does not use a supported `<algorithm>:<hex>` representation —
-  compile (compiled decoding also enforces `ResourceChecksum`);
+  snapshot and compiled decoding (`ResourceChecksum`);
 - a registry or mirror reference does not exist — `validate_manifest`;
 - a known remote parser cannot compile — `validate_manifest` (an unknown parser
   is deferred to artifact resolution as `resolve.unsupported_parser`);
 - template variable dependencies are incomplete — `validate_manifest`;
 - a template cannot be rendered during compiler preflight — compile.
 
-Compiler preflight is a staged boundary: B1 checks only whether variable
-dependencies are complete in `validate_manifest`; D2 checks template
-resolvability at compile time. The reference compiler does not currently perform
-that preflight, so this is not a claim that it already rejects every unresolved
-variable.
+Compiler preflight is a staged boundary: `validate_manifest` checks only whether
+variable dependencies are complete; the compiler then plans every artifact
+version and download, canonically and through each mirror, so a template that
+cannot render fails at compile time.
 
 If only one variant supports a platform, its default is inferred.
 
 The compiler sorts keys and IDs by Unicode code point rather than
 `localeCompare`, so ordering does not depend on runtime locale.
+
+## Compilation
+
+The generator compiles an authored template with a release snapshot:
+`compile(template, snapshot, now)` is a pure function, and the same inputs
+produce byte-identical output.
+
+- **Template.** Each resource declares named release sources: `history` (the
+  newest `limit` releases, 1 to 50) or `tag` (one release, usually a mutable
+  prerelease). Each artifact binds to one: a `static` artifact to a history
+  source, a `remote` artifact to a tag source. Templates carry no history,
+  fallback or checksum, and reject unknown fields.
+- **Snapshot.** The generator records what it captured from the repository
+  named by the resource's `source.owner` and `source.repo`: each release's ID,
+  tag, API URL, publication time and assets (ID, name, digest, update time),
+  plus the version it observed for each tag source. IDs are decimal strings.
+- **Binding.** A static artifact's history lists every captured release whose
+  assets contain the artifact name rendered for that release; the newest one
+  must. A remote artifact's fallback is the observed version with the matching
+  asset's digest and update time. Without an observed version the result is
+  provisional and has no fallback; it only serves to plan the version requests
+  that observe the version.
+- **Checks.** The result passes `validate_manifest`, then every version and
+  download plan is built canonically and through each mirror; a remote
+  artifact without a fallback is planned with the placeholder version `0`.
+
+Errors carry a path rooted at `template.`, `snapshot.` or `output.` (the
+compiled manifest), with the `compile.*` codes in the
+[D2 specification](../spec/2026-11-06-manifest-core-parsers/design.md#96-d2-编译器).
 
 ## Consumers
 
@@ -691,12 +720,14 @@ scripts in this protocol.
 
 ## Migration from manifest v1
 
-The generator writes both files:
+Two files are published side by side:
 
-- `manifest/version.json`: unchanged v1 schema and five legacy channel keys for
-  existing updater/build code;
+- `manifest/version.json`: unchanged v1 schema and legacy channel keys for
+  existing updater/build code, still produced by clash-nyanpasu's upstream
+  scripts until they are retired;
 - `manifest/resources.json`: v2 schema with one key per core family, channel
-  tags, static history and remote resolution instructions.
+  tags, static history and remote resolution instructions, produced by
+  `@manifest/generator`, which does not write v1.
 
 This makes schema rollout independent from the updater UI/backend migration.
 Once every consumer resolves resources through v2, the legacy `latest`,

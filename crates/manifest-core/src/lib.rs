@@ -2,6 +2,7 @@ use manifest_metadata::ResourceManifest;
 use serde_json::{Value, json};
 use snafu::Snafu;
 
+mod compile;
 mod kind;
 mod plan;
 mod render;
@@ -9,6 +10,7 @@ mod scope;
 mod validate;
 mod verify;
 
+pub use compile::{CompileError, CompileErrors, ReleaseSourceReason, SnapshotReason, compile};
 pub use kind::{
     ChecksumKind, VariantChecksumKind, artifact_checksum_kind, list_variant_checksum_kinds,
 };

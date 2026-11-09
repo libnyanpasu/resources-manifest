@@ -121,6 +121,7 @@ function bind<Args extends unknown[], Result>(
 }
 
 export const validateManifest = bind(wasm.validateManifest);
+export const compileManifest = bind(wasm.compileManifest);
 export const artifactChecksumKind = bind(wasm.artifactChecksumKind);
 export const selectVariant = bind(wasm.selectVariant);
 export const listVariantChecksumKinds = bind(wasm.listVariantChecksumKinds);

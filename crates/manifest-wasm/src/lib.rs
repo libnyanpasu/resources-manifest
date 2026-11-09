@@ -13,6 +13,7 @@
 use wasm_bindgen::prelude::*;
 
 mod bridge;
+mod compile;
 mod error;
 mod handles;
 mod manifest;
@@ -21,6 +22,7 @@ mod plan;
 mod verify;
 mod wire;
 
+pub use compile::compile_manifest;
 pub use handles::{DownloadPlan, SelectedArtifact, ValidatedManifest, VersionPlan};
 pub use manifest::{
     artifact_checksum_kind, list_variant_checksum_kinds, select_variant, validate_manifest,
@@ -36,11 +38,13 @@ pub use wire::{LimitsInput, RemoteResponseInput, RenderedArtifact, TemplateValue
 const TYPE_IMPORTS: &str = r#"
 import type {
   ChecksumAlgorithm,
+  ManifestSnapshot,
   RemoteChecksumParser,
   RemoteVersionParser,
   ResourceArtifactTemplate,
   ResourceChecksum,
   ResourceManifest,
+  ResourceManifestTemplate,
   ResourceVariant,
   SupportedPlatform,
 } from "@manifest/metadata";

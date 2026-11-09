@@ -255,6 +255,11 @@ Temporary `ParseError::Unsupported` was removed. Unknown types use
 `ResolveParser { parser_type }`, yielding `resolve.unsupported_parser`,
 `{ parser_type }` with the original tag, and `parser.type`.
 
+`compile/` cases give `{ template, snapshot, now }` and expect either the compiled
+manifest or its errors, compared as a multiset like `validate/`. Both runners
+compile twice and require identical output; Node expects the errors wrapped in
+`compile.failed` at `arg.template`.
+
 Version cases (`kind` plans with `operation: "version"`) pass their responses to
 `finish_version`. `responses` lists one response per plan part; the older
 `response` is shorthand for a single-element list. A response may give

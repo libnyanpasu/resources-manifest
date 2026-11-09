@@ -5,10 +5,12 @@ import { test } from "node:test";
 import { fileURLToPath } from "node:url";
 import type {
   ChecksumAlgorithm,
+  ManifestSnapshot,
   RemoteChecksumParser,
   RemoteVersionParser,
   ResourceArtifactTemplate,
   ResourceManifest,
+  ResourceManifestTemplate,
   SupportedPlatform,
 } from "@manifest/metadata";
 import {
@@ -16,6 +18,7 @@ import {
   artifactChecksumKind,
   checkPolicy,
   compareDigest,
+  compileManifest,
   finishChecksum,
   finishVersion,
   listVariantChecksumKinds,
@@ -151,6 +154,34 @@ function validation(input: unknown, expect: Expectation): void {
   assert.ok("error" in actual);
   assert.equal(actual.error.code, "validate.failed");
   assert.equal(actual.error.path, "arg.manifest");
+  const errors = (actual.error.fields as { errors: StableError[] }).errors.map(
+    ({ code, path, fields }) => ({ code, path, fields }),
+  );
+  assert.deepEqual(
+    errorMultiset(errors),
+    errorMultiset([expect.error, ...(expect.additional_errors ?? [])]),
+  );
+}
+
+interface CompileInput {
+  template: ResourceManifestTemplate;
+  snapshot: ManifestSnapshot;
+  now: string;
+}
+
+/** Compiles twice, requiring identical results, and compares errors as a multiset. */
+function compilation(input: CompileInput, expect: Expectation): void {
+  const execute = (): Expectation =>
+    result(() => compileManifest(input.template, input.snapshot, input.now));
+  const actual = execute();
+  assert.deepEqual(actual, execute());
+  if ("ok" in expect) {
+    assert.deepEqual(actual, expect);
+    return;
+  }
+  assert.ok("error" in actual);
+  assert.equal(actual.error.code, "compile.failed");
+  assert.equal(actual.error.path, "arg.template");
   const errors = (actual.error.fields as { errors: StableError[] }).errors.map(
     ({ code, path, fields }) => ({ code, path, fields }),
   );
@@ -450,7 +481,9 @@ function walk(directory: string): void {
     }
     const group = file.split("/")[0];
     assert.ok(
-      ["parsers", "validate", "compat", "kind", "resolve"].includes(group),
+      ["parsers", "validate", "compat", "kind", "resolve", "compile"].includes(
+        group,
+      ),
       `unknown corpus directory: ${file}`,
     );
     if (group === "parsers") {
@@ -480,6 +513,10 @@ function walk(directory: string): void {
       register(item.name, () => {
         if (group === "validate") {
           validation(item.input, item.expect);
+          return;
+        }
+        if (group === "compile") {
+          compilation(item.input as CompileInput, item.expect);
           return;
         }
         const actual = result(() => {

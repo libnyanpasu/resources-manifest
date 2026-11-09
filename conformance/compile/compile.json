@@ -1,0 +1,4045 @@
+[
+  {
+    "name": "compile.binds_history_and_fallback",
+    "input": {
+      "template": {
+        "manifest_version": "2.0",
+        "registries": {
+          "release": {
+            "name": "Releases",
+            "url_template": "https://origin.test/{owner}/{repo}/download/{release}/{artifact}"
+          },
+          "assets": {
+            "name": "Release assets",
+            "url_template": "https://origin.test/{owner}/{repo}/assets/{release}"
+          }
+        },
+        "mirrors": {
+          "direct": {
+            "name": "Direct",
+            "url_template": "{url}"
+          },
+          "edge": {
+            "name": "Edge",
+            "url_template": "https://edge.test{path_and_query}",
+            "registries": ["release"]
+          }
+        },
+        "resources": {
+          "sample": {
+            "name": "Sample",
+            "registry": "release",
+            "source": {
+              "owner": "o",
+              "repo": "r"
+            },
+            "tags": {
+              "channel:stable": {
+                "name": "Stable",
+                "group": "channel"
+              },
+              "channel:alpha": {
+                "name": "Alpha",
+                "group": "channel"
+              }
+            },
+            "default_variants": {
+              "linux-amd64": "stable"
+            },
+            "releases": {
+              "stable": {
+                "type": "history",
+                "limit": 3
+              },
+              "alpha": {
+                "type": "tag",
+                "tag": "Prerelease-Alpha"
+              }
+            },
+            "variants": [
+              {
+                "id": "stable",
+                "name": "Stable",
+                "tags": ["channel:stable"],
+                "source": {
+                  "release": "{version}"
+                },
+                "artifacts": {
+                  "windows-x86_64": {
+                    "artifact": "pkg-{version}-win.zip",
+                    "version": {
+                      "type": "static",
+                      "releases": "stable"
+                    }
+                  },
+                  "linux-amd64": {
+                    "artifact": "pkg-{version}-linux.gz",
+                    "version": {
+                      "type": "static",
+                      "releases": "stable"
+                    }
+                  }
+                }
+              },
+              {
+                "id": "alpha",
+                "name": "Alpha",
+                "tags": ["channel:alpha"],
+                "source": {
+                  "release": "Prerelease-Alpha"
+                },
+                "artifacts": {
+                  "linux-amd64": {
+                    "artifact": "pkg-{version}-linux.gz",
+                    "version": {
+                      "type": "remote",
+                      "releases": "alpha",
+                      "version": {
+                        "resource": {
+                          "registry": "release",
+                          "artifact": "version.txt"
+                        },
+                        "parser": {
+                          "type": "text"
+                        }
+                      },
+                      "checksum": {
+                        "resource": {
+                          "registry": "assets"
+                        },
+                        "parser": {
+                          "type": "github-release-assets"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "snapshot": {
+        "observed_at": "2026-11-09T11:59:00Z",
+        "resources": {
+          "sample": {
+            "stable": {
+              "type": "history",
+              "releases": [
+                {
+                  "id": "30",
+                  "tag": "v3",
+                  "url": "https://api.test/repos/o/r/releases/30",
+                  "published_at": "2026-11-03T00:00:00Z",
+                  "assets": [
+                    {
+                      "id": "301",
+                      "name": "pkg-v3-linux.gz",
+                      "digest": "sha256:3131313131313131313131313131313131313131313131313131313131313131",
+                      "updated_at": "2026-11-03T00:01:00Z"
+                    },
+                    {
+                      "id": "302",
+                      "name": "pkg-v3-win.zip",
+                      "digest": "sha256:3232323232323232323232323232323232323232323232323232323232323232",
+                      "updated_at": "2026-11-03T00:02:00Z"
+                    }
+                  ]
+                },
+                {
+                  "id": "20",
+                  "tag": "v2",
+                  "url": "https://api.test/repos/o/r/releases/20",
+                  "published_at": "2026-11-02T00:00:00Z",
+                  "assets": [
+                    {
+                      "id": "201",
+                      "name": "pkg-v2-linux.gz",
+                      "digest": "sha256:2121212121212121212121212121212121212121212121212121212121212121",
+                      "updated_at": "2026-11-02T00:01:00Z"
+                    }
+                  ]
+                },
+                {
+                  "id": "10",
+                  "tag": "v1",
+                  "url": "https://api.test/repos/o/r/releases/10",
+                  "assets": [
+                    {
+                      "id": "101",
+                      "name": "pkg-v1-linux.gz",
+                      "digest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+                      "updated_at": "2026-11-01T00:01:00Z"
+                    },
+                    {
+                      "id": "102",
+                      "name": "pkg-v1-win.zip",
+                      "updated_at": "2026-11-01T00:02:00Z"
+                    }
+                  ]
+                }
+              ]
+            },
+            "alpha": {
+              "type": "tag",
+              "version": "alpha-abc1234",
+              "release": {
+                "id": "40",
+                "tag": "Prerelease-Alpha",
+                "url": "https://api.test/repos/o/r/releases/40",
+                "published_at": "2024-01-01T00:00:00Z",
+                "assets": [
+                  {
+                    "id": "401",
+                    "name": "pkg-alpha-abc1234-linux.gz",
+                    "digest": "sha256:4141414141414141414141414141414141414141414141414141414141414141",
+                    "updated_at": "2026-11-08T08:00:00Z"
+                  },
+                  {
+                    "id": "402",
+                    "name": "version.txt",
+                    "updated_at": "2026-11-08T08:00:00Z"
+                  }
+                ]
+              }
+            }
+          }
+        }
+      },
+      "now": "2026-11-09T12:00:00Z"
+    },
+    "expect": {
+      "ok": {
+        "manifest_version": "2.0",
+        "registries": {
+          "release": {
+            "name": "Releases",
+            "url_template": "https://origin.test/{owner}/{repo}/download/{release}/{artifact}"
+          },
+          "assets": {
+            "name": "Release assets",
+            "url_template": "https://origin.test/{owner}/{repo}/assets/{release}"
+          }
+        },
+        "mirrors": {
+          "direct": {
+            "name": "Direct",
+            "url_template": "{url}"
+          },
+          "edge": {
+            "name": "Edge",
+            "url_template": "https://edge.test{path_and_query}",
+            "registries": ["release"]
+          }
+        },
+        "resources": {
+          "sample": {
+            "name": "Sample",
+            "registry": "release",
+            "source": {
+              "owner": "o",
+              "repo": "r"
+            },
+            "tags": [
+              {
+                "id": "channel:alpha",
+                "name": "Alpha",
+                "group": "channel"
+              },
+              {
+                "id": "channel:stable",
+                "name": "Stable",
+                "group": "channel"
+              }
+            ],
+            "default_variants": {
+              "windows-x86_64": "stable",
+              "linux-amd64": "stable"
+            },
+            "variants": [
+              {
+                "id": "stable",
+                "tag_key": "channel:stable",
+                "name": "Stable",
+                "tags": [
+                  {
+                    "id": "channel:stable",
+                    "name": "Stable",
+                    "group": "channel"
+                  }
+                ],
+                "source": {
+                  "release": "{version}"
+                },
+                "artifacts": {
+                  "windows-x86_64": {
+                    "artifact": "pkg-{version}-win.zip",
+                    "version": {
+                      "type": "static",
+                      "latest": "v3",
+                      "releases": [
+                        {
+                          "version": "v3",
+                          "checksum": "sha256:3232323232323232323232323232323232323232323232323232323232323232",
+                          "published_at": "2026-11-03T00:00:00Z"
+                        },
+                        {
+                          "version": "v1"
+                        }
+                      ]
+                    }
+                  },
+                  "linux-amd64": {
+                    "artifact": "pkg-{version}-linux.gz",
+                    "version": {
+                      "type": "static",
+                      "latest": "v3",
+                      "releases": [
+                        {
+                          "version": "v3",
+                          "checksum": "sha256:3131313131313131313131313131313131313131313131313131313131313131",
+                          "published_at": "2026-11-03T00:00:00Z"
+                        },
+                        {
+                          "version": "v2",
+                          "checksum": "sha256:2121212121212121212121212121212121212121212121212121212121212121",
+                          "published_at": "2026-11-02T00:00:00Z"
+                        },
+                        {
+                          "version": "v1",
+                          "checksum": "sha256:1111111111111111111111111111111111111111111111111111111111111111"
+                        }
+                      ]
+                    }
+                  }
+                }
+              },
+              {
+                "id": "alpha",
+                "tag_key": "channel:alpha",
+                "name": "Alpha",
+                "tags": [
+                  {
+                    "id": "channel:alpha",
+                    "name": "Alpha",
+                    "group": "channel"
+                  }
+                ],
+                "source": {
+                  "release": "Prerelease-Alpha"
+                },
+                "artifacts": {
+                  "linux-amd64": {
+                    "artifact": "pkg-{version}-linux.gz",
+                    "version": {
+                      "type": "remote",
+                      "fallback": {
+                        "version": "alpha-abc1234",
+                        "checksum": "sha256:4141414141414141414141414141414141414141414141414141414141414141",
+                        "published_at": "2026-11-08T08:00:00Z"
+                      },
+                      "version": {
+                        "resource": {
+                          "registry": "release",
+                          "artifact": "version.txt"
+                        },
+                        "parser": {
+                          "type": "text"
+                        }
+                      },
+                      "checksum": {
+                        "resource": {
+                          "registry": "assets"
+                        },
+                        "parser": {
+                          "type": "github-release-assets"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        },
+        "updated_at": "2026-11-09T12:00:00Z"
+      }
+    }
+  },
+  {
+    "name": "compile.history_limit",
+    "input": {
+      "template": {
+        "manifest_version": "2.0",
+        "registries": {
+          "release": {
+            "name": "Releases",
+            "url_template": "https://origin.test/{owner}/{repo}/download/{release}/{artifact}"
+          },
+          "assets": {
+            "name": "Release assets",
+            "url_template": "https://origin.test/{owner}/{repo}/assets/{release}"
+          }
+        },
+        "mirrors": {
+          "direct": {
+            "name": "Direct",
+            "url_template": "{url}"
+          },
+          "edge": {
+            "name": "Edge",
+            "url_template": "https://edge.test{path_and_query}",
+            "registries": ["release"]
+          }
+        },
+        "resources": {
+          "sample": {
+            "name": "Sample",
+            "registry": "release",
+            "source": {
+              "owner": "o",
+              "repo": "r"
+            },
+            "tags": {
+              "channel:stable": {
+                "name": "Stable",
+                "group": "channel"
+              },
+              "channel:alpha": {
+                "name": "Alpha",
+                "group": "channel"
+              }
+            },
+            "default_variants": {
+              "linux-amd64": "stable"
+            },
+            "releases": {
+              "stable": {
+                "type": "history",
+                "limit": 1
+              },
+              "alpha": {
+                "type": "tag",
+                "tag": "Prerelease-Alpha"
+              }
+            },
+            "variants": [
+              {
+                "id": "stable",
+                "name": "Stable",
+                "tags": ["channel:stable"],
+                "source": {
+                  "release": "{version}"
+                },
+                "artifacts": {
+                  "windows-x86_64": {
+                    "artifact": "pkg-{version}-win.zip",
+                    "version": {
+                      "type": "static",
+                      "releases": "stable"
+                    }
+                  },
+                  "linux-amd64": {
+                    "artifact": "pkg-{version}-linux.gz",
+                    "version": {
+                      "type": "static",
+                      "releases": "stable"
+                    }
+                  }
+                }
+              },
+              {
+                "id": "alpha",
+                "name": "Alpha",
+                "tags": ["channel:alpha"],
+                "source": {
+                  "release": "Prerelease-Alpha"
+                },
+                "artifacts": {
+                  "linux-amd64": {
+                    "artifact": "pkg-{version}-linux.gz",
+                    "version": {
+                      "type": "remote",
+                      "releases": "alpha",
+                      "version": {
+                        "resource": {
+                          "registry": "release",
+                          "artifact": "version.txt"
+                        },
+                        "parser": {
+                          "type": "text"
+                        }
+                      },
+                      "checksum": {
+                        "resource": {
+                          "registry": "assets"
+                        },
+                        "parser": {
+                          "type": "github-release-assets"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "snapshot": {
+        "observed_at": "2026-11-09T11:59:00Z",
+        "resources": {
+          "sample": {
+            "stable": {
+              "type": "history",
+              "releases": [
+                {
+                  "id": "30",
+                  "tag": "v3",
+                  "url": "https://api.test/repos/o/r/releases/30",
+                  "published_at": "2026-11-03T00:00:00Z",
+                  "assets": [
+                    {
+                      "id": "301",
+                      "name": "pkg-v3-linux.gz",
+                      "digest": "sha256:3131313131313131313131313131313131313131313131313131313131313131",
+                      "updated_at": "2026-11-03T00:01:00Z"
+                    },
+                    {
+                      "id": "302",
+                      "name": "pkg-v3-win.zip",
+                      "digest": "sha256:3232323232323232323232323232323232323232323232323232323232323232",
+                      "updated_at": "2026-11-03T00:02:00Z"
+                    }
+                  ]
+                },
+                {
+                  "id": "20",
+                  "tag": "v2",
+                  "url": "https://api.test/repos/o/r/releases/20",
+                  "published_at": "2026-11-02T00:00:00Z",
+                  "assets": [
+                    {
+                      "id": "201",
+                      "name": "pkg-v2-linux.gz",
+                      "digest": "sha256:2121212121212121212121212121212121212121212121212121212121212121",
+                      "updated_at": "2026-11-02T00:01:00Z"
+                    }
+                  ]
+                },
+                {
+                  "id": "10",
+                  "tag": "v1",
+                  "url": "https://api.test/repos/o/r/releases/10",
+                  "assets": [
+                    {
+                      "id": "101",
+                      "name": "pkg-v1-linux.gz",
+                      "digest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+                      "updated_at": "2026-11-01T00:01:00Z"
+                    },
+                    {
+                      "id": "102",
+                      "name": "pkg-v1-win.zip",
+                      "updated_at": "2026-11-01T00:02:00Z"
+                    }
+                  ]
+                }
+              ]
+            },
+            "alpha": {
+              "type": "tag",
+              "version": "alpha-abc1234",
+              "release": {
+                "id": "40",
+                "tag": "Prerelease-Alpha",
+                "url": "https://api.test/repos/o/r/releases/40",
+                "published_at": "2024-01-01T00:00:00Z",
+                "assets": [
+                  {
+                    "id": "401",
+                    "name": "pkg-alpha-abc1234-linux.gz",
+                    "digest": "sha256:4141414141414141414141414141414141414141414141414141414141414141",
+                    "updated_at": "2026-11-08T08:00:00Z"
+                  },
+                  {
+                    "id": "402",
+                    "name": "version.txt",
+                    "updated_at": "2026-11-08T08:00:00Z"
+                  }
+                ]
+              }
+            }
+          }
+        }
+      },
+      "now": "2026-11-09T12:00:00Z"
+    },
+    "expect": {
+      "ok": {
+        "manifest_version": "2.0",
+        "registries": {
+          "release": {
+            "name": "Releases",
+            "url_template": "https://origin.test/{owner}/{repo}/download/{release}/{artifact}"
+          },
+          "assets": {
+            "name": "Release assets",
+            "url_template": "https://origin.test/{owner}/{repo}/assets/{release}"
+          }
+        },
+        "mirrors": {
+          "direct": {
+            "name": "Direct",
+            "url_template": "{url}"
+          },
+          "edge": {
+            "name": "Edge",
+            "url_template": "https://edge.test{path_and_query}",
+            "registries": ["release"]
+          }
+        },
+        "resources": {
+          "sample": {
+            "name": "Sample",
+            "registry": "release",
+            "source": {
+              "owner": "o",
+              "repo": "r"
+            },
+            "tags": [
+              {
+                "id": "channel:alpha",
+                "name": "Alpha",
+                "group": "channel"
+              },
+              {
+                "id": "channel:stable",
+                "name": "Stable",
+                "group": "channel"
+              }
+            ],
+            "default_variants": {
+              "windows-x86_64": "stable",
+              "linux-amd64": "stable"
+            },
+            "variants": [
+              {
+                "id": "stable",
+                "tag_key": "channel:stable",
+                "name": "Stable",
+                "tags": [
+                  {
+                    "id": "channel:stable",
+                    "name": "Stable",
+                    "group": "channel"
+                  }
+                ],
+                "source": {
+                  "release": "{version}"
+                },
+                "artifacts": {
+                  "windows-x86_64": {
+                    "artifact": "pkg-{version}-win.zip",
+                    "version": {
+                      "type": "static",
+                      "latest": "v3",
+                      "releases": [
+                        {
+                          "version": "v3",
+                          "checksum": "sha256:3232323232323232323232323232323232323232323232323232323232323232",
+                          "published_at": "2026-11-03T00:00:00Z"
+                        }
+                      ]
+                    }
+                  },
+                  "linux-amd64": {
+                    "artifact": "pkg-{version}-linux.gz",
+                    "version": {
+                      "type": "static",
+                      "latest": "v3",
+                      "releases": [
+                        {
+                          "version": "v3",
+                          "checksum": "sha256:3131313131313131313131313131313131313131313131313131313131313131",
+                          "published_at": "2026-11-03T00:00:00Z"
+                        }
+                      ]
+                    }
+                  }
+                }
+              },
+              {
+                "id": "alpha",
+                "tag_key": "channel:alpha",
+                "name": "Alpha",
+                "tags": [
+                  {
+                    "id": "channel:alpha",
+                    "name": "Alpha",
+                    "group": "channel"
+                  }
+                ],
+                "source": {
+                  "release": "Prerelease-Alpha"
+                },
+                "artifacts": {
+                  "linux-amd64": {
+                    "artifact": "pkg-{version}-linux.gz",
+                    "version": {
+                      "type": "remote",
+                      "fallback": {
+                        "version": "alpha-abc1234",
+                        "checksum": "sha256:4141414141414141414141414141414141414141414141414141414141414141",
+                        "published_at": "2026-11-08T08:00:00Z"
+                      },
+                      "version": {
+                        "resource": {
+                          "registry": "release",
+                          "artifact": "version.txt"
+                        },
+                        "parser": {
+                          "type": "text"
+                        }
+                      },
+                      "checksum": {
+                        "resource": {
+                          "registry": "assets"
+                        },
+                        "parser": {
+                          "type": "github-release-assets"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        },
+        "updated_at": "2026-11-09T12:00:00Z"
+      }
+    }
+  },
+  {
+    "name": "compile.provisional_without_version",
+    "input": {
+      "template": {
+        "manifest_version": "2.0",
+        "registries": {
+          "release": {
+            "name": "Releases",
+            "url_template": "https://origin.test/{owner}/{repo}/download/{release}/{artifact}"
+          },
+          "assets": {
+            "name": "Release assets",
+            "url_template": "https://origin.test/{owner}/{repo}/assets/{release}"
+          }
+        },
+        "mirrors": {
+          "direct": {
+            "name": "Direct",
+            "url_template": "{url}"
+          },
+          "edge": {
+            "name": "Edge",
+            "url_template": "https://edge.test{path_and_query}",
+            "registries": ["release"]
+          }
+        },
+        "resources": {
+          "sample": {
+            "name": "Sample",
+            "registry": "release",
+            "source": {
+              "owner": "o",
+              "repo": "r"
+            },
+            "tags": {
+              "channel:stable": {
+                "name": "Stable",
+                "group": "channel"
+              },
+              "channel:alpha": {
+                "name": "Alpha",
+                "group": "channel"
+              }
+            },
+            "default_variants": {
+              "linux-amd64": "stable"
+            },
+            "releases": {
+              "stable": {
+                "type": "history",
+                "limit": 3
+              },
+              "alpha": {
+                "type": "tag",
+                "tag": "Prerelease-Alpha"
+              }
+            },
+            "variants": [
+              {
+                "id": "stable",
+                "name": "Stable",
+                "tags": ["channel:stable"],
+                "source": {
+                  "release": "{version}"
+                },
+                "artifacts": {
+                  "windows-x86_64": {
+                    "artifact": "pkg-{version}-win.zip",
+                    "version": {
+                      "type": "static",
+                      "releases": "stable"
+                    }
+                  },
+                  "linux-amd64": {
+                    "artifact": "pkg-{version}-linux.gz",
+                    "version": {
+                      "type": "static",
+                      "releases": "stable"
+                    }
+                  }
+                }
+              },
+              {
+                "id": "alpha",
+                "name": "Alpha",
+                "tags": ["channel:alpha"],
+                "source": {
+                  "release": "Prerelease-Alpha"
+                },
+                "artifacts": {
+                  "linux-amd64": {
+                    "artifact": "pkg-{version}-linux.gz",
+                    "version": {
+                      "type": "remote",
+                      "releases": "alpha",
+                      "version": {
+                        "resource": {
+                          "registry": "release",
+                          "artifact": "version.txt"
+                        },
+                        "parser": {
+                          "type": "text"
+                        }
+                      },
+                      "checksum": {
+                        "resource": {
+                          "registry": "assets"
+                        },
+                        "parser": {
+                          "type": "github-release-assets"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "snapshot": {
+        "observed_at": "2026-11-09T11:59:00Z",
+        "resources": {
+          "sample": {
+            "stable": {
+              "type": "history",
+              "releases": [
+                {
+                  "id": "30",
+                  "tag": "v3",
+                  "url": "https://api.test/repos/o/r/releases/30",
+                  "published_at": "2026-11-03T00:00:00Z",
+                  "assets": [
+                    {
+                      "id": "301",
+                      "name": "pkg-v3-linux.gz",
+                      "digest": "sha256:3131313131313131313131313131313131313131313131313131313131313131",
+                      "updated_at": "2026-11-03T00:01:00Z"
+                    },
+                    {
+                      "id": "302",
+                      "name": "pkg-v3-win.zip",
+                      "digest": "sha256:3232323232323232323232323232323232323232323232323232323232323232",
+                      "updated_at": "2026-11-03T00:02:00Z"
+                    }
+                  ]
+                },
+                {
+                  "id": "20",
+                  "tag": "v2",
+                  "url": "https://api.test/repos/o/r/releases/20",
+                  "published_at": "2026-11-02T00:00:00Z",
+                  "assets": [
+                    {
+                      "id": "201",
+                      "name": "pkg-v2-linux.gz",
+                      "digest": "sha256:2121212121212121212121212121212121212121212121212121212121212121",
+                      "updated_at": "2026-11-02T00:01:00Z"
+                    }
+                  ]
+                },
+                {
+                  "id": "10",
+                  "tag": "v1",
+                  "url": "https://api.test/repos/o/r/releases/10",
+                  "assets": [
+                    {
+                      "id": "101",
+                      "name": "pkg-v1-linux.gz",
+                      "digest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+                      "updated_at": "2026-11-01T00:01:00Z"
+                    },
+                    {
+                      "id": "102",
+                      "name": "pkg-v1-win.zip",
+                      "updated_at": "2026-11-01T00:02:00Z"
+                    }
+                  ]
+                }
+              ]
+            },
+            "alpha": {
+              "type": "tag",
+              "release": {
+                "id": "40",
+                "tag": "Prerelease-Alpha",
+                "url": "https://api.test/repos/o/r/releases/40",
+                "published_at": "2024-01-01T00:00:00Z",
+                "assets": [
+                  {
+                    "id": "401",
+                    "name": "pkg-alpha-abc1234-linux.gz",
+                    "digest": "sha256:4141414141414141414141414141414141414141414141414141414141414141",
+                    "updated_at": "2026-11-08T08:00:00Z"
+                  },
+                  {
+                    "id": "402",
+                    "name": "version.txt",
+                    "updated_at": "2026-11-08T08:00:00Z"
+                  }
+                ]
+              }
+            }
+          }
+        }
+      },
+      "now": "2026-11-09T12:00:00Z"
+    },
+    "expect": {
+      "ok": {
+        "manifest_version": "2.0",
+        "registries": {
+          "release": {
+            "name": "Releases",
+            "url_template": "https://origin.test/{owner}/{repo}/download/{release}/{artifact}"
+          },
+          "assets": {
+            "name": "Release assets",
+            "url_template": "https://origin.test/{owner}/{repo}/assets/{release}"
+          }
+        },
+        "mirrors": {
+          "direct": {
+            "name": "Direct",
+            "url_template": "{url}"
+          },
+          "edge": {
+            "name": "Edge",
+            "url_template": "https://edge.test{path_and_query}",
+            "registries": ["release"]
+          }
+        },
+        "resources": {
+          "sample": {
+            "name": "Sample",
+            "registry": "release",
+            "source": {
+              "owner": "o",
+              "repo": "r"
+            },
+            "tags": [
+              {
+                "id": "channel:alpha",
+                "name": "Alpha",
+                "group": "channel"
+              },
+              {
+                "id": "channel:stable",
+                "name": "Stable",
+                "group": "channel"
+              }
+            ],
+            "default_variants": {
+              "windows-x86_64": "stable",
+              "linux-amd64": "stable"
+            },
+            "variants": [
+              {
+                "id": "stable",
+                "tag_key": "channel:stable",
+                "name": "Stable",
+                "tags": [
+                  {
+                    "id": "channel:stable",
+                    "name": "Stable",
+                    "group": "channel"
+                  }
+                ],
+                "source": {
+                  "release": "{version}"
+                },
+                "artifacts": {
+                  "windows-x86_64": {
+                    "artifact": "pkg-{version}-win.zip",
+                    "version": {
+                      "type": "static",
+                      "latest": "v3",
+                      "releases": [
+                        {
+                          "version": "v3",
+                          "checksum": "sha256:3232323232323232323232323232323232323232323232323232323232323232",
+                          "published_at": "2026-11-03T00:00:00Z"
+                        },
+                        {
+                          "version": "v1"
+                        }
+                      ]
+                    }
+                  },
+                  "linux-amd64": {
+                    "artifact": "pkg-{version}-linux.gz",
+                    "version": {
+                      "type": "static",
+                      "latest": "v3",
+                      "releases": [
+                        {
+                          "version": "v3",
+                          "checksum": "sha256:3131313131313131313131313131313131313131313131313131313131313131",
+                          "published_at": "2026-11-03T00:00:00Z"
+                        },
+                        {
+                          "version": "v2",
+                          "checksum": "sha256:2121212121212121212121212121212121212121212121212121212121212121",
+                          "published_at": "2026-11-02T00:00:00Z"
+                        },
+                        {
+                          "version": "v1",
+                          "checksum": "sha256:1111111111111111111111111111111111111111111111111111111111111111"
+                        }
+                      ]
+                    }
+                  }
+                }
+              },
+              {
+                "id": "alpha",
+                "tag_key": "channel:alpha",
+                "name": "Alpha",
+                "tags": [
+                  {
+                    "id": "channel:alpha",
+                    "name": "Alpha",
+                    "group": "channel"
+                  }
+                ],
+                "source": {
+                  "release": "Prerelease-Alpha"
+                },
+                "artifacts": {
+                  "linux-amd64": {
+                    "artifact": "pkg-{version}-linux.gz",
+                    "version": {
+                      "type": "remote",
+                      "version": {
+                        "resource": {
+                          "registry": "release",
+                          "artifact": "version.txt"
+                        },
+                        "parser": {
+                          "type": "text"
+                        }
+                      },
+                      "checksum": {
+                        "resource": {
+                          "registry": "assets"
+                        },
+                        "parser": {
+                          "type": "github-release-assets"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        },
+        "updated_at": "2026-11-09T12:00:00Z"
+      }
+    }
+  },
+  {
+    "name": "compile.artifact_missing.latest",
+    "input": {
+      "template": {
+        "manifest_version": "2.0",
+        "registries": {
+          "release": {
+            "name": "Releases",
+            "url_template": "https://origin.test/{owner}/{repo}/download/{release}/{artifact}"
+          },
+          "assets": {
+            "name": "Release assets",
+            "url_template": "https://origin.test/{owner}/{repo}/assets/{release}"
+          }
+        },
+        "mirrors": {
+          "direct": {
+            "name": "Direct",
+            "url_template": "{url}"
+          },
+          "edge": {
+            "name": "Edge",
+            "url_template": "https://edge.test{path_and_query}",
+            "registries": ["release"]
+          }
+        },
+        "resources": {
+          "sample": {
+            "name": "Sample",
+            "registry": "release",
+            "source": {
+              "owner": "o",
+              "repo": "r"
+            },
+            "tags": {
+              "channel:stable": {
+                "name": "Stable",
+                "group": "channel"
+              },
+              "channel:alpha": {
+                "name": "Alpha",
+                "group": "channel"
+              }
+            },
+            "default_variants": {
+              "linux-amd64": "stable"
+            },
+            "releases": {
+              "stable": {
+                "type": "history",
+                "limit": 3
+              },
+              "alpha": {
+                "type": "tag",
+                "tag": "Prerelease-Alpha"
+              }
+            },
+            "variants": [
+              {
+                "id": "stable",
+                "name": "Stable",
+                "tags": ["channel:stable"],
+                "source": {
+                  "release": "{version}"
+                },
+                "artifacts": {
+                  "windows-x86_64": {
+                    "artifact": "pkg-{version}-win.zip",
+                    "version": {
+                      "type": "static",
+                      "releases": "stable"
+                    }
+                  },
+                  "linux-amd64": {
+                    "artifact": "pkg-{version}-linux.gz",
+                    "version": {
+                      "type": "static",
+                      "releases": "stable"
+                    }
+                  }
+                }
+              },
+              {
+                "id": "alpha",
+                "name": "Alpha",
+                "tags": ["channel:alpha"],
+                "source": {
+                  "release": "Prerelease-Alpha"
+                },
+                "artifacts": {
+                  "linux-amd64": {
+                    "artifact": "pkg-{version}-linux.gz",
+                    "version": {
+                      "type": "remote",
+                      "releases": "alpha",
+                      "version": {
+                        "resource": {
+                          "registry": "release",
+                          "artifact": "version.txt"
+                        },
+                        "parser": {
+                          "type": "text"
+                        }
+                      },
+                      "checksum": {
+                        "resource": {
+                          "registry": "assets"
+                        },
+                        "parser": {
+                          "type": "github-release-assets"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "snapshot": {
+        "observed_at": "2026-11-09T11:59:00Z",
+        "resources": {
+          "sample": {
+            "stable": {
+              "type": "history",
+              "releases": [
+                {
+                  "id": "30",
+                  "tag": "v3",
+                  "url": "https://api.test/repos/o/r/releases/30",
+                  "published_at": "2026-11-03T00:00:00Z",
+                  "assets": [
+                    {
+                      "id": "302",
+                      "name": "pkg-v3-win.zip",
+                      "digest": "sha256:3232323232323232323232323232323232323232323232323232323232323232",
+                      "updated_at": "2026-11-03T00:02:00Z"
+                    }
+                  ]
+                },
+                {
+                  "id": "20",
+                  "tag": "v2",
+                  "url": "https://api.test/repos/o/r/releases/20",
+                  "published_at": "2026-11-02T00:00:00Z",
+                  "assets": [
+                    {
+                      "id": "201",
+                      "name": "pkg-v2-linux.gz",
+                      "digest": "sha256:2121212121212121212121212121212121212121212121212121212121212121",
+                      "updated_at": "2026-11-02T00:01:00Z"
+                    }
+                  ]
+                },
+                {
+                  "id": "10",
+                  "tag": "v1",
+                  "url": "https://api.test/repos/o/r/releases/10",
+                  "assets": [
+                    {
+                      "id": "101",
+                      "name": "pkg-v1-linux.gz",
+                      "digest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+                      "updated_at": "2026-11-01T00:01:00Z"
+                    },
+                    {
+                      "id": "102",
+                      "name": "pkg-v1-win.zip",
+                      "updated_at": "2026-11-01T00:02:00Z"
+                    }
+                  ]
+                }
+              ]
+            },
+            "alpha": {
+              "type": "tag",
+              "version": "alpha-abc1234",
+              "release": {
+                "id": "40",
+                "tag": "Prerelease-Alpha",
+                "url": "https://api.test/repos/o/r/releases/40",
+                "published_at": "2024-01-01T00:00:00Z",
+                "assets": [
+                  {
+                    "id": "401",
+                    "name": "pkg-alpha-abc1234-linux.gz",
+                    "digest": "sha256:4141414141414141414141414141414141414141414141414141414141414141",
+                    "updated_at": "2026-11-08T08:00:00Z"
+                  },
+                  {
+                    "id": "402",
+                    "name": "version.txt",
+                    "updated_at": "2026-11-08T08:00:00Z"
+                  }
+                ]
+              }
+            }
+          }
+        }
+      },
+      "now": "2026-11-09T12:00:00Z"
+    },
+    "expect": {
+      "error": {
+        "code": "compile.artifact_missing",
+        "path": "template.resources.sample.variants[0].artifacts.linux-amd64",
+        "fields": {
+          "release": "v3",
+          "artifact": "pkg-v3-linux.gz"
+        }
+      }
+    }
+  },
+  {
+    "name": "compile.artifact_missing.fallback",
+    "input": {
+      "template": {
+        "manifest_version": "2.0",
+        "registries": {
+          "release": {
+            "name": "Releases",
+            "url_template": "https://origin.test/{owner}/{repo}/download/{release}/{artifact}"
+          },
+          "assets": {
+            "name": "Release assets",
+            "url_template": "https://origin.test/{owner}/{repo}/assets/{release}"
+          }
+        },
+        "mirrors": {
+          "direct": {
+            "name": "Direct",
+            "url_template": "{url}"
+          },
+          "edge": {
+            "name": "Edge",
+            "url_template": "https://edge.test{path_and_query}",
+            "registries": ["release"]
+          }
+        },
+        "resources": {
+          "sample": {
+            "name": "Sample",
+            "registry": "release",
+            "source": {
+              "owner": "o",
+              "repo": "r"
+            },
+            "tags": {
+              "channel:stable": {
+                "name": "Stable",
+                "group": "channel"
+              },
+              "channel:alpha": {
+                "name": "Alpha",
+                "group": "channel"
+              }
+            },
+            "default_variants": {
+              "linux-amd64": "stable"
+            },
+            "releases": {
+              "stable": {
+                "type": "history",
+                "limit": 3
+              },
+              "alpha": {
+                "type": "tag",
+                "tag": "Prerelease-Alpha"
+              }
+            },
+            "variants": [
+              {
+                "id": "stable",
+                "name": "Stable",
+                "tags": ["channel:stable"],
+                "source": {
+                  "release": "{version}"
+                },
+                "artifacts": {
+                  "windows-x86_64": {
+                    "artifact": "pkg-{version}-win.zip",
+                    "version": {
+                      "type": "static",
+                      "releases": "stable"
+                    }
+                  },
+                  "linux-amd64": {
+                    "artifact": "pkg-{version}-linux.gz",
+                    "version": {
+                      "type": "static",
+                      "releases": "stable"
+                    }
+                  }
+                }
+              },
+              {
+                "id": "alpha",
+                "name": "Alpha",
+                "tags": ["channel:alpha"],
+                "source": {
+                  "release": "Prerelease-Alpha"
+                },
+                "artifacts": {
+                  "linux-amd64": {
+                    "artifact": "pkg-{version}-linux.gz",
+                    "version": {
+                      "type": "remote",
+                      "releases": "alpha",
+                      "version": {
+                        "resource": {
+                          "registry": "release",
+                          "artifact": "version.txt"
+                        },
+                        "parser": {
+                          "type": "text"
+                        }
+                      },
+                      "checksum": {
+                        "resource": {
+                          "registry": "assets"
+                        },
+                        "parser": {
+                          "type": "github-release-assets"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "snapshot": {
+        "observed_at": "2026-11-09T11:59:00Z",
+        "resources": {
+          "sample": {
+            "stable": {
+              "type": "history",
+              "releases": [
+                {
+                  "id": "30",
+                  "tag": "v3",
+                  "url": "https://api.test/repos/o/r/releases/30",
+                  "published_at": "2026-11-03T00:00:00Z",
+                  "assets": [
+                    {
+                      "id": "301",
+                      "name": "pkg-v3-linux.gz",
+                      "digest": "sha256:3131313131313131313131313131313131313131313131313131313131313131",
+                      "updated_at": "2026-11-03T00:01:00Z"
+                    },
+                    {
+                      "id": "302",
+                      "name": "pkg-v3-win.zip",
+                      "digest": "sha256:3232323232323232323232323232323232323232323232323232323232323232",
+                      "updated_at": "2026-11-03T00:02:00Z"
+                    }
+                  ]
+                },
+                {
+                  "id": "20",
+                  "tag": "v2",
+                  "url": "https://api.test/repos/o/r/releases/20",
+                  "published_at": "2026-11-02T00:00:00Z",
+                  "assets": [
+                    {
+                      "id": "201",
+                      "name": "pkg-v2-linux.gz",
+                      "digest": "sha256:2121212121212121212121212121212121212121212121212121212121212121",
+                      "updated_at": "2026-11-02T00:01:00Z"
+                    }
+                  ]
+                },
+                {
+                  "id": "10",
+                  "tag": "v1",
+                  "url": "https://api.test/repos/o/r/releases/10",
+                  "assets": [
+                    {
+                      "id": "101",
+                      "name": "pkg-v1-linux.gz",
+                      "digest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+                      "updated_at": "2026-11-01T00:01:00Z"
+                    },
+                    {
+                      "id": "102",
+                      "name": "pkg-v1-win.zip",
+                      "updated_at": "2026-11-01T00:02:00Z"
+                    }
+                  ]
+                }
+              ]
+            },
+            "alpha": {
+              "type": "tag",
+              "version": "alpha-abc1234",
+              "release": {
+                "id": "40",
+                "tag": "Prerelease-Alpha",
+                "url": "https://api.test/repos/o/r/releases/40",
+                "published_at": "2024-01-01T00:00:00Z",
+                "assets": [
+                  {
+                    "id": "402",
+                    "name": "version.txt",
+                    "updated_at": "2026-11-08T08:00:00Z"
+                  }
+                ]
+              }
+            }
+          }
+        }
+      },
+      "now": "2026-11-09T12:00:00Z"
+    },
+    "expect": {
+      "error": {
+        "code": "compile.artifact_missing",
+        "path": "template.resources.sample.variants[1].artifacts.linux-amd64",
+        "fields": {
+          "release": "Prerelease-Alpha",
+          "artifact": "pkg-alpha-abc1234-linux.gz"
+        }
+      }
+    }
+  },
+  {
+    "name": "compile.release_source.unknown",
+    "input": {
+      "template": {
+        "manifest_version": "2.0",
+        "registries": {
+          "release": {
+            "name": "Releases",
+            "url_template": "https://origin.test/{owner}/{repo}/download/{release}/{artifact}"
+          },
+          "assets": {
+            "name": "Release assets",
+            "url_template": "https://origin.test/{owner}/{repo}/assets/{release}"
+          }
+        },
+        "mirrors": {
+          "direct": {
+            "name": "Direct",
+            "url_template": "{url}"
+          },
+          "edge": {
+            "name": "Edge",
+            "url_template": "https://edge.test{path_and_query}",
+            "registries": ["release"]
+          }
+        },
+        "resources": {
+          "sample": {
+            "name": "Sample",
+            "registry": "release",
+            "source": {
+              "owner": "o",
+              "repo": "r"
+            },
+            "tags": {
+              "channel:stable": {
+                "name": "Stable",
+                "group": "channel"
+              },
+              "channel:alpha": {
+                "name": "Alpha",
+                "group": "channel"
+              }
+            },
+            "default_variants": {
+              "linux-amd64": "stable"
+            },
+            "releases": {
+              "stable": {
+                "type": "history",
+                "limit": 3
+              },
+              "alpha": {
+                "type": "tag",
+                "tag": "Prerelease-Alpha"
+              }
+            },
+            "variants": [
+              {
+                "id": "stable",
+                "name": "Stable",
+                "tags": ["channel:stable"],
+                "source": {
+                  "release": "{version}"
+                },
+                "artifacts": {
+                  "windows-x86_64": {
+                    "artifact": "pkg-{version}-win.zip",
+                    "version": {
+                      "type": "static",
+                      "releases": "nope"
+                    }
+                  },
+                  "linux-amd64": {
+                    "artifact": "pkg-{version}-linux.gz",
+                    "version": {
+                      "type": "static",
+                      "releases": "stable"
+                    }
+                  }
+                }
+              },
+              {
+                "id": "alpha",
+                "name": "Alpha",
+                "tags": ["channel:alpha"],
+                "source": {
+                  "release": "Prerelease-Alpha"
+                },
+                "artifacts": {
+                  "linux-amd64": {
+                    "artifact": "pkg-{version}-linux.gz",
+                    "version": {
+                      "type": "remote",
+                      "releases": "alpha",
+                      "version": {
+                        "resource": {
+                          "registry": "release",
+                          "artifact": "version.txt"
+                        },
+                        "parser": {
+                          "type": "text"
+                        }
+                      },
+                      "checksum": {
+                        "resource": {
+                          "registry": "assets"
+                        },
+                        "parser": {
+                          "type": "github-release-assets"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "snapshot": {
+        "observed_at": "2026-11-09T11:59:00Z",
+        "resources": {
+          "sample": {
+            "stable": {
+              "type": "history",
+              "releases": [
+                {
+                  "id": "30",
+                  "tag": "v3",
+                  "url": "https://api.test/repos/o/r/releases/30",
+                  "published_at": "2026-11-03T00:00:00Z",
+                  "assets": [
+                    {
+                      "id": "301",
+                      "name": "pkg-v3-linux.gz",
+                      "digest": "sha256:3131313131313131313131313131313131313131313131313131313131313131",
+                      "updated_at": "2026-11-03T00:01:00Z"
+                    },
+                    {
+                      "id": "302",
+                      "name": "pkg-v3-win.zip",
+                      "digest": "sha256:3232323232323232323232323232323232323232323232323232323232323232",
+                      "updated_at": "2026-11-03T00:02:00Z"
+                    }
+                  ]
+                },
+                {
+                  "id": "20",
+                  "tag": "v2",
+                  "url": "https://api.test/repos/o/r/releases/20",
+                  "published_at": "2026-11-02T00:00:00Z",
+                  "assets": [
+                    {
+                      "id": "201",
+                      "name": "pkg-v2-linux.gz",
+                      "digest": "sha256:2121212121212121212121212121212121212121212121212121212121212121",
+                      "updated_at": "2026-11-02T00:01:00Z"
+                    }
+                  ]
+                },
+                {
+                  "id": "10",
+                  "tag": "v1",
+                  "url": "https://api.test/repos/o/r/releases/10",
+                  "assets": [
+                    {
+                      "id": "101",
+                      "name": "pkg-v1-linux.gz",
+                      "digest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+                      "updated_at": "2026-11-01T00:01:00Z"
+                    },
+                    {
+                      "id": "102",
+                      "name": "pkg-v1-win.zip",
+                      "updated_at": "2026-11-01T00:02:00Z"
+                    }
+                  ]
+                }
+              ]
+            },
+            "alpha": {
+              "type": "tag",
+              "version": "alpha-abc1234",
+              "release": {
+                "id": "40",
+                "tag": "Prerelease-Alpha",
+                "url": "https://api.test/repos/o/r/releases/40",
+                "published_at": "2024-01-01T00:00:00Z",
+                "assets": [
+                  {
+                    "id": "401",
+                    "name": "pkg-alpha-abc1234-linux.gz",
+                    "digest": "sha256:4141414141414141414141414141414141414141414141414141414141414141",
+                    "updated_at": "2026-11-08T08:00:00Z"
+                  },
+                  {
+                    "id": "402",
+                    "name": "version.txt",
+                    "updated_at": "2026-11-08T08:00:00Z"
+                  }
+                ]
+              }
+            }
+          }
+        }
+      },
+      "now": "2026-11-09T12:00:00Z"
+    },
+    "expect": {
+      "error": {
+        "code": "compile.release_source",
+        "path": "template.resources.sample.variants[0].artifacts.windows-x86_64.version.releases",
+        "fields": {
+          "releases": "nope",
+          "reason": "unknown"
+        }
+      }
+    }
+  },
+  {
+    "name": "compile.release_source.kind",
+    "input": {
+      "template": {
+        "manifest_version": "2.0",
+        "registries": {
+          "release": {
+            "name": "Releases",
+            "url_template": "https://origin.test/{owner}/{repo}/download/{release}/{artifact}"
+          },
+          "assets": {
+            "name": "Release assets",
+            "url_template": "https://origin.test/{owner}/{repo}/assets/{release}"
+          }
+        },
+        "mirrors": {
+          "direct": {
+            "name": "Direct",
+            "url_template": "{url}"
+          },
+          "edge": {
+            "name": "Edge",
+            "url_template": "https://edge.test{path_and_query}",
+            "registries": ["release"]
+          }
+        },
+        "resources": {
+          "sample": {
+            "name": "Sample",
+            "registry": "release",
+            "source": {
+              "owner": "o",
+              "repo": "r"
+            },
+            "tags": {
+              "channel:stable": {
+                "name": "Stable",
+                "group": "channel"
+              },
+              "channel:alpha": {
+                "name": "Alpha",
+                "group": "channel"
+              }
+            },
+            "default_variants": {
+              "linux-amd64": "stable"
+            },
+            "releases": {
+              "stable": {
+                "type": "history",
+                "limit": 3
+              },
+              "alpha": {
+                "type": "tag",
+                "tag": "Prerelease-Alpha"
+              }
+            },
+            "variants": [
+              {
+                "id": "stable",
+                "name": "Stable",
+                "tags": ["channel:stable"],
+                "source": {
+                  "release": "{version}"
+                },
+                "artifacts": {
+                  "windows-x86_64": {
+                    "artifact": "pkg-{version}-win.zip",
+                    "version": {
+                      "type": "static",
+                      "releases": "alpha"
+                    }
+                  },
+                  "linux-amd64": {
+                    "artifact": "pkg-{version}-linux.gz",
+                    "version": {
+                      "type": "static",
+                      "releases": "stable"
+                    }
+                  }
+                }
+              },
+              {
+                "id": "alpha",
+                "name": "Alpha",
+                "tags": ["channel:alpha"],
+                "source": {
+                  "release": "Prerelease-Alpha"
+                },
+                "artifacts": {
+                  "linux-amd64": {
+                    "artifact": "pkg-{version}-linux.gz",
+                    "version": {
+                      "type": "remote",
+                      "releases": "alpha",
+                      "version": {
+                        "resource": {
+                          "registry": "release",
+                          "artifact": "version.txt"
+                        },
+                        "parser": {
+                          "type": "text"
+                        }
+                      },
+                      "checksum": {
+                        "resource": {
+                          "registry": "assets"
+                        },
+                        "parser": {
+                          "type": "github-release-assets"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "snapshot": {
+        "observed_at": "2026-11-09T11:59:00Z",
+        "resources": {
+          "sample": {
+            "stable": {
+              "type": "history",
+              "releases": [
+                {
+                  "id": "30",
+                  "tag": "v3",
+                  "url": "https://api.test/repos/o/r/releases/30",
+                  "published_at": "2026-11-03T00:00:00Z",
+                  "assets": [
+                    {
+                      "id": "301",
+                      "name": "pkg-v3-linux.gz",
+                      "digest": "sha256:3131313131313131313131313131313131313131313131313131313131313131",
+                      "updated_at": "2026-11-03T00:01:00Z"
+                    },
+                    {
+                      "id": "302",
+                      "name": "pkg-v3-win.zip",
+                      "digest": "sha256:3232323232323232323232323232323232323232323232323232323232323232",
+                      "updated_at": "2026-11-03T00:02:00Z"
+                    }
+                  ]
+                },
+                {
+                  "id": "20",
+                  "tag": "v2",
+                  "url": "https://api.test/repos/o/r/releases/20",
+                  "published_at": "2026-11-02T00:00:00Z",
+                  "assets": [
+                    {
+                      "id": "201",
+                      "name": "pkg-v2-linux.gz",
+                      "digest": "sha256:2121212121212121212121212121212121212121212121212121212121212121",
+                      "updated_at": "2026-11-02T00:01:00Z"
+                    }
+                  ]
+                },
+                {
+                  "id": "10",
+                  "tag": "v1",
+                  "url": "https://api.test/repos/o/r/releases/10",
+                  "assets": [
+                    {
+                      "id": "101",
+                      "name": "pkg-v1-linux.gz",
+                      "digest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+                      "updated_at": "2026-11-01T00:01:00Z"
+                    },
+                    {
+                      "id": "102",
+                      "name": "pkg-v1-win.zip",
+                      "updated_at": "2026-11-01T00:02:00Z"
+                    }
+                  ]
+                }
+              ]
+            },
+            "alpha": {
+              "type": "tag",
+              "version": "alpha-abc1234",
+              "release": {
+                "id": "40",
+                "tag": "Prerelease-Alpha",
+                "url": "https://api.test/repos/o/r/releases/40",
+                "published_at": "2024-01-01T00:00:00Z",
+                "assets": [
+                  {
+                    "id": "401",
+                    "name": "pkg-alpha-abc1234-linux.gz",
+                    "digest": "sha256:4141414141414141414141414141414141414141414141414141414141414141",
+                    "updated_at": "2026-11-08T08:00:00Z"
+                  },
+                  {
+                    "id": "402",
+                    "name": "version.txt",
+                    "updated_at": "2026-11-08T08:00:00Z"
+                  }
+                ]
+              }
+            }
+          }
+        }
+      },
+      "now": "2026-11-09T12:00:00Z"
+    },
+    "expect": {
+      "error": {
+        "code": "compile.release_source",
+        "path": "template.resources.sample.variants[0].artifacts.windows-x86_64.version.releases",
+        "fields": {
+          "releases": "alpha",
+          "reason": "kind"
+        }
+      }
+    }
+  },
+  {
+    "name": "compile.snapshot_missing.missing",
+    "input": {
+      "template": {
+        "manifest_version": "2.0",
+        "registries": {
+          "release": {
+            "name": "Releases",
+            "url_template": "https://origin.test/{owner}/{repo}/download/{release}/{artifact}"
+          },
+          "assets": {
+            "name": "Release assets",
+            "url_template": "https://origin.test/{owner}/{repo}/assets/{release}"
+          }
+        },
+        "mirrors": {
+          "direct": {
+            "name": "Direct",
+            "url_template": "{url}"
+          },
+          "edge": {
+            "name": "Edge",
+            "url_template": "https://edge.test{path_and_query}",
+            "registries": ["release"]
+          }
+        },
+        "resources": {
+          "sample": {
+            "name": "Sample",
+            "registry": "release",
+            "source": {
+              "owner": "o",
+              "repo": "r"
+            },
+            "tags": {
+              "channel:stable": {
+                "name": "Stable",
+                "group": "channel"
+              },
+              "channel:alpha": {
+                "name": "Alpha",
+                "group": "channel"
+              }
+            },
+            "default_variants": {
+              "linux-amd64": "stable"
+            },
+            "releases": {
+              "stable": {
+                "type": "history",
+                "limit": 3
+              },
+              "alpha": {
+                "type": "tag",
+                "tag": "Prerelease-Alpha"
+              }
+            },
+            "variants": [
+              {
+                "id": "stable",
+                "name": "Stable",
+                "tags": ["channel:stable"],
+                "source": {
+                  "release": "{version}"
+                },
+                "artifacts": {
+                  "windows-x86_64": {
+                    "artifact": "pkg-{version}-win.zip",
+                    "version": {
+                      "type": "static",
+                      "releases": "stable"
+                    }
+                  },
+                  "linux-amd64": {
+                    "artifact": "pkg-{version}-linux.gz",
+                    "version": {
+                      "type": "static",
+                      "releases": "stable"
+                    }
+                  }
+                }
+              },
+              {
+                "id": "alpha",
+                "name": "Alpha",
+                "tags": ["channel:alpha"],
+                "source": {
+                  "release": "Prerelease-Alpha"
+                },
+                "artifacts": {
+                  "linux-amd64": {
+                    "artifact": "pkg-{version}-linux.gz",
+                    "version": {
+                      "type": "remote",
+                      "releases": "alpha",
+                      "version": {
+                        "resource": {
+                          "registry": "release",
+                          "artifact": "version.txt"
+                        },
+                        "parser": {
+                          "type": "text"
+                        }
+                      },
+                      "checksum": {
+                        "resource": {
+                          "registry": "assets"
+                        },
+                        "parser": {
+                          "type": "github-release-assets"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "snapshot": {
+        "observed_at": "2026-11-09T11:59:00Z",
+        "resources": {
+          "sample": {
+            "stable": {
+              "type": "history",
+              "releases": [
+                {
+                  "id": "30",
+                  "tag": "v3",
+                  "url": "https://api.test/repos/o/r/releases/30",
+                  "published_at": "2026-11-03T00:00:00Z",
+                  "assets": [
+                    {
+                      "id": "301",
+                      "name": "pkg-v3-linux.gz",
+                      "digest": "sha256:3131313131313131313131313131313131313131313131313131313131313131",
+                      "updated_at": "2026-11-03T00:01:00Z"
+                    },
+                    {
+                      "id": "302",
+                      "name": "pkg-v3-win.zip",
+                      "digest": "sha256:3232323232323232323232323232323232323232323232323232323232323232",
+                      "updated_at": "2026-11-03T00:02:00Z"
+                    }
+                  ]
+                },
+                {
+                  "id": "20",
+                  "tag": "v2",
+                  "url": "https://api.test/repos/o/r/releases/20",
+                  "published_at": "2026-11-02T00:00:00Z",
+                  "assets": [
+                    {
+                      "id": "201",
+                      "name": "pkg-v2-linux.gz",
+                      "digest": "sha256:2121212121212121212121212121212121212121212121212121212121212121",
+                      "updated_at": "2026-11-02T00:01:00Z"
+                    }
+                  ]
+                },
+                {
+                  "id": "10",
+                  "tag": "v1",
+                  "url": "https://api.test/repos/o/r/releases/10",
+                  "assets": [
+                    {
+                      "id": "101",
+                      "name": "pkg-v1-linux.gz",
+                      "digest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+                      "updated_at": "2026-11-01T00:01:00Z"
+                    },
+                    {
+                      "id": "102",
+                      "name": "pkg-v1-win.zip",
+                      "updated_at": "2026-11-01T00:02:00Z"
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+        }
+      },
+      "now": "2026-11-09T12:00:00Z"
+    },
+    "expect": {
+      "error": {
+        "code": "compile.snapshot_missing",
+        "path": "snapshot.resources.sample.alpha",
+        "fields": {
+          "reason": "missing"
+        }
+      }
+    }
+  },
+  {
+    "name": "compile.snapshot_missing.kind",
+    "input": {
+      "template": {
+        "manifest_version": "2.0",
+        "registries": {
+          "release": {
+            "name": "Releases",
+            "url_template": "https://origin.test/{owner}/{repo}/download/{release}/{artifact}"
+          },
+          "assets": {
+            "name": "Release assets",
+            "url_template": "https://origin.test/{owner}/{repo}/assets/{release}"
+          }
+        },
+        "mirrors": {
+          "direct": {
+            "name": "Direct",
+            "url_template": "{url}"
+          },
+          "edge": {
+            "name": "Edge",
+            "url_template": "https://edge.test{path_and_query}",
+            "registries": ["release"]
+          }
+        },
+        "resources": {
+          "sample": {
+            "name": "Sample",
+            "registry": "release",
+            "source": {
+              "owner": "o",
+              "repo": "r"
+            },
+            "tags": {
+              "channel:stable": {
+                "name": "Stable",
+                "group": "channel"
+              },
+              "channel:alpha": {
+                "name": "Alpha",
+                "group": "channel"
+              }
+            },
+            "default_variants": {
+              "linux-amd64": "stable"
+            },
+            "releases": {
+              "stable": {
+                "type": "history",
+                "limit": 3
+              },
+              "alpha": {
+                "type": "tag",
+                "tag": "Prerelease-Alpha"
+              }
+            },
+            "variants": [
+              {
+                "id": "stable",
+                "name": "Stable",
+                "tags": ["channel:stable"],
+                "source": {
+                  "release": "{version}"
+                },
+                "artifacts": {
+                  "windows-x86_64": {
+                    "artifact": "pkg-{version}-win.zip",
+                    "version": {
+                      "type": "static",
+                      "releases": "stable"
+                    }
+                  },
+                  "linux-amd64": {
+                    "artifact": "pkg-{version}-linux.gz",
+                    "version": {
+                      "type": "static",
+                      "releases": "stable"
+                    }
+                  }
+                }
+              },
+              {
+                "id": "alpha",
+                "name": "Alpha",
+                "tags": ["channel:alpha"],
+                "source": {
+                  "release": "Prerelease-Alpha"
+                },
+                "artifacts": {
+                  "linux-amd64": {
+                    "artifact": "pkg-{version}-linux.gz",
+                    "version": {
+                      "type": "remote",
+                      "releases": "alpha",
+                      "version": {
+                        "resource": {
+                          "registry": "release",
+                          "artifact": "version.txt"
+                        },
+                        "parser": {
+                          "type": "text"
+                        }
+                      },
+                      "checksum": {
+                        "resource": {
+                          "registry": "assets"
+                        },
+                        "parser": {
+                          "type": "github-release-assets"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "snapshot": {
+        "observed_at": "2026-11-09T11:59:00Z",
+        "resources": {
+          "sample": {
+            "stable": {
+              "type": "history",
+              "releases": [
+                {
+                  "id": "30",
+                  "tag": "v3",
+                  "url": "https://api.test/repos/o/r/releases/30",
+                  "published_at": "2026-11-03T00:00:00Z",
+                  "assets": [
+                    {
+                      "id": "301",
+                      "name": "pkg-v3-linux.gz",
+                      "digest": "sha256:3131313131313131313131313131313131313131313131313131313131313131",
+                      "updated_at": "2026-11-03T00:01:00Z"
+                    },
+                    {
+                      "id": "302",
+                      "name": "pkg-v3-win.zip",
+                      "digest": "sha256:3232323232323232323232323232323232323232323232323232323232323232",
+                      "updated_at": "2026-11-03T00:02:00Z"
+                    }
+                  ]
+                },
+                {
+                  "id": "20",
+                  "tag": "v2",
+                  "url": "https://api.test/repos/o/r/releases/20",
+                  "published_at": "2026-11-02T00:00:00Z",
+                  "assets": [
+                    {
+                      "id": "201",
+                      "name": "pkg-v2-linux.gz",
+                      "digest": "sha256:2121212121212121212121212121212121212121212121212121212121212121",
+                      "updated_at": "2026-11-02T00:01:00Z"
+                    }
+                  ]
+                },
+                {
+                  "id": "10",
+                  "tag": "v1",
+                  "url": "https://api.test/repos/o/r/releases/10",
+                  "assets": [
+                    {
+                      "id": "101",
+                      "name": "pkg-v1-linux.gz",
+                      "digest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+                      "updated_at": "2026-11-01T00:01:00Z"
+                    },
+                    {
+                      "id": "102",
+                      "name": "pkg-v1-win.zip",
+                      "updated_at": "2026-11-01T00:02:00Z"
+                    }
+                  ]
+                }
+              ]
+            },
+            "alpha": {
+              "type": "history",
+              "releases": []
+            }
+          }
+        }
+      },
+      "now": "2026-11-09T12:00:00Z"
+    },
+    "expect": {
+      "error": {
+        "code": "compile.snapshot_missing",
+        "path": "snapshot.resources.sample.alpha",
+        "fields": {
+          "reason": "kind"
+        }
+      }
+    }
+  },
+  {
+    "name": "compile.history_empty",
+    "input": {
+      "template": {
+        "manifest_version": "2.0",
+        "registries": {
+          "release": {
+            "name": "Releases",
+            "url_template": "https://origin.test/{owner}/{repo}/download/{release}/{artifact}"
+          },
+          "assets": {
+            "name": "Release assets",
+            "url_template": "https://origin.test/{owner}/{repo}/assets/{release}"
+          }
+        },
+        "mirrors": {
+          "direct": {
+            "name": "Direct",
+            "url_template": "{url}"
+          },
+          "edge": {
+            "name": "Edge",
+            "url_template": "https://edge.test{path_and_query}",
+            "registries": ["release"]
+          }
+        },
+        "resources": {
+          "sample": {
+            "name": "Sample",
+            "registry": "release",
+            "source": {
+              "owner": "o",
+              "repo": "r"
+            },
+            "tags": {
+              "channel:stable": {
+                "name": "Stable",
+                "group": "channel"
+              },
+              "channel:alpha": {
+                "name": "Alpha",
+                "group": "channel"
+              }
+            },
+            "default_variants": {
+              "linux-amd64": "stable"
+            },
+            "releases": {
+              "stable": {
+                "type": "history",
+                "limit": 3
+              },
+              "alpha": {
+                "type": "tag",
+                "tag": "Prerelease-Alpha"
+              }
+            },
+            "variants": [
+              {
+                "id": "stable",
+                "name": "Stable",
+                "tags": ["channel:stable"],
+                "source": {
+                  "release": "{version}"
+                },
+                "artifacts": {
+                  "windows-x86_64": {
+                    "artifact": "pkg-{version}-win.zip",
+                    "version": {
+                      "type": "static",
+                      "releases": "stable"
+                    }
+                  },
+                  "linux-amd64": {
+                    "artifact": "pkg-{version}-linux.gz",
+                    "version": {
+                      "type": "static",
+                      "releases": "stable"
+                    }
+                  }
+                }
+              },
+              {
+                "id": "alpha",
+                "name": "Alpha",
+                "tags": ["channel:alpha"],
+                "source": {
+                  "release": "Prerelease-Alpha"
+                },
+                "artifacts": {
+                  "linux-amd64": {
+                    "artifact": "pkg-{version}-linux.gz",
+                    "version": {
+                      "type": "remote",
+                      "releases": "alpha",
+                      "version": {
+                        "resource": {
+                          "registry": "release",
+                          "artifact": "version.txt"
+                        },
+                        "parser": {
+                          "type": "text"
+                        }
+                      },
+                      "checksum": {
+                        "resource": {
+                          "registry": "assets"
+                        },
+                        "parser": {
+                          "type": "github-release-assets"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "snapshot": {
+        "observed_at": "2026-11-09T11:59:00Z",
+        "resources": {
+          "sample": {
+            "stable": {
+              "type": "history",
+              "releases": []
+            },
+            "alpha": {
+              "type": "tag",
+              "version": "alpha-abc1234",
+              "release": {
+                "id": "40",
+                "tag": "Prerelease-Alpha",
+                "url": "https://api.test/repos/o/r/releases/40",
+                "published_at": "2024-01-01T00:00:00Z",
+                "assets": [
+                  {
+                    "id": "401",
+                    "name": "pkg-alpha-abc1234-linux.gz",
+                    "digest": "sha256:4141414141414141414141414141414141414141414141414141414141414141",
+                    "updated_at": "2026-11-08T08:00:00Z"
+                  },
+                  {
+                    "id": "402",
+                    "name": "version.txt",
+                    "updated_at": "2026-11-08T08:00:00Z"
+                  }
+                ]
+              }
+            }
+          }
+        }
+      },
+      "now": "2026-11-09T12:00:00Z"
+    },
+    "expect": {
+      "error": {
+        "code": "compile.history_empty",
+        "path": "snapshot.resources.sample.stable.releases",
+        "fields": {}
+      }
+    }
+  },
+  {
+    "name": "compile.unknown_tag",
+    "input": {
+      "template": {
+        "manifest_version": "2.0",
+        "registries": {
+          "release": {
+            "name": "Releases",
+            "url_template": "https://origin.test/{owner}/{repo}/download/{release}/{artifact}"
+          },
+          "assets": {
+            "name": "Release assets",
+            "url_template": "https://origin.test/{owner}/{repo}/assets/{release}"
+          }
+        },
+        "mirrors": {
+          "direct": {
+            "name": "Direct",
+            "url_template": "{url}"
+          },
+          "edge": {
+            "name": "Edge",
+            "url_template": "https://edge.test{path_and_query}",
+            "registries": ["release"]
+          }
+        },
+        "resources": {
+          "sample": {
+            "name": "Sample",
+            "registry": "release",
+            "source": {
+              "owner": "o",
+              "repo": "r"
+            },
+            "tags": {
+              "channel:stable": {
+                "name": "Stable",
+                "group": "channel"
+              },
+              "channel:alpha": {
+                "name": "Alpha",
+                "group": "channel"
+              }
+            },
+            "default_variants": {
+              "linux-amd64": "stable"
+            },
+            "releases": {
+              "stable": {
+                "type": "history",
+                "limit": 3
+              },
+              "alpha": {
+                "type": "tag",
+                "tag": "Prerelease-Alpha"
+              }
+            },
+            "variants": [
+              {
+                "id": "stable",
+                "name": "Stable",
+                "tags": ["channel:beta"],
+                "source": {
+                  "release": "{version}"
+                },
+                "artifacts": {
+                  "windows-x86_64": {
+                    "artifact": "pkg-{version}-win.zip",
+                    "version": {
+                      "type": "static",
+                      "releases": "stable"
+                    }
+                  },
+                  "linux-amd64": {
+                    "artifact": "pkg-{version}-linux.gz",
+                    "version": {
+                      "type": "static",
+                      "releases": "stable"
+                    }
+                  }
+                }
+              },
+              {
+                "id": "alpha",
+                "name": "Alpha",
+                "tags": ["channel:alpha"],
+                "source": {
+                  "release": "Prerelease-Alpha"
+                },
+                "artifacts": {
+                  "linux-amd64": {
+                    "artifact": "pkg-{version}-linux.gz",
+                    "version": {
+                      "type": "remote",
+                      "releases": "alpha",
+                      "version": {
+                        "resource": {
+                          "registry": "release",
+                          "artifact": "version.txt"
+                        },
+                        "parser": {
+                          "type": "text"
+                        }
+                      },
+                      "checksum": {
+                        "resource": {
+                          "registry": "assets"
+                        },
+                        "parser": {
+                          "type": "github-release-assets"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "snapshot": {
+        "observed_at": "2026-11-09T11:59:00Z",
+        "resources": {
+          "sample": {
+            "stable": {
+              "type": "history",
+              "releases": [
+                {
+                  "id": "30",
+                  "tag": "v3",
+                  "url": "https://api.test/repos/o/r/releases/30",
+                  "published_at": "2026-11-03T00:00:00Z",
+                  "assets": [
+                    {
+                      "id": "301",
+                      "name": "pkg-v3-linux.gz",
+                      "digest": "sha256:3131313131313131313131313131313131313131313131313131313131313131",
+                      "updated_at": "2026-11-03T00:01:00Z"
+                    },
+                    {
+                      "id": "302",
+                      "name": "pkg-v3-win.zip",
+                      "digest": "sha256:3232323232323232323232323232323232323232323232323232323232323232",
+                      "updated_at": "2026-11-03T00:02:00Z"
+                    }
+                  ]
+                },
+                {
+                  "id": "20",
+                  "tag": "v2",
+                  "url": "https://api.test/repos/o/r/releases/20",
+                  "published_at": "2026-11-02T00:00:00Z",
+                  "assets": [
+                    {
+                      "id": "201",
+                      "name": "pkg-v2-linux.gz",
+                      "digest": "sha256:2121212121212121212121212121212121212121212121212121212121212121",
+                      "updated_at": "2026-11-02T00:01:00Z"
+                    }
+                  ]
+                },
+                {
+                  "id": "10",
+                  "tag": "v1",
+                  "url": "https://api.test/repos/o/r/releases/10",
+                  "assets": [
+                    {
+                      "id": "101",
+                      "name": "pkg-v1-linux.gz",
+                      "digest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+                      "updated_at": "2026-11-01T00:01:00Z"
+                    },
+                    {
+                      "id": "102",
+                      "name": "pkg-v1-win.zip",
+                      "updated_at": "2026-11-01T00:02:00Z"
+                    }
+                  ]
+                }
+              ]
+            },
+            "alpha": {
+              "type": "tag",
+              "version": "alpha-abc1234",
+              "release": {
+                "id": "40",
+                "tag": "Prerelease-Alpha",
+                "url": "https://api.test/repos/o/r/releases/40",
+                "published_at": "2024-01-01T00:00:00Z",
+                "assets": [
+                  {
+                    "id": "401",
+                    "name": "pkg-alpha-abc1234-linux.gz",
+                    "digest": "sha256:4141414141414141414141414141414141414141414141414141414141414141",
+                    "updated_at": "2026-11-08T08:00:00Z"
+                  },
+                  {
+                    "id": "402",
+                    "name": "version.txt",
+                    "updated_at": "2026-11-08T08:00:00Z"
+                  }
+                ]
+              }
+            }
+          }
+        }
+      },
+      "now": "2026-11-09T12:00:00Z"
+    },
+    "expect": {
+      "error": {
+        "code": "compile.unknown_tag",
+        "path": "template.resources.sample.variants[0].tags",
+        "fields": {
+          "tag": "channel:beta"
+        }
+      }
+    }
+  },
+  {
+    "name": "compile.default_variant.missing",
+    "input": {
+      "template": {
+        "manifest_version": "2.0",
+        "registries": {
+          "release": {
+            "name": "Releases",
+            "url_template": "https://origin.test/{owner}/{repo}/download/{release}/{artifact}"
+          },
+          "assets": {
+            "name": "Release assets",
+            "url_template": "https://origin.test/{owner}/{repo}/assets/{release}"
+          }
+        },
+        "mirrors": {
+          "direct": {
+            "name": "Direct",
+            "url_template": "{url}"
+          },
+          "edge": {
+            "name": "Edge",
+            "url_template": "https://edge.test{path_and_query}",
+            "registries": ["release"]
+          }
+        },
+        "resources": {
+          "sample": {
+            "name": "Sample",
+            "registry": "release",
+            "source": {
+              "owner": "o",
+              "repo": "r"
+            },
+            "tags": {
+              "channel:stable": {
+                "name": "Stable",
+                "group": "channel"
+              },
+              "channel:alpha": {
+                "name": "Alpha",
+                "group": "channel"
+              }
+            },
+            "releases": {
+              "stable": {
+                "type": "history",
+                "limit": 3
+              },
+              "alpha": {
+                "type": "tag",
+                "tag": "Prerelease-Alpha"
+              }
+            },
+            "variants": [
+              {
+                "id": "stable",
+                "name": "Stable",
+                "tags": ["channel:stable"],
+                "source": {
+                  "release": "{version}"
+                },
+                "artifacts": {
+                  "windows-x86_64": {
+                    "artifact": "pkg-{version}-win.zip",
+                    "version": {
+                      "type": "static",
+                      "releases": "stable"
+                    }
+                  },
+                  "linux-amd64": {
+                    "artifact": "pkg-{version}-linux.gz",
+                    "version": {
+                      "type": "static",
+                      "releases": "stable"
+                    }
+                  }
+                }
+              },
+              {
+                "id": "alpha",
+                "name": "Alpha",
+                "tags": ["channel:alpha"],
+                "source": {
+                  "release": "Prerelease-Alpha"
+                },
+                "artifacts": {
+                  "linux-amd64": {
+                    "artifact": "pkg-{version}-linux.gz",
+                    "version": {
+                      "type": "remote",
+                      "releases": "alpha",
+                      "version": {
+                        "resource": {
+                          "registry": "release",
+                          "artifact": "version.txt"
+                        },
+                        "parser": {
+                          "type": "text"
+                        }
+                      },
+                      "checksum": {
+                        "resource": {
+                          "registry": "assets"
+                        },
+                        "parser": {
+                          "type": "github-release-assets"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "snapshot": {
+        "observed_at": "2026-11-09T11:59:00Z",
+        "resources": {
+          "sample": {
+            "stable": {
+              "type": "history",
+              "releases": [
+                {
+                  "id": "30",
+                  "tag": "v3",
+                  "url": "https://api.test/repos/o/r/releases/30",
+                  "published_at": "2026-11-03T00:00:00Z",
+                  "assets": [
+                    {
+                      "id": "301",
+                      "name": "pkg-v3-linux.gz",
+                      "digest": "sha256:3131313131313131313131313131313131313131313131313131313131313131",
+                      "updated_at": "2026-11-03T00:01:00Z"
+                    },
+                    {
+                      "id": "302",
+                      "name": "pkg-v3-win.zip",
+                      "digest": "sha256:3232323232323232323232323232323232323232323232323232323232323232",
+                      "updated_at": "2026-11-03T00:02:00Z"
+                    }
+                  ]
+                },
+                {
+                  "id": "20",
+                  "tag": "v2",
+                  "url": "https://api.test/repos/o/r/releases/20",
+                  "published_at": "2026-11-02T00:00:00Z",
+                  "assets": [
+                    {
+                      "id": "201",
+                      "name": "pkg-v2-linux.gz",
+                      "digest": "sha256:2121212121212121212121212121212121212121212121212121212121212121",
+                      "updated_at": "2026-11-02T00:01:00Z"
+                    }
+                  ]
+                },
+                {
+                  "id": "10",
+                  "tag": "v1",
+                  "url": "https://api.test/repos/o/r/releases/10",
+                  "assets": [
+                    {
+                      "id": "101",
+                      "name": "pkg-v1-linux.gz",
+                      "digest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+                      "updated_at": "2026-11-01T00:01:00Z"
+                    },
+                    {
+                      "id": "102",
+                      "name": "pkg-v1-win.zip",
+                      "updated_at": "2026-11-01T00:02:00Z"
+                    }
+                  ]
+                }
+              ]
+            },
+            "alpha": {
+              "type": "tag",
+              "version": "alpha-abc1234",
+              "release": {
+                "id": "40",
+                "tag": "Prerelease-Alpha",
+                "url": "https://api.test/repos/o/r/releases/40",
+                "published_at": "2024-01-01T00:00:00Z",
+                "assets": [
+                  {
+                    "id": "401",
+                    "name": "pkg-alpha-abc1234-linux.gz",
+                    "digest": "sha256:4141414141414141414141414141414141414141414141414141414141414141",
+                    "updated_at": "2026-11-08T08:00:00Z"
+                  },
+                  {
+                    "id": "402",
+                    "name": "version.txt",
+                    "updated_at": "2026-11-08T08:00:00Z"
+                  }
+                ]
+              }
+            }
+          }
+        }
+      },
+      "now": "2026-11-09T12:00:00Z"
+    },
+    "expect": {
+      "error": {
+        "code": "validate.default_variant",
+        "path": "output.resources.sample.default_variants.linux-amd64",
+        "fields": {
+          "platform": "linux-amd64",
+          "variant": null,
+          "reason": "missing"
+        }
+      }
+    }
+  },
+  {
+    "name": "compile.preflight.missing_variable",
+    "input": {
+      "template": {
+        "manifest_version": "2.0",
+        "registries": {
+          "release": {
+            "name": "Releases",
+            "url_template": "https://{missing}/{artifact}"
+          },
+          "assets": {
+            "name": "Release assets",
+            "url_template": "https://origin.test/{owner}/{repo}/assets/{release}"
+          }
+        },
+        "mirrors": {
+          "direct": {
+            "name": "Direct",
+            "url_template": "{url}"
+          },
+          "edge": {
+            "name": "Edge",
+            "url_template": "https://edge.test{path_and_query}",
+            "registries": ["release"]
+          }
+        },
+        "resources": {
+          "sample": {
+            "name": "Sample",
+            "registry": "release",
+            "source": {
+              "owner": "o",
+              "repo": "r"
+            },
+            "tags": {
+              "channel:stable": {
+                "name": "Stable",
+                "group": "channel"
+              },
+              "channel:alpha": {
+                "name": "Alpha",
+                "group": "channel"
+              }
+            },
+            "default_variants": {
+              "linux-amd64": "stable"
+            },
+            "releases": {
+              "stable": {
+                "type": "history",
+                "limit": 3
+              },
+              "alpha": {
+                "type": "tag",
+                "tag": "Prerelease-Alpha"
+              }
+            },
+            "variants": [
+              {
+                "id": "stable",
+                "name": "Stable",
+                "tags": ["channel:stable"],
+                "source": {
+                  "release": "{version}"
+                },
+                "artifacts": {
+                  "windows-x86_64": {
+                    "artifact": "pkg-{version}-win.zip",
+                    "version": {
+                      "type": "static",
+                      "releases": "stable"
+                    }
+                  },
+                  "linux-amd64": {
+                    "artifact": "pkg-{version}-linux.gz",
+                    "version": {
+                      "type": "static",
+                      "releases": "stable"
+                    }
+                  }
+                }
+              },
+              {
+                "id": "alpha",
+                "name": "Alpha",
+                "tags": ["channel:alpha"],
+                "source": {
+                  "release": "Prerelease-Alpha"
+                },
+                "artifacts": {
+                  "linux-amd64": {
+                    "artifact": "pkg-{version}-linux.gz",
+                    "version": {
+                      "type": "remote",
+                      "releases": "alpha",
+                      "version": {
+                        "resource": {
+                          "registry": "release",
+                          "artifact": "version.txt"
+                        },
+                        "parser": {
+                          "type": "text"
+                        }
+                      },
+                      "checksum": {
+                        "resource": {
+                          "registry": "assets"
+                        },
+                        "parser": {
+                          "type": "github-release-assets"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "snapshot": {
+        "observed_at": "2026-11-09T11:59:00Z",
+        "resources": {
+          "sample": {
+            "stable": {
+              "type": "history",
+              "releases": [
+                {
+                  "id": "30",
+                  "tag": "v3",
+                  "url": "https://api.test/repos/o/r/releases/30",
+                  "published_at": "2026-11-03T00:00:00Z",
+                  "assets": [
+                    {
+                      "id": "301",
+                      "name": "pkg-v3-linux.gz",
+                      "digest": "sha256:3131313131313131313131313131313131313131313131313131313131313131",
+                      "updated_at": "2026-11-03T00:01:00Z"
+                    },
+                    {
+                      "id": "302",
+                      "name": "pkg-v3-win.zip",
+                      "digest": "sha256:3232323232323232323232323232323232323232323232323232323232323232",
+                      "updated_at": "2026-11-03T00:02:00Z"
+                    }
+                  ]
+                },
+                {
+                  "id": "20",
+                  "tag": "v2",
+                  "url": "https://api.test/repos/o/r/releases/20",
+                  "published_at": "2026-11-02T00:00:00Z",
+                  "assets": [
+                    {
+                      "id": "201",
+                      "name": "pkg-v2-linux.gz",
+                      "digest": "sha256:2121212121212121212121212121212121212121212121212121212121212121",
+                      "updated_at": "2026-11-02T00:01:00Z"
+                    }
+                  ]
+                },
+                {
+                  "id": "10",
+                  "tag": "v1",
+                  "url": "https://api.test/repos/o/r/releases/10",
+                  "assets": [
+                    {
+                      "id": "101",
+                      "name": "pkg-v1-linux.gz",
+                      "digest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+                      "updated_at": "2026-11-01T00:01:00Z"
+                    },
+                    {
+                      "id": "102",
+                      "name": "pkg-v1-win.zip",
+                      "updated_at": "2026-11-01T00:02:00Z"
+                    }
+                  ]
+                }
+              ]
+            },
+            "alpha": {
+              "type": "tag",
+              "version": "alpha-abc1234",
+              "release": {
+                "id": "40",
+                "tag": "Prerelease-Alpha",
+                "url": "https://api.test/repos/o/r/releases/40",
+                "published_at": "2024-01-01T00:00:00Z",
+                "assets": [
+                  {
+                    "id": "401",
+                    "name": "pkg-alpha-abc1234-linux.gz",
+                    "digest": "sha256:4141414141414141414141414141414141414141414141414141414141414141",
+                    "updated_at": "2026-11-08T08:00:00Z"
+                  },
+                  {
+                    "id": "402",
+                    "name": "version.txt",
+                    "updated_at": "2026-11-08T08:00:00Z"
+                  }
+                ]
+              }
+            }
+          }
+        }
+      },
+      "now": "2026-11-09T12:00:00Z"
+    },
+    "expect": {
+      "error": {
+        "code": "validate.template_variable",
+        "path": "output.registries.release.url_template",
+        "fields": {
+          "variable": "missing"
+        }
+      }
+    }
+  },
+  {
+    "name": "compile.preflight.cycle_without_version",
+    "input": {
+      "template": {
+        "manifest_version": "2.0",
+        "registries": {
+          "release": {
+            "name": "Releases",
+            "url_template": "https://origin.test/{owner}/{repo}/download/{release}/{artifact}"
+          },
+          "assets": {
+            "name": "Release assets",
+            "url_template": "https://origin.test/{owner}/{repo}/assets/{release}"
+          }
+        },
+        "mirrors": {
+          "direct": {
+            "name": "Direct",
+            "url_template": "{url}"
+          },
+          "edge": {
+            "name": "Edge",
+            "url_template": "https://edge.test{path_and_query}",
+            "registries": ["release"]
+          }
+        },
+        "resources": {
+          "sample": {
+            "name": "Sample",
+            "registry": "release",
+            "source": {
+              "owner": "o",
+              "repo": "r"
+            },
+            "tags": {
+              "channel:stable": {
+                "name": "Stable",
+                "group": "channel"
+              },
+              "channel:alpha": {
+                "name": "Alpha",
+                "group": "channel"
+              }
+            },
+            "default_variants": {
+              "linux-amd64": "stable"
+            },
+            "releases": {
+              "stable": {
+                "type": "history",
+                "limit": 3
+              },
+              "alpha": {
+                "type": "tag",
+                "tag": "Prerelease-Alpha"
+              }
+            },
+            "variants": [
+              {
+                "id": "stable",
+                "name": "Stable",
+                "tags": ["channel:stable"],
+                "source": {
+                  "release": "{version}"
+                },
+                "artifacts": {
+                  "windows-x86_64": {
+                    "artifact": "pkg-{version}-win.zip",
+                    "version": {
+                      "type": "static",
+                      "releases": "stable"
+                    }
+                  },
+                  "linux-amd64": {
+                    "artifact": "pkg-{version}-linux.gz",
+                    "version": {
+                      "type": "static",
+                      "releases": "stable"
+                    }
+                  }
+                }
+              },
+              {
+                "id": "alpha",
+                "name": "Alpha",
+                "tags": ["channel:alpha"],
+                "source": {
+                  "release": "Prerelease-Alpha"
+                },
+                "artifacts": {
+                  "linux-amd64": {
+                    "artifact": "{loop}",
+                    "version": {
+                      "type": "remote",
+                      "releases": "alpha",
+                      "version": {
+                        "resource": {
+                          "registry": "release",
+                          "artifact": "version.txt"
+                        },
+                        "parser": {
+                          "type": "text"
+                        }
+                      },
+                      "checksum": {
+                        "resource": {
+                          "registry": "assets"
+                        },
+                        "parser": {
+                          "type": "github-release-assets"
+                        }
+                      }
+                    },
+                    "source": {
+                      "loop": "{loop}"
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "snapshot": {
+        "observed_at": "2026-11-09T11:59:00Z",
+        "resources": {
+          "sample": {
+            "stable": {
+              "type": "history",
+              "releases": [
+                {
+                  "id": "30",
+                  "tag": "v3",
+                  "url": "https://api.test/repos/o/r/releases/30",
+                  "published_at": "2026-11-03T00:00:00Z",
+                  "assets": [
+                    {
+                      "id": "301",
+                      "name": "pkg-v3-linux.gz",
+                      "digest": "sha256:3131313131313131313131313131313131313131313131313131313131313131",
+                      "updated_at": "2026-11-03T00:01:00Z"
+                    },
+                    {
+                      "id": "302",
+                      "name": "pkg-v3-win.zip",
+                      "digest": "sha256:3232323232323232323232323232323232323232323232323232323232323232",
+                      "updated_at": "2026-11-03T00:02:00Z"
+                    }
+                  ]
+                },
+                {
+                  "id": "20",
+                  "tag": "v2",
+                  "url": "https://api.test/repos/o/r/releases/20",
+                  "published_at": "2026-11-02T00:00:00Z",
+                  "assets": [
+                    {
+                      "id": "201",
+                      "name": "pkg-v2-linux.gz",
+                      "digest": "sha256:2121212121212121212121212121212121212121212121212121212121212121",
+                      "updated_at": "2026-11-02T00:01:00Z"
+                    }
+                  ]
+                },
+                {
+                  "id": "10",
+                  "tag": "v1",
+                  "url": "https://api.test/repos/o/r/releases/10",
+                  "assets": [
+                    {
+                      "id": "101",
+                      "name": "pkg-v1-linux.gz",
+                      "digest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+                      "updated_at": "2026-11-01T00:01:00Z"
+                    },
+                    {
+                      "id": "102",
+                      "name": "pkg-v1-win.zip",
+                      "updated_at": "2026-11-01T00:02:00Z"
+                    }
+                  ]
+                }
+              ]
+            },
+            "alpha": {
+              "type": "tag",
+              "release": {
+                "id": "40",
+                "tag": "Prerelease-Alpha",
+                "url": "https://api.test/repos/o/r/releases/40",
+                "published_at": "2024-01-01T00:00:00Z",
+                "assets": [
+                  {
+                    "id": "401",
+                    "name": "pkg-alpha-abc1234-linux.gz",
+                    "digest": "sha256:4141414141414141414141414141414141414141414141414141414141414141",
+                    "updated_at": "2026-11-08T08:00:00Z"
+                  },
+                  {
+                    "id": "402",
+                    "name": "version.txt",
+                    "updated_at": "2026-11-08T08:00:00Z"
+                  }
+                ]
+              }
+            }
+          }
+        }
+      },
+      "now": "2026-11-09T12:00:00Z"
+    },
+    "expect": {
+      "error": {
+        "code": "template.cycle",
+        "path": "output.resources.sample.variants[1].artifacts.linux-amd64.source.loop",
+        "fields": {
+          "variables": ["loop", "loop"]
+        }
+      }
+    }
+  },
+  {
+    "name": "compile.preflight.mirror_scheme",
+    "input": {
+      "template": {
+        "manifest_version": "2.0",
+        "registries": {
+          "release": {
+            "name": "Releases",
+            "url_template": "https://origin.test/{owner}/{repo}/download/{release}/{artifact}"
+          },
+          "assets": {
+            "name": "Release assets",
+            "url_template": "https://origin.test/{owner}/{repo}/assets/{release}"
+          }
+        },
+        "mirrors": {
+          "direct": {
+            "name": "Direct",
+            "url_template": "{url}"
+          },
+          "edge": {
+            "name": "Edge",
+            "url_template": "ftp://edge.test{path_and_query}",
+            "registries": ["release"]
+          }
+        },
+        "resources": {
+          "sample": {
+            "name": "Sample",
+            "registry": "release",
+            "source": {
+              "owner": "o",
+              "repo": "r"
+            },
+            "tags": {
+              "channel:stable": {
+                "name": "Stable",
+                "group": "channel"
+              },
+              "channel:alpha": {
+                "name": "Alpha",
+                "group": "channel"
+              }
+            },
+            "default_variants": {
+              "linux-amd64": "stable"
+            },
+            "releases": {
+              "stable": {
+                "type": "history",
+                "limit": 3
+              },
+              "alpha": {
+                "type": "tag",
+                "tag": "Prerelease-Alpha"
+              }
+            },
+            "variants": [
+              {
+                "id": "stable",
+                "name": "Stable",
+                "tags": ["channel:stable"],
+                "source": {
+                  "release": "{version}"
+                },
+                "artifacts": {
+                  "windows-x86_64": {
+                    "artifact": "pkg-{version}-win.zip",
+                    "version": {
+                      "type": "static",
+                      "releases": "stable"
+                    }
+                  },
+                  "linux-amd64": {
+                    "artifact": "pkg-{version}-linux.gz",
+                    "version": {
+                      "type": "static",
+                      "releases": "stable"
+                    }
+                  }
+                }
+              },
+              {
+                "id": "alpha",
+                "name": "Alpha",
+                "tags": ["channel:alpha"],
+                "source": {
+                  "release": "Prerelease-Alpha"
+                },
+                "artifacts": {
+                  "linux-amd64": {
+                    "artifact": "pkg-{version}-linux.gz",
+                    "version": {
+                      "type": "remote",
+                      "releases": "alpha",
+                      "version": {
+                        "resource": {
+                          "registry": "release",
+                          "artifact": "version.txt"
+                        },
+                        "parser": {
+                          "type": "text"
+                        }
+                      },
+                      "checksum": {
+                        "resource": {
+                          "registry": "assets"
+                        },
+                        "parser": {
+                          "type": "github-release-assets"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "snapshot": {
+        "observed_at": "2026-11-09T11:59:00Z",
+        "resources": {
+          "sample": {
+            "stable": {
+              "type": "history",
+              "releases": [
+                {
+                  "id": "30",
+                  "tag": "v3",
+                  "url": "https://api.test/repos/o/r/releases/30",
+                  "published_at": "2026-11-03T00:00:00Z",
+                  "assets": [
+                    {
+                      "id": "301",
+                      "name": "pkg-v3-linux.gz",
+                      "digest": "sha256:3131313131313131313131313131313131313131313131313131313131313131",
+                      "updated_at": "2026-11-03T00:01:00Z"
+                    },
+                    {
+                      "id": "302",
+                      "name": "pkg-v3-win.zip",
+                      "digest": "sha256:3232323232323232323232323232323232323232323232323232323232323232",
+                      "updated_at": "2026-11-03T00:02:00Z"
+                    }
+                  ]
+                },
+                {
+                  "id": "20",
+                  "tag": "v2",
+                  "url": "https://api.test/repos/o/r/releases/20",
+                  "published_at": "2026-11-02T00:00:00Z",
+                  "assets": [
+                    {
+                      "id": "201",
+                      "name": "pkg-v2-linux.gz",
+                      "digest": "sha256:2121212121212121212121212121212121212121212121212121212121212121",
+                      "updated_at": "2026-11-02T00:01:00Z"
+                    }
+                  ]
+                },
+                {
+                  "id": "10",
+                  "tag": "v1",
+                  "url": "https://api.test/repos/o/r/releases/10",
+                  "assets": [
+                    {
+                      "id": "101",
+                      "name": "pkg-v1-linux.gz",
+                      "digest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+                      "updated_at": "2026-11-01T00:01:00Z"
+                    },
+                    {
+                      "id": "102",
+                      "name": "pkg-v1-win.zip",
+                      "updated_at": "2026-11-01T00:02:00Z"
+                    }
+                  ]
+                }
+              ]
+            },
+            "alpha": {
+              "type": "tag",
+              "version": "alpha-abc1234",
+              "release": {
+                "id": "40",
+                "tag": "Prerelease-Alpha",
+                "url": "https://api.test/repos/o/r/releases/40",
+                "published_at": "2024-01-01T00:00:00Z",
+                "assets": [
+                  {
+                    "id": "401",
+                    "name": "pkg-alpha-abc1234-linux.gz",
+                    "digest": "sha256:4141414141414141414141414141414141414141414141414141414141414141",
+                    "updated_at": "2026-11-08T08:00:00Z"
+                  },
+                  {
+                    "id": "402",
+                    "name": "version.txt",
+                    "updated_at": "2026-11-08T08:00:00Z"
+                  }
+                ]
+              }
+            }
+          }
+        }
+      },
+      "now": "2026-11-09T12:00:00Z"
+    },
+    "expect": {
+      "error": {
+        "code": "url.unsupported_scheme",
+        "path": "output.mirrors.edge.url_template",
+        "fields": {
+          "scheme": "ftp"
+        }
+      }
+    }
+  },
+  {
+    "name": "compile.preflight.mirror_partial_registries",
+    "input": {
+      "template": {
+        "manifest_version": "2.0",
+        "registries": {
+          "release": {
+            "name": "Releases",
+            "url_template": "https://origin.test/{owner}/{repo}/download/{release}/{artifact}"
+          },
+          "assets": {
+            "name": "Release assets",
+            "url_template": "https://origin.test/{owner}/{repo}/assets/{release}"
+          }
+        },
+        "mirrors": {
+          "direct": {
+            "name": "Direct",
+            "url_template": "{url}"
+          },
+          "edge": {
+            "name": "Edge",
+            "url_template": "ftp://edge.test{path_and_query}",
+            "registries": ["assets"]
+          }
+        },
+        "resources": {
+          "sample": {
+            "name": "Sample",
+            "registry": "release",
+            "source": {
+              "owner": "o",
+              "repo": "r"
+            },
+            "tags": {
+              "channel:stable": {
+                "name": "Stable",
+                "group": "channel"
+              },
+              "channel:alpha": {
+                "name": "Alpha",
+                "group": "channel"
+              }
+            },
+            "default_variants": {
+              "linux-amd64": "stable"
+            },
+            "releases": {
+              "stable": {
+                "type": "history",
+                "limit": 3
+              },
+              "alpha": {
+                "type": "tag",
+                "tag": "Prerelease-Alpha"
+              }
+            },
+            "variants": [
+              {
+                "id": "stable",
+                "name": "Stable",
+                "tags": ["channel:stable"],
+                "source": {
+                  "release": "{version}"
+                },
+                "artifacts": {
+                  "windows-x86_64": {
+                    "artifact": "pkg-{version}-win.zip",
+                    "version": {
+                      "type": "static",
+                      "releases": "stable"
+                    }
+                  },
+                  "linux-amd64": {
+                    "artifact": "pkg-{version}-linux.gz",
+                    "version": {
+                      "type": "static",
+                      "releases": "stable"
+                    }
+                  }
+                }
+              },
+              {
+                "id": "alpha",
+                "name": "Alpha",
+                "tags": ["channel:alpha"],
+                "source": {
+                  "release": "Prerelease-Alpha"
+                },
+                "artifacts": {
+                  "linux-amd64": {
+                    "artifact": "pkg-{version}-linux.gz",
+                    "version": {
+                      "type": "remote",
+                      "releases": "alpha",
+                      "version": {
+                        "resource": {
+                          "registry": "release",
+                          "artifact": "version.txt"
+                        },
+                        "parser": {
+                          "type": "text"
+                        }
+                      },
+                      "checksum": {
+                        "resource": {
+                          "registry": "assets"
+                        },
+                        "parser": {
+                          "type": "github-release-assets"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "snapshot": {
+        "observed_at": "2026-11-09T11:59:00Z",
+        "resources": {
+          "sample": {
+            "stable": {
+              "type": "history",
+              "releases": [
+                {
+                  "id": "30",
+                  "tag": "v3",
+                  "url": "https://api.test/repos/o/r/releases/30",
+                  "published_at": "2026-11-03T00:00:00Z",
+                  "assets": [
+                    {
+                      "id": "301",
+                      "name": "pkg-v3-linux.gz",
+                      "digest": "sha256:3131313131313131313131313131313131313131313131313131313131313131",
+                      "updated_at": "2026-11-03T00:01:00Z"
+                    },
+                    {
+                      "id": "302",
+                      "name": "pkg-v3-win.zip",
+                      "digest": "sha256:3232323232323232323232323232323232323232323232323232323232323232",
+                      "updated_at": "2026-11-03T00:02:00Z"
+                    }
+                  ]
+                },
+                {
+                  "id": "20",
+                  "tag": "v2",
+                  "url": "https://api.test/repos/o/r/releases/20",
+                  "published_at": "2026-11-02T00:00:00Z",
+                  "assets": [
+                    {
+                      "id": "201",
+                      "name": "pkg-v2-linux.gz",
+                      "digest": "sha256:2121212121212121212121212121212121212121212121212121212121212121",
+                      "updated_at": "2026-11-02T00:01:00Z"
+                    }
+                  ]
+                },
+                {
+                  "id": "10",
+                  "tag": "v1",
+                  "url": "https://api.test/repos/o/r/releases/10",
+                  "assets": [
+                    {
+                      "id": "101",
+                      "name": "pkg-v1-linux.gz",
+                      "digest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+                      "updated_at": "2026-11-01T00:01:00Z"
+                    },
+                    {
+                      "id": "102",
+                      "name": "pkg-v1-win.zip",
+                      "updated_at": "2026-11-01T00:02:00Z"
+                    }
+                  ]
+                }
+              ]
+            },
+            "alpha": {
+              "type": "tag",
+              "version": "alpha-abc1234",
+              "release": {
+                "id": "40",
+                "tag": "Prerelease-Alpha",
+                "url": "https://api.test/repos/o/r/releases/40",
+                "published_at": "2024-01-01T00:00:00Z",
+                "assets": [
+                  {
+                    "id": "401",
+                    "name": "pkg-alpha-abc1234-linux.gz",
+                    "digest": "sha256:4141414141414141414141414141414141414141414141414141414141414141",
+                    "updated_at": "2026-11-08T08:00:00Z"
+                  },
+                  {
+                    "id": "402",
+                    "name": "version.txt",
+                    "updated_at": "2026-11-08T08:00:00Z"
+                  }
+                ]
+              }
+            }
+          }
+        }
+      },
+      "now": "2026-11-09T12:00:00Z"
+    },
+    "expect": {
+      "error": {
+        "code": "url.unsupported_scheme",
+        "path": "output.mirrors.edge.url_template",
+        "fields": {
+          "scheme": "ftp"
+        }
+      }
+    }
+  },
+  {
+    "name": "compile.render_tag",
+    "input": {
+      "template": {
+        "manifest_version": "2.0",
+        "registries": {
+          "release": {
+            "name": "Releases",
+            "url_template": "https://origin.test/{owner}/{repo}/download/{release}/{artifact}"
+          },
+          "assets": {
+            "name": "Release assets",
+            "url_template": "https://origin.test/{owner}/{repo}/assets/{release}"
+          }
+        },
+        "mirrors": {
+          "direct": {
+            "name": "Direct",
+            "url_template": "{url}"
+          },
+          "edge": {
+            "name": "Edge",
+            "url_template": "https://edge.test{path_and_query}",
+            "registries": ["release"]
+          }
+        },
+        "resources": {
+          "sample": {
+            "name": "Sample",
+            "registry": "release",
+            "source": {
+              "owner": "o",
+              "repo": "r"
+            },
+            "tags": {
+              "channel:stable": {
+                "name": "Stable",
+                "group": "channel"
+              },
+              "channel:alpha": {
+                "name": "Alpha",
+                "group": "channel"
+              }
+            },
+            "default_variants": {
+              "linux-amd64": "stable"
+            },
+            "releases": {
+              "stable": {
+                "type": "history",
+                "limit": 3
+              },
+              "alpha": {
+                "type": "tag",
+                "tag": "Prerelease-Alpha"
+              }
+            },
+            "variants": [
+              {
+                "id": "stable",
+                "name": "Stable",
+                "tags": ["channel:stable"],
+                "source": {
+                  "release": "{version}"
+                },
+                "artifacts": {
+                  "windows-x86_64": {
+                    "artifact": "pkg-{version}-win.zip",
+                    "version": {
+                      "type": "static",
+                      "releases": "stable"
+                    }
+                  },
+                  "linux-amd64": {
+                    "artifact": "pkg-{version}-linux.gz",
+                    "version": {
+                      "type": "static",
+                      "releases": "stable"
+                    }
+                  }
+                }
+              },
+              {
+                "id": "alpha",
+                "name": "Alpha",
+                "tags": ["channel:alpha"],
+                "source": {
+                  "release": "Prerelease-Alpha"
+                },
+                "artifacts": {
+                  "linux-amd64": {
+                    "artifact": "pkg-{version}-linux.gz",
+                    "version": {
+                      "type": "remote",
+                      "releases": "alpha",
+                      "version": {
+                        "resource": {
+                          "registry": "release",
+                          "artifact": "version.txt"
+                        },
+                        "parser": {
+                          "type": "text"
+                        }
+                      },
+                      "checksum": {
+                        "resource": {
+                          "registry": "assets"
+                        },
+                        "parser": {
+                          "type": "github-release-assets"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "snapshot": {
+        "observed_at": "2026-11-09T11:59:00Z",
+        "resources": {
+          "sample": {
+            "stable": {
+              "type": "history",
+              "releases": [
+                {
+                  "id": "30",
+                  "tag": "v3",
+                  "url": "https://api.test/repos/o/r/releases/30",
+                  "published_at": "2026-11-03T00:00:00Z",
+                  "assets": [
+                    {
+                      "id": "301",
+                      "name": "pkg-v3-linux.gz",
+                      "digest": "sha256:3131313131313131313131313131313131313131313131313131313131313131",
+                      "updated_at": "2026-11-03T00:01:00Z"
+                    },
+                    {
+                      "id": "302",
+                      "name": "pkg-v3-win.zip",
+                      "digest": "sha256:3232323232323232323232323232323232323232323232323232323232323232",
+                      "updated_at": "2026-11-03T00:02:00Z"
+                    }
+                  ]
+                },
+                {
+                  "id": "20",
+                  "tag": "v 2",
+                  "url": "https://api.test/repos/o/r/releases/20",
+                  "published_at": "2026-11-02T00:00:00Z",
+                  "assets": [
+                    {
+                      "id": "201",
+                      "name": "pkg-v2-linux.gz",
+                      "digest": "sha256:2121212121212121212121212121212121212121212121212121212121212121",
+                      "updated_at": "2026-11-02T00:01:00Z"
+                    }
+                  ]
+                },
+                {
+                  "id": "10",
+                  "tag": "v1",
+                  "url": "https://api.test/repos/o/r/releases/10",
+                  "assets": [
+                    {
+                      "id": "101",
+                      "name": "pkg-v1-linux.gz",
+                      "digest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+                      "updated_at": "2026-11-01T00:01:00Z"
+                    },
+                    {
+                      "id": "102",
+                      "name": "pkg-v1-win.zip",
+                      "updated_at": "2026-11-01T00:02:00Z"
+                    }
+                  ]
+                }
+              ]
+            },
+            "alpha": {
+              "type": "tag",
+              "version": "alpha-abc1234",
+              "release": {
+                "id": "40",
+                "tag": "Prerelease-Alpha",
+                "url": "https://api.test/repos/o/r/releases/40",
+                "published_at": "2024-01-01T00:00:00Z",
+                "assets": [
+                  {
+                    "id": "401",
+                    "name": "pkg-alpha-abc1234-linux.gz",
+                    "digest": "sha256:4141414141414141414141414141414141414141414141414141414141414141",
+                    "updated_at": "2026-11-08T08:00:00Z"
+                  },
+                  {
+                    "id": "402",
+                    "name": "version.txt",
+                    "updated_at": "2026-11-08T08:00:00Z"
+                  }
+                ]
+              }
+            }
+          }
+        }
+      },
+      "now": "2026-11-09T12:00:00Z"
+    },
+    "expect": {
+      "error": {
+        "code": "template.invalid_literal",
+        "path": "snapshot.resources.sample.stable.releases[1].tag",
+        "fields": {}
+      }
+    }
+  }
+]

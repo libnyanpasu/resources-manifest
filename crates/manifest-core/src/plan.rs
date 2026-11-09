@@ -490,10 +490,43 @@ fn check_support(selected: &SelectedArtifact<'_>) -> Result<(), ResolveError> {
     Ok(())
 }
 
+/// The mirror applied to a plan's requests.
+#[derive(Debug, Clone, Copy)]
+pub(crate) struct Mirror<'a> {
+    pub(crate) id: Option<&'a str>,
+    /// When set, requests whose registry the mirror does not serve keep only
+    /// their canonical URL instead of failing with `resolve.mirror_not_allowed`.
+    pub(crate) eligible_only: bool,
+}
+
+impl<'a> Mirror<'a> {
+    fn required(id: Option<&'a str>) -> Self {
+        Self {
+            id,
+            eligible_only: false,
+        }
+    }
+}
+
 #[must_use = "version planning errors must be handled"]
 pub fn plan_version(
     selected: &SelectedArtifact<'_>,
     options: VersionOptions<'_>,
+    limits: &Limits,
+) -> Result<VersionPlan, ResolveError> {
+    plan_version_with(
+        selected,
+        options.source,
+        Mirror::required(options.mirror),
+        limits,
+    )
+}
+
+#[must_use = "version planning errors must be handled"]
+pub(crate) fn plan_version_with(
+    selected: &SelectedArtifact<'_>,
+    source: Option<&SourceVariables>,
+    mirror: Mirror<'_>,
     limits: &Limits,
 ) -> Result<VersionPlan, ResolveError> {
     check_support(selected)?;
@@ -506,7 +539,7 @@ pub fn plan_version(
             remote: None,
         }),
         ResourceArtifactVersionTemplate::Remote { version, .. } => {
-            let values = version_values(selected, options.source)?;
+            let values = version_values(selected, source)?;
             let parts = version
                 .parts()
                 .map(|(name, part)| {
@@ -523,7 +556,7 @@ pub fn plan_version(
                         &part.resource,
                         &values,
                         &format!("{path}.resource"),
-                        options.mirror,
+                        mirror,
                         kind,
                         limits,
                     )?;
@@ -612,6 +645,17 @@ pub fn plan_download(
     options: DownloadOptions<'_>,
     limits: &Limits,
 ) -> Result<DownloadPlan, ResolveError> {
+    plan_download_with(selected, options, Mirror::required(options.mirror), limits)
+}
+
+/// Like [`plan_download`], with `mirror` in place of `options.mirror`.
+#[must_use = "download planning errors must be handled"]
+pub(crate) fn plan_download_with(
+    selected: &SelectedArtifact<'_>,
+    options: DownloadOptions<'_>,
+    mirror: Mirror<'_>,
+    limits: &Limits,
+) -> Result<DownloadPlan, ResolveError> {
     check_support(selected)?;
     let render_options = ArtifactRenderOptions {
         version: options.version,
@@ -681,7 +725,7 @@ pub fn plan_download(
         &selected.resource.registry,
         rendered.canonical_url(),
         &canonical,
-        options.mirror,
+        mirror,
         kind,
         limits,
     )?;
@@ -692,7 +736,7 @@ pub fn plan_download(
                 &remote.resource,
                 &values,
                 &format!("{}.version.checksum.resource", selected.path()),
-                options.mirror,
+                mirror,
                 kind,
                 limits,
             )
@@ -719,7 +763,7 @@ fn remote_request(
     remote: &RemoteResourceTemplate,
     base: &Scope<'_, TemplateValue<'_>>,
     path: &str,
-    mirror: Option<&str>,
+    mirror: Mirror<'_>,
     kind: ChecksumKind,
     limits: &Limits,
 ) -> Result<RequestPlan, ResolveError> {
@@ -780,65 +824,77 @@ fn request_plan(
     registry: &str,
     canonical_url: &str,
     values: &Scope<'_, TemplateValue<'_>>,
-    mirror: Option<&str>,
+    mirror: Mirror<'_>,
     kind: ChecksumKind,
     limits: &Limits,
 ) -> Result<RequestPlan, ResolveError> {
-    let mirror_url =
-        mirror
-            .map(|id| {
-                let mirror = manifest.manifest().mirrors.get(id).ok_or_else(|| {
+    let mirror =
+        match mirror.id {
+            Some(id) => {
+                let definition = manifest.manifest().mirrors.get(id).ok_or_else(|| {
                     ResolveError::ResolveMirror {
                         mirror: id.to_owned(),
                     }
                 })?;
-                if !crate::scope::mirror_allows(mirror, registry) {
-                    return Err(ResolveError::SelectMirror {
-                        mirror: id.to_owned(),
-                        registry: registry.to_owned(),
-                    });
+                match (
+                    crate::scope::mirror_allows(definition, registry),
+                    mirror.eligible_only,
+                ) {
+                    (true, _) => Some((id, definition)),
+                    (false, true) => None,
+                    (false, false) => {
+                        return Err(ResolveError::SelectMirror {
+                            mirror: id.to_owned(),
+                            registry: registry.to_owned(),
+                        });
+                    }
                 }
-                let url = Url::parse(canonical_url).expect("validated canonical URL");
-                let encoded = encode_uri_component(canonical_url);
-                let port = url.port().map(|port| port.to_string()).unwrap_or_default();
-                let hostname = url.host_str().unwrap_or_default();
-                let host = if port.is_empty() {
-                    hostname.to_owned()
-                } else {
-                    format!("{hostname}:{port}")
-                };
-                let query = url
-                    .query()
-                    .filter(|query| !query.is_empty())
-                    .map(|query| format!("?{query}"))
-                    .unwrap_or_default();
-                let path_and_query = format!("{}{query}", url.path());
-                let mut values = values.clone();
-                for (key, value) in [
-                    ("url", canonical_url),
-                    ("url_encoded", encoded.as_str()),
-                    ("scheme", url.scheme()),
-                    ("host", host.as_str()),
-                    ("hostname", hostname),
-                    ("port", port.as_str()),
-                    ("path", url.path()),
-                    ("pathname", url.path()),
-                    ("query", query.as_str()),
-                    ("path_and_query", path_and_query.as_str()),
-                ] {
-                    values.insert(key, (TemplateValue::Literal(value), format!("arg.{key}")));
-                }
-                let path = format!("mirrors.{id}.url_template");
-                let text = render(
-                    &mirror.url_template,
-                    &values,
-                    &path,
-                    limits,
-                    &mut Vec::new(),
-                )?;
-                Ok(validate_url(&text, &path)?.into())
-            })
-            .transpose()?;
+            }
+            None => None,
+        };
+    let mirror_url = mirror
+        .map(|(id, mirror)| {
+            let url = Url::parse(canonical_url).expect("validated canonical URL");
+            let encoded = encode_uri_component(canonical_url);
+            let port = url.port().map(|port| port.to_string()).unwrap_or_default();
+            let hostname = url.host_str().unwrap_or_default();
+            let host = if port.is_empty() {
+                hostname.to_owned()
+            } else {
+                format!("{hostname}:{port}")
+            };
+            let query = url
+                .query()
+                .filter(|query| !query.is_empty())
+                .map(|query| format!("?{query}"))
+                .unwrap_or_default();
+            let path_and_query = format!("{}{query}", url.path());
+            let mut values = values.clone();
+            for (key, value) in [
+                ("url", canonical_url),
+                ("url_encoded", encoded.as_str()),
+                ("scheme", url.scheme()),
+                ("host", host.as_str()),
+                ("hostname", hostname),
+                ("port", port.as_str()),
+                ("path", url.path()),
+                ("pathname", url.path()),
+                ("query", query.as_str()),
+                ("path_and_query", path_and_query.as_str()),
+            ] {
+                values.insert(key, (TemplateValue::Literal(value), format!("arg.{key}")));
+            }
+            let path = format!("mirrors.{id}.url_template");
+            let text = render(
+                &mirror.url_template,
+                &values,
+                &path,
+                limits,
+                &mut Vec::new(),
+            )?;
+            Ok::<String, ResolveError>(validate_url(&text, &path)?.into())
+        })
+        .transpose()?;
     Ok(RequestPlan {
         canonical_url: canonical_url.to_owned(),
         mirror_url,

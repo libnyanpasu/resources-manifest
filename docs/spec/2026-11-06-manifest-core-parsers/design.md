@@ -949,7 +949,7 @@ pub struct AssetSnapshot {
 3. **校验与预检：** 对结果运行 `validate_manifest`。随后对每个 resource × variant × platform 生成版本计划；再以 `latest`（static）或 fallback 版本（remote）生成下载计划；remote 没有 fallback 时用占位版本 `0`（满足 `VersionLabel`），保证产物模板在没有版本时也做过可解析性检查。只有带 `Tag.version` 的快照编译出的结果才是完整的；generator 只用临时结果观测版本，不写出它。canonical URL 与每个允许该 registry 的 mirror 各渲染一次，因此 `https://{missing}/{artifact}` 这类模板在编译期被拒（V-7）。
 4. **错误路径：**
    - `validate_manifest` 的错误针对编译结果，path 加 `output.` 前缀，code 与 fields 不变，例如 `output.resources.<r>.tags[0].id`；
-   - 第 2 步按 release tag 渲染产物名出错时，path 为该 tag 在快照中的位置 `snapshot.resources.<r>.<source>.releases[<k>].tag`（remote 为 `snapshot.resources.<r>.<source>.version`），code 与 fields 不变；
+   - 第 2 步按 release tag 渲染产物名出错时 code 与 fields 不变；原 path 以 `arg.` 开头（版本不满足 `VersionLabel`）时，改为该版本在快照中的位置 `snapshot.resources.<r>.<source>.releases[<k>].tag`（remote 为 `snapshot.resources.<r>.<source>.version`），否则加 `output.` 前缀；
    - 预检的错误 path 为 `output.` 加原 path；原 path 以 `arg.` 开头时（版本、宿主变量），改为被预检产物的 `output.resources.<r>.variants[<i>].artifacts.<platform>.version`；
    - 一致性用例固定上述每类 path 的代表值。
 5. **错误码：** 校验与渲染错误保留原 code 与 fields；新增：

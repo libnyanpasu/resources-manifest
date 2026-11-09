@@ -441,3 +441,72 @@ fn kind() {
     }
     println!("kind: {count} cases");
 }
+
+mod compile {
+    use super::*;
+    use manifest_core::{CompileErrors, compile};
+    use manifest_metadata::{ManifestSnapshot, ResourceManifestTemplate};
+
+    fn errors_value(errors: &CompileErrors) -> Vec<Value> {
+        let mut values: Vec<_> = errors
+            .errors()
+            .iter()
+            .map(|error| json!({ "code": error.code(), "path": error.path(), "fields": error.fields() }))
+            .collect();
+        values.sort_by_key(Value::to_string);
+        values
+    }
+
+    #[test]
+    fn corpus() {
+        let cases = cases("compile");
+        let count = cases.len();
+        for case in cases {
+            let template: ResourceManifestTemplate =
+                serde_json::from_value(case.input["template"].clone())
+                    .unwrap_or_else(|error| panic!("{}: template: {error}", case.name));
+            let snapshot: ManifestSnapshot = serde_json::from_value(case.input["snapshot"].clone())
+                .unwrap_or_else(|error| panic!("{}: snapshot: {error}", case.name));
+            let now = case.input["now"].as_str().unwrap();
+            let result = compile(&template, &snapshot, now);
+            match (&result, case.expect.get("ok")) {
+                (Ok(manifest), Some(expected)) => {
+                    assert_eq!(
+                        &serde_json::to_value(manifest).unwrap(),
+                        expected,
+                        "{}",
+                        case.name
+                    );
+                    let again = compile(&template, &snapshot, now).unwrap();
+                    assert_eq!(
+                        serde_json::to_string_pretty(manifest).unwrap(),
+                        serde_json::to_string_pretty(&again).unwrap(),
+                        "{}: compilation is deterministic",
+                        case.name
+                    );
+                }
+                (Err(errors), None) => {
+                    let mut expected = vec![case.expect["error"].clone()];
+                    if let Some(additional) = case.expect.get("additional_errors") {
+                        expected.extend(additional.as_array().unwrap().iter().cloned());
+                    }
+                    expected.sort_by_key(Value::to_string);
+                    assert_eq!(errors_value(errors), expected, "{}", case.name);
+                }
+                (Ok(manifest), None) => panic!(
+                    "{}: expected errors, got {}",
+                    case.name,
+                    serde_json::to_string(manifest).unwrap()
+                ),
+                (Err(errors), Some(_)) => panic!(
+                    "{}: expected a manifest, got {}",
+                    case.name,
+                    serde_json::to_string(&errors_value(errors)).unwrap()
+                ),
+            }
+            record_case(&case.name);
+            println!("PASS {}", case.name);
+        }
+        println!("compile: {count} cases");
+    }
+}
