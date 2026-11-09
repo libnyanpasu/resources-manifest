@@ -15,6 +15,7 @@ use manifest_core::{
 use manifest_metadata::{
     FiniteF64, RESOURCE_MANIFEST_VERSION, ResourceManifest, ResourceManifestTemplate,
 };
+use manifest_wasm::{LimitsInput, RemoteResponseInput, RenderedArtifact, TemplateValue};
 use serde_json::Value;
 use specta::datatype::{DataType, Field, Fields, NamedReferenceType, Primitive, Reference};
 use specta::{Format, FormatError, Type, Types};
@@ -418,6 +419,12 @@ fn export_version(out_dir: &Path) -> Result<PathBuf, Box<dyn Error>> {
     Ok(out)
 }
 
+/// Runtime types are owned by core or by the wasm boundary; everything else is
+/// imported from `@manifest/metadata`.
+fn is_runtime_type(module_path: &str) -> bool {
+    module_path.starts_with("manifest_core") || module_path.starts_with("manifest_wasm")
+}
+
 fn export_runtime_typescript() -> Result<PathBuf, Box<dyn Error>> {
     let mut types = Types::default()
         .register::<ChecksumKind>()
@@ -435,7 +442,11 @@ fn export_runtime_typescript() -> Result<PathBuf, Box<dyn Error>> {
         .register::<VerifyError>()
         .register::<VerifyPolicy>()
         .register::<VersionOptions<'_>>()
-        .register::<VersionPlan>();
+        .register::<VersionPlan>()
+        .register::<LimitsInput>()
+        .register::<RemoteResponseInput>()
+        .register::<RenderedArtifact>()
+        .register::<TemplateValue>();
     types.iter_mut(|named| {
         if let Some(ty) = named.ty.as_mut() {
             SerdeShape::adjust_datatype(ty);
@@ -451,7 +462,7 @@ fn export_runtime_typescript() -> Result<PathBuf, Box<dyn Error>> {
             &types,
             types
                 .into_sorted_iter()
-                .filter(|named| named.module_path.starts_with("manifest_core")),
+                .filter(|named| is_runtime_type(&named.module_path)),
             "",
         )
     });
@@ -459,7 +470,7 @@ fn export_runtime_typescript() -> Result<PathBuf, Box<dyn Error>> {
     let mut imports: Vec<_> = references
         .iter()
         .filter_map(|reference| types.get(reference))
-        .filter(|named| !named.module_path.starts_with("manifest_core"))
+        .filter(|named| !is_runtime_type(&named.module_path))
         .map(|named| named.name.as_ref())
         .collect();
     imports.sort_unstable();

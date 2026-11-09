@@ -570,11 +570,14 @@ kind 列表按 manifest 中 variant 顺序，仅列出支持目标平台的 `{ v
 
 ### 8.1 C1 `manifest-wasm`
 
-- `crate-type = ["cdylib"]`；导出 `validateManifest`、`artifactChecksumKind`、`selectVariant`、`planVersion`、`planDownload`、`parseVersion`、`finishChecksum`、`checkPolicy`。
-- 值的转换用 `serde-wasm-bindgen`，采用 `Serializer::json_compatible().serialize_maps_as_objects(false)`，
-  再递归转换成普通 JS 对象，以 `Object.defineProperty` 写入自有属性。
-  任意键 map（source、resources、registries、mirrors 等）的 `__proto__` 键作为数据保留，不调用原型 setter。
+- `crate-type = ["cdylib", "rlib"]`（rlib 供 schema generator 导出边界类型）；导出 `validateManifest`、`artifactChecksumKind`、`selectVariant`、`planVersion`、`planDownload`、`parseVersion`、`finishChecksum`、`checkPolicy`。
+- 值的转换全部在 Rust 中完成，crate 不含 inline JS：输入经 js-sys 读成 `serde_json::Value` 快照后由 serde 解码；
+  输出用 `serde_json` 序列化为 JSON 文本，再由 `JSON.parse` 生成普通 JS 对象。
+  任意键 map（source、resources、registries、mirrors 等）的 `__proto__` 键作为自有数据属性保留，不调用原型 setter。
   错误一律转成 `{ code, path, message, fields }`。`ValidatedManifest` 以不透明句柄留在 wasm 内。
+- 每个导出的参数与返回值用 `unchecked_param_type` / `unchecked_optional_param_type` / `unchecked_return_type`
+  标注 specta 生成的类型（来自 `@manifest/metadata` 与 runtime `src/types.ts`），生成的 `manifest_wasm.d.ts`
+  达到 tsify 同等的类型精度；`build:wasm` 在 d.ts 出现 `any` 时失败。不引入 tsify 等第二套类型导出器。
 - C1 的 JS 边界签名如下；`?` 表示可以省略、传 `undefined` 或 `null`，使用默认值。
 
   | JS API                                                                                                                                                                              | 返回值                                          |
@@ -589,11 +592,11 @@ kind 列表按 manifest 中 variant 顺序，仅列出支持目标平台的 `{ v
   | `checkPolicy(kind: ChecksumKind, policy?: VerifyPolicy)`                                                                                                                            | `void`（拒绝时抛出）                            |
   | `parseChecksum(parser: RemoteChecksumParser, response: RemoteResponseInput, artifact: string, limits?: LimitsInput)`                                                                | `ResourceChecksum` 字符串                       |
   | `listVariantChecksumKinds(manifest: ValidatedManifest, resource: string, platform: SupportedPlatform)`                                                                              | `VariantChecksumKind[]`                         |
-  | `renderTemplate(template: string, values: Record<string, TemplateValueInput>, path: string, limits?: LimitsInput)`                                                                  | 渲染后的字符串                                  |
+  | `renderTemplate(template: string, values: Record<string, TemplateValue>, path: string, limits?: LimitsInput)`                                                                       | 渲染后的字符串                                  |
   | `renderArtifact(selected: SelectedArtifact, options?: { version?: string, source?: SourceVariables }, limits?: LimitsInput)`                                                        | `{ artifact, canonical_url }`                   |
   | `compareDigest(algorithm: ChecksumAlgorithm, expected: string, actual: string)`                                                                                                     | `void`（不一致时抛出 `verify.digest_mismatch`） |
 
-  后五个导出由 C3 为一致性运行器追加（独立 checksum parser、variant kind 列表、模板渲染与 digest 比较）。`TemplateValueInput` 为 `{ authored: string }` 或 `{ literal: string }`。
+  后五个导出由 C3 为一致性运行器追加（独立 checksum parser、variant kind 列表、模板渲染与 digest 比较）。`TemplateValue` 为 `{ authored: string }` 或 `{ literal: string }`。
 
 - `ValidatedManifest.newerMinor` 是只读布尔属性。`SelectedArtifact.value` 返回所选 variant；
   `VersionPlan.value`、`DownloadPlan.value` 返回 core 的 serde 计划投影，wire 字段保持 snake_case。
@@ -609,14 +612,19 @@ kind 列表按 manifest 中 variant 顺序，仅列出支持目标平台的 `{ v
   每项可为单行字段值或客户端合并的逗号列表，允许保留重复项与顺序；不要求宿主取得每次出现的原始头行，header parser 按 §5.3 拆分。`LimitsInput` 的可选字段为 `body_bytes`、`header_value_bytes`、
   `regex_pattern_bytes`、`regex_size_bytes`、`template_depth`、`render_output_bytes`；
   逐字段调用 `Limits::with_*`，只能调低默认上限。core 的 selection/options 与 parser 的
-  response 是借用类型，边界先解码其各字段，再构造借用输入，不复制定义对应的 wire struct，
-  不给带私有上限不变量的 Limits 添加 `Deserialize`。
+  response 是借用类型，边界先解码其各字段，再构造借用输入，不复制 core option 的 wire struct，
+  不给带私有上限不变量的 Limits 添加 `Deserialize`。只存在于边界的 `LimitsInput`、`RemoteResponseInput`、
+  `TemplateValue`、`RenderedArtifact` 由 `manifest-wasm` 定义，经同一 specta generator 导出到 runtime `src/types.ts`。
   `ChecksumMode` 的 serde / specta 定义直接放在 core，wire 值为 `remote` / `snapshot`。
-- JS 输入先生成只含自有可枚举字段的快照，再逐字段直接解码成目标类型，避免先解码为通用 JSON Value。
+- JS 输入先生成只含自有可枚举字段的 `serde_json::Value` 快照，再解码成目标类型；每个 getter 只读取一次，
+  getter 或 proxy 抛出的异常原样传出。值为 `undefined` 的对象字段视为缺省，其余位置的 `undefined` 读作 `null`；
+  BigInt、Symbol 与函数以 `wasm.invalid_input` 拒绝。数组按 `length` 逐个索引读取（同 `JSON.stringify`），不调用自定义迭代器。
+  解码语义与原生 Rust 解析 JSON 文本一致：struct 也接受位置数组，map 只接受对象（不再接受键值对数组）；
+  `checkPolicy` 的 policy 必须是对象，避免位置数组打开开关。
   快照最多允许沿任一路径嵌套 64 层容器（对象或数组），超过上限及循环引用均以
   `wasm.invalid_input` 拒绝，path 指向触发上限的字段；未知、将被忽略的字段也受此限制。
-  `serde-wasm-bindgen` 的 `IgnoredAny` 本身不递归，但 tagged enum 的 serde 缓冲和 parser 的
-  自定义反序列化仍可能递归读取通用值，因此 raw manifest、artifact、parser 和其余入口均需快照保护。
+  深度在复制阶段即受限，tagged enum 的 serde 缓冲和 parser 的自定义反序列化只会读到已受限的值，
+  因此 raw manifest、artifact、parser 和其余入口都经过同一快照。
   快照同时拒绝任意位置的 NaN / ±Infinity，保留精确参数字段路径，不能将其转换为 null 或缺省值。
   显式 null / undefined 的既有可选参数语义不变；有限 priority 在 ±2^53 边界及之外仍可往返，
   只有绝对值不超过 `Number.MAX_SAFE_INTEGER` 的整数使用 serde 整数序列化，其余使用 f64。
@@ -646,6 +654,7 @@ kind 列表按 manifest 中 variant 顺序，仅列出支持目标平台的 `{ v
 ### 8.2 C2 `@manifest/runtime`
 
 - Node 下用 `readFileSync` 读入 `.wasm` 再 `initSync`，同步初始化；导出类型化函数。
+  函数签名与句柄类型直接取自生成的 `manifest_wasm.d.ts`，不再手写一份；因此 `typecheck` 先执行 `build:wasm`。
 - 计划、kind、错误等类型由 specta 从 core 导出，写进 `packages/manifest-runtime/src/types.ts`（生成物），纳入 `check:generated`。
 - 只服务 Node 构建脚本（§5.7）。
 

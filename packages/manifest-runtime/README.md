@@ -10,10 +10,11 @@ Build the untracked wasm artifacts before importing:
 pnpm run build:wasm
 ```
 
-On import, the package synchronously loads wasm-bindgen's ESM glue with Node's
-`createRequire`, then initializes wasm with `readFileSync` and `initSync`. Glue
-interfaces are declared in source, so type checking does not depend on the build
-directory: `pnpm run check` works before `build:wasm`.
+On import, the package statically imports wasm-bindgen's ESM glue, then
+initializes wasm synchronously with `readFileSync` and `initSync`. Function
+signatures and handle types come from the generated `wasm/manifest_wasm.d.ts`,
+whose parameters and results name the generated types; `pnpm run typecheck`
+therefore builds wasm first.
 
 ## API and ownership
 
