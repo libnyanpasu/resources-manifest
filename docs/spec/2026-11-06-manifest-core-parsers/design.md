@@ -983,6 +983,27 @@ pub struct AssetSnapshot {
 5. **不写 v1 `version.json`：** v1 继续由 clash-nyanpasu 的上游脚本生成，直到 D6 退役。
 6. **测试：** 本地 HTTP fixture 覆盖分页、筛选、版本观测、版本不一致时的失败，以及两次读取之间资产变化时的失败。运行时间可注入：同一组响应与同一时间两次运行，输出逐字节相同；已有输出相同（除 `updated_at`）时不写文件。对真实上游的运行记录在 PR 描述中，作为手工验证，不进 CI。
 
+### 9.8 可读性调整（2026-11-09）
+
+D3 对真实上游生成的 manifest 约 68.7 KB，最深 12 层。可读性评估发现三处局部问题：
+
+- remote 产物的路径出现 `version.version`，两层同名但含义不同；
+- 76 个转义字符全部来自 clash-rs 的两条正则：正则从 JSON 响应里找值，要同时为 JSON 字符串和正则转义引号；
+- 审阅时要在 1722 行里逐个产物找版本和 kind，没有汇总。
+
+改用 XML 不解决这些问题：嵌套深度相同，正则在属性里仍要转义，整条工具链（serde、specta、JSON Schema、wasm 边界、一致性测试集）都要重做。决定保持 JSON，做以下三项。按名称引用共享的版本计划收益有限（约 5 KB），不做。
+
+1. **`Remote.version` 改名为 `latest`：** compiled 的 `ResourceArtifactVersionTemplate::Remote` 与模板的 `TemplateArtifactVersion::Remote` 都改。与 `static` 的 `latest` 对应：static 写出最新版本，remote 写出取得最新版本的方式。`fallback.version` 等其他 `version` 不变。错误路径随之改为 `<A>.version.latest…`，取代 §5.6 与 §9.2 第 7 条中的 `<A>.version.version…`。2.0 尚未发布（O-11），不保留旧名称：只有 `version` 的 remote 对象因缺少 `latest` 解码失败。
+2. **新增 version parser `json`：** `{ type: "json", pointer, pattern?, group? }`。
+   - 响应体先受单响应上限约束（§5.5），再按 JSON 解析；不是合法 JSON 或有重复键时报 `parser.invalid_json`，path `response.body`，fields `{}`。
+   - `pointer` 是 RFC 6901 JSON Pointer。为空、或以 `/` 开头且每个 `~` 后跟 `0` 或 `1` 才合法；否则编译时报 `parser.invalid_pointer`，path `parser.pointer`，fields `{}`；`validate_manifest` 照常报 `validate.parser_compile`，reason 为 `parser.invalid_pointer`。数组下标按 RFC 6901，不接受前导零与 `-`。
+   - 指向的值不存在或不是字符串时报 `parser.not_found`。
+   - 没有 `pattern` 时取整个字符串；有 `pattern` 时对该字符串按 `regex` parser 的规则取捕获组（方言、`group` 默认 1、长度与编译上限、group 检查、不匹配报 `parser.not_found`）。只有 `group` 没有 `pattern` 时 `group` 不起作用。
+   - 结果去掉首尾空白后必须满足 `VersionLabel`。
+   - 这是 2.0 内的契约新增（O-11），不认识 `json` 的消费者按未知 parser 处理（G8）。
+   - clash-rs alpha 的两个 part 改用它：`stable` 为 `{ pointer: "/tag_name", pattern: "^v?([0-9].*)$" }`，`commit` 为 `{ pointer: "/sha", pattern: "^([0-9a-f]{7})[0-9a-f]{33}$" }`。
+3. **generator 写出 `summary.md`：** 只从编译出的 manifest 生成，供审阅，不属于 wire 格式。每个 resource 一张表，每行一个变体与平台：产物名、版本（static 为 `latest` 与历史条数，remote 为 fallback 版本）、版本来源（static 历史，或 remote 每个 part 的 registry、artifact 与 parser 类型）、`artifact_checksum_kind` 得到的 kind。它在 `resources.json` 之后以同样方式写出；跳过写入的条件增加一条：已有的 `summary.md` 与由已有 manifest 生成的内容相同。
+
 ---
 
 ## 10. 迁移不变量

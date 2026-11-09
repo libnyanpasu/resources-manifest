@@ -40,6 +40,7 @@
 | PR-D4 | D4a → D4b              | D0     | P3     | 计划 parts 化与组合版本（§9.2）           |
 | PR-D2 | D1 → D2                | D4     | P3     | 模板、快照与编译器（design §9.5、§9.6）   |
 | PR-D3 | D3                     | D2     | P3     | generator（design §9.4、§9.7）            |
+| PR-R  | R1 → R2 → R3           | D3     | P3     | 可读性调整（design §9.8）                 |
 | —     | D5、D6                 | D3     | P3     | 里程碑卡，开工前细化                      |
 
 ---
@@ -414,6 +415,17 @@
 **验证**
 
 - `pnpm test` 中上述用例通过；`rg -n "fetch\(" packages/manifest-generator` 只出现在 `http.ts`。
+
+## R — 可读性调整（design §9.8）
+
+- [ ] R1：`Remote.version` 改名为 `latest`（compiled 与模板）；错误路径、一致性测试集、生成的 TS 与 Schema、`docs/design/manifest-v2.md` 同步修订。
+- [ ] R2：`manifest-parser` 新增 `json` version parser 与 `parser.invalid_json`、`parser.invalid_pointer`；一致性用例覆盖取值、`pattern` 与 `group`、非字符串与缺失、非法 JSON 与重复键、非法 pointer（含 `validate.parser_compile`）、body 上限；用 `conformance/fixtures/github-api/` 的 fixture 得到 `0.10.11-alpha+sha.bd22442`。
+- [ ] R2：generator 模板的 clash-rs alpha 改用 `json`。
+- [ ] R3：generator 写出 `summary.md`；测试覆盖内容、无变化时不写、缺失或过期时重写。
+
+**验证**
+
+- 真实上游运行得到的 clash-rs alpha 版本与改动前相同，manifest 中不再有 `version.version`，转义字符数下降。
 
 ## 里程碑卡
 
