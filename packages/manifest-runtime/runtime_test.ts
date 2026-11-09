@@ -192,6 +192,7 @@ test("non-finite host numbers are rejected at their input paths", () => {
       manifestInput().resources.sample.variants[0].artifacts["linux-amd64"]!;
     assert.equal(artifact.version.type, "remote");
     if (artifact.version.type !== "remote") assert.fail();
+    if (!("parser" in artifact.version.version)) assert.fail();
     artifact.version.version.parser = parser;
     invalid(
       () => artifactChecksumKind(artifact),
@@ -400,6 +401,28 @@ test("finishVersion parses part responses and needs a remote plan", () => {
       return true;
     },
   );
+});
+
+test("a format key selects the composite version form", () => {
+  const version = () => {
+    const input = manifestInput();
+    const artifact =
+      input.resources.sample!.variants[0]!.artifacts["linux-amd64"]!;
+    assert.equal(artifact.version.type, "remote");
+    if (artifact.version.type !== "remote") assert.fail();
+    return { input, remote: artifact.version };
+  };
+
+  const ignored = version();
+  Object.assign(ignored.remote.version, { parts: 42 });
+  using single = validateManifest(ignored.input);
+  assert.equal(single.value.resources.sample!.variants.length, 1);
+
+  for (const format of [null, 1]) {
+    const bad = version();
+    Object.assign(bad.remote.version, { format });
+    invalid(() => validateManifest(bad.input), "arg.manifest");
+  }
 });
 
 test("undefined object entries read as missing fields", () => {

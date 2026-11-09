@@ -255,6 +255,12 @@ Temporary `ParseError::Unsupported` was removed. Unknown types use
 `ResolveParser { parser_type }`, yielding `resolve.unsupported_parser`,
 `{ parser_type }` with the original tag, and `parser.type`.
 
+Version cases (`kind` plans with `operation: "version"`) pass their responses to
+`finish_version`. `responses` lists one response per plan part; the older
+`response` is shorthand for a single-element list. A response may give
+`body_file`, a path under `conformance/`, instead of an inline `body`; the
+[GitHub API fixtures](fixtures/github-api/README.md) are used this way.
+
 The [GitHub fixture README](fixtures/github-expanded-assets/README.md) records
 real URLs/UTC times, independent lists, and O-3 size measurements.
 `github_expanded_assets_fixtures` walks every HTML file and adjacent fixed

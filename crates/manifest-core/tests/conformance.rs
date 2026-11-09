@@ -126,7 +126,7 @@ mod validate {
             }
         }
         assert!(failures.is_empty(), "{}", failures.join("\n"));
-        assert_eq!(negative_codes.len(), 10, "all invariant codes covered");
+        assert_eq!(negative_codes.len(), 11, "all invariant codes covered");
         for code in &negative_codes {
             assert!(positive_codes.contains(*code), "positive case for {code}");
         }
@@ -372,8 +372,18 @@ fn kind_case(input: Value) -> Value {
                     .unwrap()
                     .iter()
                     .map(|response| {
+                        // `body_file` names a captured response under conformance/.
+                        let body = match response.get("body_file") {
+                            Some(file) => std::fs::read_to_string(
+                                Path::new(env!("CARGO_MANIFEST_DIR"))
+                                    .join("../../conformance")
+                                    .join(file.as_str().unwrap()),
+                            )
+                            .unwrap(),
+                            None => response["body"].as_str().unwrap().to_owned(),
+                        };
                         (
-                            response["body"].as_str().unwrap().to_owned(),
+                            body,
                             response
                                 .get("headers")
                                 .map(|headers| serde_json::from_value(headers.clone()).unwrap())

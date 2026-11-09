@@ -275,6 +275,50 @@ Header names are case-insensitive. A body exceeding the limit in
 [Limits](#limits) fails with `parser.body_too_large`. Body parsers do not read
 headers; only an explicitly declared `header` checksum parser does so.
 
+### Composite remote versions
+
+Some upstreams publish no version file. A remote `version` may instead combine
+several responses: each named part is an ordinary remote version request with
+its own parser, and `format` joins the part results. Clash Rust alpha combines
+the latest stable tag with the commit of its rolling `latest` tag:
+
+```json
+{
+  "parts": {
+    "stable": {
+      "resource": { "registry": "github-api", "artifact": "releases/latest" },
+      "parser": {
+        "type": "regex",
+        "pattern": "\"tag_name\":\\s*\"v?([0-9][^\"]*)\""
+      }
+    },
+    "commit": {
+      "resource": { "registry": "github-api", "artifact": "commits/{release}" },
+      "parser": {
+        "type": "regex",
+        "pattern": "\"sha\":\\s*\"([0-9a-f]{7})[0-9a-f]{33}\""
+      }
+    }
+  },
+  "format": "{stable}-alpha+sha.{commit}"
+}
+```
+
+An object with a `format` key is a composite version; otherwise it is a single
+`{ resource, parser }`. A composite version has one to four parts, named
+`^[A-Za-z0-9_]+$` and not after a built-in variable, and `format` must reference
+every part and nothing else (`validate.version_parts`,
+`validate.template_variable`). Part results are inserted literally; the combined
+value must be a `VersionLabel`, otherwise `parser.invalid_version` at
+`parser.format`. Any failing part fails the whole version.
+
+A version plan lists one request per part, in code-point order of part names; a
+single version is one unnamed part. Hosts perform every request and pass the
+responses, in plan order, to `finish_version`. A wrong number of responses fails
+with `resolve.version_responses` before parsing, and a part's parser error is
+reported at `responses[<i>].body`. Mirrors and checksum kinds work as for a
+single version.
+
 ### Supported remote version parsers
 
 - `text`: `trim` defaults to `true`, removing leading and trailing whitespace
@@ -577,6 +621,7 @@ header name. For `parser.group_out_of_range`, `groups` includes group 0.
 | `url.`      | `invalid`, `unsupported_scheme`, `forbidden_component`                                                                            | See [B2 specification §5.6 "B2 渲染错误"](../spec/2026-11-06-manifest-core-parsers/design.md#b2-渲染错误)                               |
 | `resolve.`  | `unknown_resource`, `unsupported_platform`, `variant_not_found`, `tags_rejected`, `selection_conflict`, `default_variant_missing` | See [B3 specification §5.6 "B3 选择、计划与 VerifyError"](../spec/2026-11-06-manifest-core-parsers/design.md#b3-选择计划与-verifyerror) |
 | `resolve.`  | `unknown_mirror`, `mirror_not_allowed`, `snapshot_unavailable`                                                                    | See [B3 specification §5.6 "B3 选择、计划与 VerifyError"](../spec/2026-11-06-manifest-core-parsers/design.md#b3-选择计划与-verifyerror) |
+| `resolve.`  | `version_responses`                                                                                                               | `{ expected, actual }`                                                                                                                  |
 | `resolve.`  | `version_required`, `version_not_in_history`, `unsupported_parser`                                                                | See [B3 specification §5.6 "B3 选择、计划与 VerifyError"](../spec/2026-11-06-manifest-core-parsers/design.md#b3-选择计划与-verifyerror) |
 | `verify.`   | `kind_rejected`                                                                                                                   | `{ kind }`                                                                                                                              |
 | `verify.`   | `digest_mismatch`                                                                                                                 | `{ algorithm, expected, actual }`                                                                                                       |

@@ -46,12 +46,26 @@ export type FinishVersionError =
         expected: number;
         actual: number;
       };
-    } & { ParsePart?: never })
+    } & { ParsePart?: never; RenderFormat?: never; ValidateVersion?: never })
   | ({
       ParsePart: {
         index: number;
       };
-    } & { CountResponses?: never });
+    } & {
+      CountResponses?: never;
+      RenderFormat?: never;
+      ValidateVersion?: never;
+    })
+  | ({ RenderFormat: Record<string, never> } & {
+      CountResponses?: never;
+      ParsePart?: never;
+      ValidateVersion?: never;
+    })
+  | ({ ValidateVersion: Record<string, never> } & {
+      CountResponses?: never;
+      ParsePart?: never;
+      RenderFormat?: never;
+    });
 
 /**
  *  Optional overrides that can only lower the default parser and render limits

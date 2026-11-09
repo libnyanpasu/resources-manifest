@@ -73,14 +73,15 @@ fn check_all(manifest: &ResourceManifest, errors: &mut Errors<'_>) {
                     ResourceArtifactVersionTemplate::Remote {
                         version, fallback, ..
                     } => {
-                        remote(
-                            manifest,
-                            &version.resource,
-                            &base,
-                            &format!("{artifact_path}.version.version.resource"),
-                            false,
-                            errors,
-                        );
+                        for (name, part) in version.parts() {
+                            let path = match name {
+                                Some(name) => {
+                                    format!("{artifact_path}.version.version.parts.{name}.resource")
+                                }
+                                None => format!("{artifact_path}.version.version.resource"),
+                            };
+                            remote(manifest, &part.resource, &base, &path, false, errors);
+                        }
                         if let Some(fallback) = fallback {
                             releases.push((
                                 Some(fallback),

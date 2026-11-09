@@ -34,11 +34,15 @@ use std::str::FromStr;
 
 use manifest_parser::{RemoteChecksumParser, RemoteVersionParser, ResourceChecksum};
 use schemars::{JsonSchema, Schema};
-use serde::de::{IgnoredAny, MapAccess, Visitor, value::StringDeserializer};
+use serde::de::{IgnoredAny, IntoDeserializer, MapAccess, Visitor, value::StringDeserializer};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use snafu::Snafu;
 use specta::datatype::DataType;
 use specta::{Type, Types};
+
+use crate::buffered::Buffered;
+
+mod buffered;
 
 /// Manifest schema version produced by the generator.
 pub const RESOURCE_MANIFEST_VERSION: &str = "2.0";
@@ -258,6 +262,63 @@ pub struct RemoteVersionResourceTemplate {
     pub parser: RemoteVersionParser,
 }
 
+/// How a remote artifact's version is requested and parsed.
+///
+/// Decoding picks the composite form when the object has a `format` key and
+/// the single-response form otherwise (design §9.2).
+#[derive(Debug, Clone, PartialEq, Serialize, JsonSchema, Type)]
+#[serde(untagged)]
+pub enum RemoteVersionTemplate {
+    /// One response parsed by one version parser.
+    Single(RemoteVersionResourceTemplate),
+    /// Several responses, each parsed by its own part, combined by `format`.
+    Composite {
+        /// Part name → request and parser.
+        parts: BTreeMap<String, RemoteVersionResourceTemplate>,
+        /// Authored template that references every part by name.
+        format: String,
+    },
+}
+
+impl RemoteVersionTemplate {
+    /// The requests in plan order: the unnamed single part, or the named
+    /// parts in code-point order.
+    pub fn parts(&self) -> impl Iterator<Item = (Option<&str>, &RemoteVersionResourceTemplate)> {
+        let (single, parts) = match self {
+            Self::Single(part) => (Some((None, part)), None),
+            Self::Composite { parts, .. } => (None, Some(parts)),
+        };
+        single.into_iter().chain(
+            parts
+                .into_iter()
+                .flatten()
+                .map(|(name, part)| (Some(name.as_str()), part)),
+        )
+    }
+}
+
+impl<'de> Deserialize<'de> for RemoteVersionTemplate {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        // The form depends only on whether a `format` key is present, so the
+        // object is buffered first. `Buffered` keeps duplicate keys, so each
+        // form reports the same errors as decoding the input directly, and
+        // ignores the other form's fields like any unknown field.
+        #[derive(Deserialize)]
+        struct Composite {
+            parts: BTreeMap<String, RemoteVersionResourceTemplate>,
+            format: String,
+        }
+
+        let value = Buffered::deserialize(deserializer)?;
+        if value.has_key("format") {
+            let Composite { parts, format } = Composite::deserialize(value.into_deserializer())?;
+            Ok(Self::Composite { parts, format })
+        } else {
+            RemoteVersionResourceTemplate::deserialize(value.into_deserializer()).map(Self::Single)
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, JsonSchema, Type)]
 pub struct RemoteChecksumResourceTemplate {
     pub resource: RemoteResourceTemplate,
@@ -285,7 +346,7 @@ pub enum ResourceArtifactVersionTemplate {
         #[serde(skip_serializing_if = "Option::is_none")]
         #[specta(optional)]
         fallback: Option<ResourceStaticReleaseTemplate>,
-        version: RemoteVersionResourceTemplate,
+        version: RemoteVersionTemplate,
         #[serde(skip_serializing_if = "Option::is_none")]
         #[specta(optional)]
         checksum: Option<RemoteChecksumResourceTemplate>,
@@ -376,10 +437,12 @@ fn deserialize_template_artifacts<'de, D: Deserializer<'de>>(
             version, checksum, ..
         } = &artifact.version
         {
-            if let RemoteVersionParser::Unsupported { parser_type } = &version.parser {
-                return Err(serde::de::Error::custom(format!(
-                    "unsupported version parser type {parser_type:?} in template"
-                )));
+            for (_, part) in version.parts() {
+                if let RemoteVersionParser::Unsupported { parser_type } = &part.parser {
+                    return Err(serde::de::Error::custom(format!(
+                        "unsupported version parser type {parser_type:?} in template"
+                    )));
+                }
             }
             if let Some(checksum) = checksum
                 && let RemoteChecksumParser::Unsupported { parser_type } = &checksum.parser
@@ -1025,6 +1088,75 @@ mod tests {
     }
 
     #[test]
+    fn remote_version_form_follows_the_format_key() {
+        let part = json!({
+            "resource": { "registry": "api", "artifact": "a" },
+            "parser": { "type": "text" },
+        });
+        let single: RemoteVersionTemplate = serde_json::from_value(part.clone()).unwrap();
+        assert!(matches!(single, RemoteVersionTemplate::Single(_)));
+        assert_eq!(
+            single.parts().map(|(name, _)| name).collect::<Vec<_>>(),
+            [None]
+        );
+        assert_eq!(serde_json::to_value(&single).unwrap(), part);
+
+        let composite_json = json!({ "parts": { "b": part, "a": part }, "format": "{a}{b}" });
+        let composite: RemoteVersionTemplate =
+            serde_json::from_value(composite_json.clone()).unwrap();
+        assert_eq!(
+            composite.parts().map(|(name, _)| name).collect::<Vec<_>>(),
+            [Some("a"), Some("b")]
+        );
+        assert_eq!(serde_json::to_value(&composite).unwrap(), composite_json);
+
+        // A `format` key selects the composite form, whatever its value.
+        for format in [json!("{a}"), json!(null), json!(1)] {
+            let mut ambiguous = part.clone();
+            ambiguous["format"] = format.clone();
+            assert!(
+                serde_json::from_value::<RemoteVersionTemplate>(ambiguous).is_err(),
+                "format {format} must not decode as a single response"
+            );
+        }
+
+        // Each form ignores the other form's fields, valid or not.
+        let mut single_extra = part.clone();
+        single_extra["parts"] = json!(42);
+        assert_eq!(
+            serde_json::from_value::<RemoteVersionTemplate>(single_extra).unwrap(),
+            single
+        );
+        let mut composite_extra = composite_json;
+        composite_extra["parser"] = json!(42);
+        composite_extra["resource"] = json!("x");
+        assert_eq!(
+            serde_json::from_value::<RemoteVersionTemplate>(composite_extra).unwrap(),
+            composite
+        );
+
+        // Duplicate keys are still rejected inside both forms, with the error of
+        // direct decoding. The duplicates are identical, so collapsing them
+        // would decode successfully.
+        let duplicate = r#"{"resource":{"registry":"api"},"parser":{"type":"text","type":"text"}}"#;
+        let composite = format!(r#"{{"parts":{{"a":{duplicate}}},"format":"{{a}}"}}"#);
+        for input in [duplicate, &composite] {
+            let error = serde_json::from_str::<RemoteVersionTemplate>(input).unwrap_err();
+            assert!(
+                error.to_string().contains("duplicate field `type`"),
+                "{error}"
+            );
+        }
+
+        // Sequences and maps must be consumed entirely, as in direct decoding.
+        let trailing = r#"{"resource":["api",null,null,42],"parser":{"type":"text"}}"#;
+        assert!(serde_json::from_str::<RemoteVersionResourceTemplate>(trailing).is_err());
+        assert!(serde_json::from_str::<RemoteVersionTemplate>(trailing).is_err());
+        let exact = r#"{"resource":["api",null,null],"parser":{"type":"text"}}"#;
+        assert!(serde_json::from_str::<RemoteVersionTemplate>(exact).is_ok());
+    }
+
+    #[test]
     fn compiled_manifest_ignores_unknown_fields() {
         let reference: Value =
             serde_json::from_str(include_str!("../tests/fixtures/resources.json"))
@@ -1203,6 +1335,9 @@ mod tests {
         } = &artifacts[&SupportedPlatform::WindowsX86_64].version
         else {
             panic!("remote artifact expected");
+        };
+        let RemoteVersionTemplate::Single(version) = version else {
+            panic!("single-response version expected");
         };
         assert_eq!(
             version.parser,

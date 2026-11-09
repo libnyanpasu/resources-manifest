@@ -552,6 +552,821 @@
     }
   },
   {
+    "name": "kind.plan.composite_version",
+    "input": {
+      "operation": "version",
+      "manifest": {
+        "manifest_version": "2.0",
+        "registries": {
+          "main": {
+            "name": "Main",
+            "url_template": "https://origin.test/{artifact}"
+          },
+          "meta": {
+            "name": "Metadata",
+            "url_template": "https://meta.test/{artifact}"
+          }
+        },
+        "mirrors": {},
+        "resources": {
+          "sample": {
+            "name": "Sample",
+            "registry": "main",
+            "tags": [],
+            "default_variants": {
+              "linux-amd64": "stable"
+            },
+            "variants": [
+              {
+                "id": "stable",
+                "name": "Stable",
+                "tag_key": "",
+                "tags": [],
+                "artifacts": {
+                  "linux-amd64": {
+                    "artifact": "pkg-{version}.zip",
+                    "version": {
+                      "type": "remote",
+                      "fallback": {
+                        "version": "v1",
+                        "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+                        "source": {
+                          "release": "fallback-{version}"
+                        }
+                      },
+                      "version": {
+                        "parts": {
+                          "stable": {
+                            "resource": {
+                              "registry": "meta",
+                              "artifact": "releases/latest"
+                            },
+                            "parser": {
+                              "type": "regex",
+                              "pattern": "\"tag_name\":\\s*\"v?([0-9][^\"]*)\""
+                            }
+                          },
+                          "commit": {
+                            "resource": {
+                              "registry": "meta",
+                              "artifact": "commits/{release}"
+                            },
+                            "parser": {
+                              "type": "regex",
+                              "pattern": "\"sha\":\\s*\"([0-9a-f]{7})[0-9a-f]{33}\""
+                            }
+                          }
+                        },
+                        "format": "{stable}-alpha+sha.{commit}"
+                      },
+                      "checksum": {
+                        "resource": {
+                          "registry": "meta",
+                          "artifact": "checksums.txt"
+                        },
+                        "parser": {
+                          "type": "gnu",
+                          "algorithm": "sha256"
+                        }
+                      }
+                    }
+                  }
+                },
+                "source": {
+                  "release": "latest"
+                }
+              }
+            ]
+          }
+        }
+      },
+      "resource": "sample",
+      "platform": "linux-amd64",
+      "responses": [
+        {
+          "body_file": "fixtures/github-api/clash-rs-commits-latest.txt"
+        },
+        {
+          "body_file": "fixtures/github-api/clash-rs-releases-latest.txt"
+        }
+      ]
+    },
+    "expect": {
+      "ok": {
+        "plan": {
+          "kind": "parsed",
+          "latest": null,
+          "releases": [],
+          "remote": {
+            "parts": [
+              {
+                "name": "commit",
+                "request": {
+                  "canonical_url": "https://meta.test/commits/latest",
+                  "mirror_url": null,
+                  "kind": "parsed"
+                },
+                "parser": {
+                  "type": "regex",
+                  "pattern": "\"sha\":\\s*\"([0-9a-f]{7})[0-9a-f]{33}\""
+                }
+              },
+              {
+                "name": "stable",
+                "request": {
+                  "canonical_url": "https://meta.test/releases/latest",
+                  "mirror_url": null,
+                  "kind": "parsed"
+                },
+                "parser": {
+                  "type": "regex",
+                  "pattern": "\"tag_name\":\\s*\"v?([0-9][^\"]*)\""
+                }
+              }
+            ],
+            "format": "{stable}-alpha+sha.{commit}"
+          }
+        },
+        "version": "0.10.11-alpha+sha.bd22442"
+      }
+    }
+  },
+  {
+    "name": "kind.plan.composite_plan",
+    "input": {
+      "operation": "version",
+      "manifest": {
+        "manifest_version": "2.0",
+        "registries": {
+          "main": {
+            "name": "Main",
+            "url_template": "https://origin.test/{artifact}"
+          },
+          "meta": {
+            "name": "Metadata",
+            "url_template": "https://meta.test/{artifact}"
+          }
+        },
+        "mirrors": {},
+        "resources": {
+          "sample": {
+            "name": "Sample",
+            "registry": "main",
+            "tags": [],
+            "default_variants": {
+              "linux-amd64": "stable"
+            },
+            "variants": [
+              {
+                "id": "stable",
+                "name": "Stable",
+                "tag_key": "",
+                "tags": [],
+                "artifacts": {
+                  "linux-amd64": {
+                    "artifact": "pkg-{version}.zip",
+                    "version": {
+                      "type": "remote",
+                      "fallback": {
+                        "version": "v1",
+                        "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+                        "source": {
+                          "release": "fallback-{version}"
+                        }
+                      },
+                      "version": {
+                        "parts": {
+                          "stable": {
+                            "resource": {
+                              "registry": "meta",
+                              "artifact": "releases/latest"
+                            },
+                            "parser": {
+                              "type": "regex",
+                              "pattern": "\"tag_name\":\\s*\"v?([0-9][^\"]*)\""
+                            }
+                          },
+                          "commit": {
+                            "resource": {
+                              "registry": "meta",
+                              "artifact": "commits/{release}"
+                            },
+                            "parser": {
+                              "type": "regex",
+                              "pattern": "\"sha\":\\s*\"([0-9a-f]{7})[0-9a-f]{33}\""
+                            }
+                          }
+                        },
+                        "format": "{stable}-alpha+sha.{commit}"
+                      },
+                      "checksum": {
+                        "resource": {
+                          "registry": "meta",
+                          "artifact": "checksums.txt"
+                        },
+                        "parser": {
+                          "type": "gnu",
+                          "algorithm": "sha256"
+                        }
+                      }
+                    }
+                  }
+                },
+                "source": {
+                  "release": "latest"
+                }
+              }
+            ]
+          }
+        }
+      },
+      "resource": "sample",
+      "platform": "linux-amd64"
+    },
+    "expect": {
+      "ok": {
+        "kind": "parsed",
+        "latest": null,
+        "releases": [],
+        "remote": {
+          "parts": [
+            {
+              "name": "commit",
+              "request": {
+                "canonical_url": "https://meta.test/commits/latest",
+                "mirror_url": null,
+                "kind": "parsed"
+              },
+              "parser": {
+                "type": "regex",
+                "pattern": "\"sha\":\\s*\"([0-9a-f]{7})[0-9a-f]{33}\""
+              }
+            },
+            {
+              "name": "stable",
+              "request": {
+                "canonical_url": "https://meta.test/releases/latest",
+                "mirror_url": null,
+                "kind": "parsed"
+              },
+              "parser": {
+                "type": "regex",
+                "pattern": "\"tag_name\":\\s*\"v?([0-9][^\"]*)\""
+              }
+            }
+          ],
+          "format": "{stable}-alpha+sha.{commit}"
+        }
+      }
+    }
+  },
+  {
+    "name": "kind.plan.composite_part_failure",
+    "input": {
+      "operation": "version",
+      "manifest": {
+        "manifest_version": "2.0",
+        "registries": {
+          "main": {
+            "name": "Main",
+            "url_template": "https://origin.test/{artifact}"
+          },
+          "meta": {
+            "name": "Metadata",
+            "url_template": "https://meta.test/{artifact}"
+          }
+        },
+        "mirrors": {},
+        "resources": {
+          "sample": {
+            "name": "Sample",
+            "registry": "main",
+            "tags": [],
+            "default_variants": {
+              "linux-amd64": "stable"
+            },
+            "variants": [
+              {
+                "id": "stable",
+                "name": "Stable",
+                "tag_key": "",
+                "tags": [],
+                "artifacts": {
+                  "linux-amd64": {
+                    "artifact": "pkg-{version}.zip",
+                    "version": {
+                      "type": "remote",
+                      "fallback": {
+                        "version": "v1",
+                        "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+                        "source": {
+                          "release": "fallback-{version}"
+                        }
+                      },
+                      "version": {
+                        "parts": {
+                          "stable": {
+                            "resource": {
+                              "registry": "meta",
+                              "artifact": "releases/latest"
+                            },
+                            "parser": {
+                              "type": "regex",
+                              "pattern": "\"tag_name\":\\s*\"v?([0-9][^\"]*)\""
+                            }
+                          },
+                          "commit": {
+                            "resource": {
+                              "registry": "meta",
+                              "artifact": "commits/{release}"
+                            },
+                            "parser": {
+                              "type": "regex",
+                              "pattern": "\"sha\":\\s*\"([0-9a-f]{7})[0-9a-f]{33}\""
+                            }
+                          }
+                        },
+                        "format": "{stable}-alpha+sha.{commit}"
+                      },
+                      "checksum": {
+                        "resource": {
+                          "registry": "meta",
+                          "artifact": "checksums.txt"
+                        },
+                        "parser": {
+                          "type": "gnu",
+                          "algorithm": "sha256"
+                        }
+                      }
+                    }
+                  }
+                },
+                "source": {
+                  "release": "latest"
+                }
+              }
+            ]
+          }
+        }
+      },
+      "resource": "sample",
+      "platform": "linux-amd64",
+      "responses": [
+        {
+          "body": "no commit here"
+        },
+        {
+          "body_file": "fixtures/github-api/clash-rs-releases-latest.txt"
+        }
+      ]
+    },
+    "expect": {
+      "error": {
+        "code": "parser.not_found",
+        "path": "responses[0].body",
+        "fields": {}
+      }
+    }
+  },
+  {
+    "name": "kind.plan.composite_second_part_failure",
+    "input": {
+      "operation": "version",
+      "manifest": {
+        "manifest_version": "2.0",
+        "registries": {
+          "main": {
+            "name": "Main",
+            "url_template": "https://origin.test/{artifact}"
+          },
+          "meta": {
+            "name": "Metadata",
+            "url_template": "https://meta.test/{artifact}"
+          }
+        },
+        "mirrors": {},
+        "resources": {
+          "sample": {
+            "name": "Sample",
+            "registry": "main",
+            "tags": [],
+            "default_variants": {
+              "linux-amd64": "stable"
+            },
+            "variants": [
+              {
+                "id": "stable",
+                "name": "Stable",
+                "tag_key": "",
+                "tags": [],
+                "artifacts": {
+                  "linux-amd64": {
+                    "artifact": "pkg-{version}.zip",
+                    "version": {
+                      "type": "remote",
+                      "fallback": {
+                        "version": "v1",
+                        "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+                        "source": {
+                          "release": "fallback-{version}"
+                        }
+                      },
+                      "version": {
+                        "parts": {
+                          "stable": {
+                            "resource": {
+                              "registry": "meta",
+                              "artifact": "releases/latest"
+                            },
+                            "parser": {
+                              "type": "regex",
+                              "pattern": "\"tag_name\":\\s*\"v?([0-9][^\"]*)\""
+                            }
+                          },
+                          "commit": {
+                            "resource": {
+                              "registry": "meta",
+                              "artifact": "commits/{release}"
+                            },
+                            "parser": {
+                              "type": "regex",
+                              "pattern": "\"sha\":\\s*\"([0-9a-f]{7})[0-9a-f]{33}\""
+                            }
+                          }
+                        },
+                        "format": "{stable}-alpha+sha.{commit}"
+                      },
+                      "checksum": {
+                        "resource": {
+                          "registry": "meta",
+                          "artifact": "checksums.txt"
+                        },
+                        "parser": {
+                          "type": "gnu",
+                          "algorithm": "sha256"
+                        }
+                      }
+                    }
+                  }
+                },
+                "source": {
+                  "release": "latest"
+                }
+              }
+            ]
+          }
+        }
+      },
+      "resource": "sample",
+      "platform": "linux-amd64",
+      "responses": [
+        {
+          "body_file": "fixtures/github-api/clash-rs-commits-latest.txt"
+        },
+        {
+          "body": "no release here"
+        }
+      ]
+    },
+    "expect": {
+      "error": {
+        "code": "parser.not_found",
+        "path": "responses[1].body",
+        "fields": {}
+      }
+    }
+  },
+  {
+    "name": "kind.plan.composite_body_limit",
+    "input": {
+      "operation": "version",
+      "manifest": {
+        "manifest_version": "2.0",
+        "registries": {
+          "main": {
+            "name": "Main",
+            "url_template": "https://origin.test/{artifact}"
+          },
+          "meta": {
+            "name": "Metadata",
+            "url_template": "https://meta.test/{artifact}"
+          }
+        },
+        "mirrors": {},
+        "resources": {
+          "sample": {
+            "name": "Sample",
+            "registry": "main",
+            "tags": [],
+            "default_variants": {
+              "linux-amd64": "stable"
+            },
+            "variants": [
+              {
+                "id": "stable",
+                "name": "Stable",
+                "tag_key": "",
+                "tags": [],
+                "artifacts": {
+                  "linux-amd64": {
+                    "artifact": "pkg-{version}.zip",
+                    "version": {
+                      "type": "remote",
+                      "fallback": {
+                        "version": "v1",
+                        "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+                        "source": {
+                          "release": "fallback-{version}"
+                        }
+                      },
+                      "version": {
+                        "parts": {
+                          "stable": {
+                            "resource": {
+                              "registry": "meta",
+                              "artifact": "releases/latest"
+                            },
+                            "parser": {
+                              "type": "regex",
+                              "pattern": "\"tag_name\":\\s*\"v?([0-9][^\"]*)\""
+                            }
+                          },
+                          "commit": {
+                            "resource": {
+                              "registry": "meta",
+                              "artifact": "commits/{release}"
+                            },
+                            "parser": {
+                              "type": "regex",
+                              "pattern": "\"sha\":\\s*\"([0-9a-f]{7})[0-9a-f]{33}\""
+                            }
+                          }
+                        },
+                        "format": "{stable}-alpha+sha.{commit}"
+                      },
+                      "checksum": {
+                        "resource": {
+                          "registry": "meta",
+                          "artifact": "checksums.txt"
+                        },
+                        "parser": {
+                          "type": "gnu",
+                          "algorithm": "sha256"
+                        }
+                      }
+                    }
+                  }
+                },
+                "source": {
+                  "release": "latest"
+                }
+              }
+            ]
+          }
+        }
+      },
+      "resource": "sample",
+      "platform": "linux-amd64",
+      "responses": [
+        {
+          "body_file": "fixtures/github-api/clash-rs-commits-latest.txt"
+        },
+        {
+          "body_file": "fixtures/github-api/clash-rs-commits-latest.txt"
+        }
+      ],
+      "limits": {
+        "body_bytes": 100
+      }
+    },
+    "expect": {
+      "error": {
+        "code": "parser.body_too_large",
+        "path": "responses[0].body",
+        "fields": {
+          "limit": 100,
+          "actual": 9076
+        }
+      }
+    }
+  },
+  {
+    "name": "kind.plan.composite_response_count",
+    "input": {
+      "operation": "version",
+      "manifest": {
+        "manifest_version": "2.0",
+        "registries": {
+          "main": {
+            "name": "Main",
+            "url_template": "https://origin.test/{artifact}"
+          },
+          "meta": {
+            "name": "Metadata",
+            "url_template": "https://meta.test/{artifact}"
+          }
+        },
+        "mirrors": {},
+        "resources": {
+          "sample": {
+            "name": "Sample",
+            "registry": "main",
+            "tags": [],
+            "default_variants": {
+              "linux-amd64": "stable"
+            },
+            "variants": [
+              {
+                "id": "stable",
+                "name": "Stable",
+                "tag_key": "",
+                "tags": [],
+                "artifacts": {
+                  "linux-amd64": {
+                    "artifact": "pkg-{version}.zip",
+                    "version": {
+                      "type": "remote",
+                      "fallback": {
+                        "version": "v1",
+                        "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+                        "source": {
+                          "release": "fallback-{version}"
+                        }
+                      },
+                      "version": {
+                        "parts": {
+                          "stable": {
+                            "resource": {
+                              "registry": "meta",
+                              "artifact": "releases/latest"
+                            },
+                            "parser": {
+                              "type": "regex",
+                              "pattern": "\"tag_name\":\\s*\"v?([0-9][^\"]*)\""
+                            }
+                          },
+                          "commit": {
+                            "resource": {
+                              "registry": "meta",
+                              "artifact": "commits/{release}"
+                            },
+                            "parser": {
+                              "type": "regex",
+                              "pattern": "\"sha\":\\s*\"([0-9a-f]{7})[0-9a-f]{33}\""
+                            }
+                          }
+                        },
+                        "format": "{stable}-alpha+sha.{commit}"
+                      },
+                      "checksum": {
+                        "resource": {
+                          "registry": "meta",
+                          "artifact": "checksums.txt"
+                        },
+                        "parser": {
+                          "type": "gnu",
+                          "algorithm": "sha256"
+                        }
+                      }
+                    }
+                  }
+                },
+                "source": {
+                  "release": "latest"
+                }
+              }
+            ]
+          }
+        }
+      },
+      "resource": "sample",
+      "platform": "linux-amd64",
+      "responses": [
+        {
+          "body_file": "fixtures/github-api/clash-rs-commits-latest.txt"
+        }
+      ]
+    },
+    "expect": {
+      "error": {
+        "code": "resolve.version_responses",
+        "path": "arg.responses",
+        "fields": {
+          "expected": 2,
+          "actual": 1
+        }
+      }
+    }
+  },
+  {
+    "name": "kind.plan.composite_invalid_version",
+    "input": {
+      "operation": "version",
+      "manifest": {
+        "manifest_version": "2.0",
+        "registries": {
+          "main": {
+            "name": "Main",
+            "url_template": "https://origin.test/{artifact}"
+          },
+          "meta": {
+            "name": "Metadata",
+            "url_template": "https://meta.test/{artifact}"
+          }
+        },
+        "mirrors": {},
+        "resources": {
+          "sample": {
+            "name": "Sample",
+            "registry": "main",
+            "tags": [],
+            "default_variants": {
+              "linux-amd64": "stable"
+            },
+            "variants": [
+              {
+                "id": "stable",
+                "name": "Stable",
+                "tag_key": "",
+                "tags": [],
+                "artifacts": {
+                  "linux-amd64": {
+                    "artifact": "pkg-{version}.zip",
+                    "version": {
+                      "type": "remote",
+                      "fallback": {
+                        "version": "v1",
+                        "checksum": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+                        "source": {
+                          "release": "fallback-{version}"
+                        }
+                      },
+                      "version": {
+                        "parts": {
+                          "stable": {
+                            "resource": {
+                              "registry": "meta",
+                              "artifact": "releases/latest"
+                            },
+                            "parser": {
+                              "type": "regex",
+                              "pattern": "\"tag_name\":\\s*\"v?([0-9][^\"]*)\""
+                            }
+                          },
+                          "commit": {
+                            "resource": {
+                              "registry": "meta",
+                              "artifact": "commits/{release}"
+                            },
+                            "parser": {
+                              "type": "regex",
+                              "pattern": "\"sha\":\\s*\"([0-9a-f]{7})[0-9a-f]{33}\""
+                            }
+                          }
+                        },
+                        "format": "{stable} {commit}"
+                      },
+                      "checksum": {
+                        "resource": {
+                          "registry": "meta",
+                          "artifact": "checksums.txt"
+                        },
+                        "parser": {
+                          "type": "gnu",
+                          "algorithm": "sha256"
+                        }
+                      }
+                    }
+                  }
+                },
+                "source": {
+                  "release": "latest"
+                }
+              }
+            ]
+          }
+        }
+      },
+      "resource": "sample",
+      "platform": "linux-amd64",
+      "responses": [
+        {
+          "body_file": "fixtures/github-api/clash-rs-commits-latest.txt"
+        },
+        {
+          "body_file": "fixtures/github-api/clash-rs-releases-latest.txt"
+        }
+      ]
+    },
+    "expect": {
+      "error": {
+        "code": "parser.invalid_version",
+        "path": "parser.format",
+        "fields": {}
+      }
+    }
+  },
+  {
     "name": "kind.plan.remote_download",
     "input": {
       "operation": "download",

@@ -97,6 +97,23 @@ export type RemoteVersionResourceTemplate = {
 };
 
 /**
+ *  How a remote artifact's version is requested and parsed.
+ *
+ *  Decoding picks the composite form when the object has a `format` key and
+ *  the single-response form otherwise (design §9.2).
+ */
+export type RemoteVersionTemplate =
+  /**  One response parsed by one version parser. */
+  | RemoteVersionResourceTemplate
+  /**  Several responses, each parsed by its own part, combined by `format`. */
+  | {
+      /**  Part name → request and parser. */
+      parts: { [key in string]: RemoteVersionResourceTemplate };
+      /**  Authored template that references every part by name. */
+      format: string;
+    };
+
+/**
  *  A platform artifact. The historical string shorthand is intentionally not
  *  modeled; the compiler rejects it.
  */
@@ -130,7 +147,7 @@ export type ResourceArtifactVersionTemplate =
       type: "remote";
       /**  Snapshot generated with the manifest; consumers should still query remote. */
       fallback?: ResourceStaticReleaseTemplate;
-      version: RemoteVersionResourceTemplate;
+      version: RemoteVersionTemplate;
       checksum?: RemoteChecksumResourceTemplate;
     };
 

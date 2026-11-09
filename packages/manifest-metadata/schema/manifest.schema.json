@@ -268,7 +268,7 @@
               ]
             },
             "version": {
-              "$ref": "#/$defs/RemoteVersionResourceTemplate"
+              "$ref": "#/$defs/RemoteVersionTemplate"
             },
             "checksum": {
               "anyOf": [
@@ -316,6 +316,33 @@
     "ResourceChecksum": {
       "type": "string",
       "pattern": "^(md5:[a-f0-9]{32}|sha256:[a-f0-9]{64}|sha512:[a-f0-9]{128})$"
+    },
+    "RemoteVersionTemplate": {
+      "description": "How a remote artifact's version is requested and parsed.\n\nDecoding picks the composite form when the object has a `format` key and\nthe single-response form otherwise (design §9.2).",
+      "anyOf": [
+        {
+          "description": "One response parsed by one version parser.",
+          "$ref": "#/$defs/RemoteVersionResourceTemplate"
+        },
+        {
+          "description": "Several responses, each parsed by its own part, combined by `format`.",
+          "type": "object",
+          "properties": {
+            "parts": {
+              "description": "Part name → request and parser.",
+              "type": "object",
+              "additionalProperties": {
+                "$ref": "#/$defs/RemoteVersionResourceTemplate"
+              }
+            },
+            "format": {
+              "description": "Authored template that references every part by name.",
+              "type": "string"
+            }
+          },
+          "required": ["parts", "format"]
+        }
+      ]
     },
     "RemoteVersionResourceTemplate": {
       "type": "object",

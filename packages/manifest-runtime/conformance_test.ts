@@ -50,6 +50,8 @@ interface ParserInput<Parser> {
   artifact: string;
   limits?: LimitsInput;
 }
+/** A response whose body is inline or a captured file under conformance/. */
+type ResponseInput = Partial<RemoteResponseInput> & { body_file?: string };
 interface PlanInput extends DownloadOptions {
   operation: string;
   manifest: unknown;
@@ -59,7 +61,7 @@ interface PlanInput extends DownloadOptions {
   tags?: string[];
   response?: RemoteResponseInput;
   /** Version responses, one per plan part; `response` is a single-part shorthand. */
-  responses?: RemoteResponseInput[];
+  responses?: ResponseInput[];
   limits?: LimitsInput;
 }
 interface ArtifactInput extends PlanInput {
@@ -215,7 +217,11 @@ function compat(input: ResourceManifest): unknown {
       for (const artifact of Object.values(variant.artifacts)) {
         if (artifact.version.type === "remote") {
           const remote = artifact.version;
-          remote.version.parser = normalizeParser(remote.version.parser);
+          const parts =
+            "parts" in remote.version
+              ? Object.values(remote.version.parts)
+              : [remote.version];
+          for (const part of parts) part.parser = normalizeParser(part.parser);
           if (remote.checksum) {
             remote.checksum.parser = normalizeParser(remote.checksum.parser);
           }
@@ -274,10 +280,21 @@ function kind(input: unknown): unknown {
         const plan = planVersion(selected, options, options.limits);
         try {
           const value = plan.value;
-          const responses =
+          const responses: ResponseInput[] | undefined =
             options.responses ?? (options.response && [options.response]);
           if (!responses) return value;
-          return { plan: value, version: finishVersion(plan, responses) };
+          return {
+            plan: value,
+            version: finishVersion(
+              plan,
+              responses.map(({ body_file, ...response }) => ({
+                ...response,
+                body: body_file
+                  ? readFileSync(join(root, body_file), "utf8")
+                  : response.body!,
+              })),
+            ),
+          };
         } finally {
           plan.free();
         }

@@ -299,7 +299,7 @@ A2–A5 细化：version 的 `not_found`、`invalid_version` 字段为 `{}`；GN
 
 #### B1 校验错误
 
-以下十行对应 §7.1 的十组不变量，每组一个稳定码。`R` 表示
+以下十行对应 §7.1 的十组不变量，每组一个稳定码；D4b 为组合版本加了第十一行（§9.2 第 7 条）。`R` 表示
 `resources.<id>`，`V` 表示 `R.variants[<i>]`，`A` 表示
 `V.artifacts.<platform>`；这些缩写只用于表格，实际 `path()` 返回完整 locator。
 
@@ -314,6 +314,7 @@ A2–A5 细化：version 的 `not_found`、`invalid_version` 字段为 `{}`；GN
 | 引用存在           | `validate.reference`         | `{ kind, id }`                  | `R.registry`、`A.version.<version\|checksum>.resource.registry`、`mirrors.<id>.registries[i]` |
 | static 历史有效    | `validate.static_history`    | `{ version, reason }`           | `A.version.latest`、`A.version.releases[i].version`                                           |
 | 已知 parser 可编译 | `validate.parser_compile`    | `{ reason, details }`           | `A.version.version.parser.<pattern\|group>`、`A.version.checksum.parser.name`                 |
+| 组合版本的 part    | `validate.version_parts`     | `{ reason, part }`              | `A.version.version.parts`、`A.version.version.parts.<name>`、`A.version.version.format`       |
 | 模板依赖完整       | `validate.template_variable` | `{ variable }`                  | 实际包含缺失变量引用的 artifact、source、variables 或 url_template 字段                       |
 
 `ids.kind` 为 `tag` / `variant`，`reason` 为 `invalid` / `duplicate`；

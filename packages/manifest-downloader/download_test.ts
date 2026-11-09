@@ -356,6 +356,35 @@ test("allow-parsed resolves version and checksum then downloads with WARN", asyn
   assert.deepEqual(await readFile(join(f.out, "pkg-v1.zip")), payload);
 });
 
+test("composite versions request every part in plan order", async (t) => {
+  const f = await fixture(t, true);
+  assert.equal(f.version.type, "remote");
+  f.version.version = {
+    parts: {
+      major: {
+        resource: { registry: "main", artifact: "major.txt" },
+        parser: { type: "text" },
+      },
+      build: {
+        resource: { registry: "main", artifact: "build.txt" },
+        parser: { type: "text" },
+      },
+    },
+    format: "{major}{build}",
+  };
+  f.routes["/major.txt"] = { body: "v" };
+  f.routes["/build.txt"] = { body: "1\n" };
+  await f.run(["--allow-parsed"]);
+  assert.deepEqual(f.requests, [
+    "/build.txt",
+    "/major.txt",
+    "/checksums.txt",
+    "/pkg-v1.zip",
+  ]);
+  assert.match(f.logs.join("\n"), /version=v1 kind=parsed policy=accept/);
+  assert.deepEqual(await readFile(join(f.out, "pkg-v1.zip")), payload);
+});
+
 test("digest mismatch removes temporary files and preserves existing output", async (t) => {
   const f = await fixture(t);
   f.routes["/pkg-v1.zip"].body = "corrupted";
@@ -622,7 +651,9 @@ test("HTTPS downgrade redirects fail before requesting HTTP for manifest, metada
         name: "Secure",
         url_template: `${secureBase}/{artifact}`,
       };
-      f.version[kind]!.resource.registry = "secure";
+      const target = f.version[kind]!;
+      assert.ok("resource" in target);
+      target.resource.registry = "secure";
     }
     await f.save();
     const certificatePath = join(f.out, "..", "ca.pem");

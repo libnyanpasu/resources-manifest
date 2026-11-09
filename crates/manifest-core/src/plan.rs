@@ -2,8 +2,8 @@ use std::borrow::Cow;
 use std::collections::BTreeSet;
 
 use manifest_metadata::{
-    RemoteResourceTemplate, ResourceArtifactVersionTemplate, ResourceStaticReleaseTemplate,
-    SourceVariables, SupportedPlatform,
+    RemoteResourceTemplate, RemoteVersionTemplate, ResourceArtifactVersionTemplate,
+    ResourceStaticReleaseTemplate, SourceVariables, SupportedPlatform,
 };
 use manifest_parser::{
     CompiledVersionParser, Limits, ParseError, RemoteChecksumParser, RemoteResponse,
@@ -19,7 +19,7 @@ use crate::render::{render, validate_literal, validate_url};
 use crate::scope::{Scope, merge, registry_scope};
 use crate::{
     ArtifactRenderOptions, ChecksumKind, RenderError, SelectedArtifact, TemplateValue,
-    ValidatedManifest, artifact_checksum_kind,
+    ValidatedManifest, artifact_checksum_kind, render_template,
 };
 
 #[derive(Debug, Snafu, Type)]
@@ -306,6 +306,9 @@ pub struct RemoteVersionPlan {
     parts: Vec<VersionPartPlan>,
     /// Combines composite part results; absent for a single response.
     format: Option<String>,
+    #[serde(skip)]
+    #[specta(skip)]
+    limits: Limits,
 }
 
 impl RemoteVersionPlan {
@@ -465,8 +468,11 @@ fn check_support(selected: &SelectedArtifact<'_>) -> Result<(), ResolveError> {
         version, checksum, ..
     } = &selected.artifact.version
     {
-        let unsupported = if let RemoteVersionParser::Unsupported { parser_type } = &version.parser
-        {
+        let unsupported = if let Some(parser_type) =
+            version.parts().find_map(|(_, part)| match &part.parser {
+                RemoteVersionParser::Unsupported { parser_type } => Some(parser_type),
+                _ => None,
+            }) {
             Some(parser_type)
         } else if let Some(checksum) = checksum
             && let RemoteChecksumParser::Unsupported { parser_type } = &checksum.parser
@@ -500,32 +506,47 @@ pub fn plan_version(
             remote: None,
         }),
         ResourceArtifactVersionTemplate::Remote { version, .. } => {
-            let compiled = version
-                .parser
-                .compile(limits)
-                .map_err(|source| ResolveError::CompileParser { source })?;
             let values = version_values(selected, options.source)?;
-            let request = remote_request(
-                selected,
-                &version.resource,
-                &values,
-                &format!("{}.version.version.resource", selected.path()),
-                options.mirror,
-                kind,
-                limits,
-            )?;
+            let parts = version
+                .parts()
+                .map(|(name, part)| {
+                    let compiled = part
+                        .parser
+                        .compile(limits)
+                        .map_err(|source| ResolveError::CompileParser { source })?;
+                    let path = match name {
+                        Some(name) => format!("{}.version.version.parts.{name}", selected.path()),
+                        None => format!("{}.version.version", selected.path()),
+                    };
+                    let request = remote_request(
+                        selected,
+                        &part.resource,
+                        &values,
+                        &format!("{path}.resource"),
+                        options.mirror,
+                        kind,
+                        limits,
+                    )?;
+                    Ok(VersionPartPlan {
+                        name: name.map(str::to_owned),
+                        request,
+                        parser: part.parser.clone(),
+                        compiled,
+                    })
+                })
+                .collect::<Result<_, ResolveError>>()?;
+            let format = match version {
+                RemoteVersionTemplate::Single(_) => None,
+                RemoteVersionTemplate::Composite { format, .. } => Some(format.clone()),
+            };
             Ok(VersionPlan {
                 kind,
                 latest: None,
                 releases: Vec::new(),
                 remote: Some(RemoteVersionPlan {
-                    parts: vec![VersionPartPlan {
-                        name: None,
-                        request,
-                        parser: version.parser.clone(),
-                        compiled,
-                    }],
-                    format: None,
+                    parts,
+                    format,
+                    limits: *limits,
                 }),
             })
         }
@@ -857,6 +878,13 @@ pub enum FinishVersionError {
         #[specta(skip)]
         source: ParseError,
     },
+    #[snafu(display("cannot render the version format: {source}"))]
+    RenderFormat {
+        #[specta(skip)]
+        source: RenderError,
+    },
+    #[snafu(display("composed version does not satisfy the version label charset"))]
+    ValidateVersion {},
 }
 
 impl FinishVersionError {
@@ -865,6 +893,8 @@ impl FinishVersionError {
         match self {
             Self::CountResponses { .. } => "resolve.version_responses",
             Self::ParsePart { source, .. } => source.code(),
+            Self::RenderFormat { source } => source.code(),
+            Self::ValidateVersion {} => "parser.invalid_version",
         }
     }
 
@@ -881,6 +911,8 @@ impl FinishVersionError {
                     None => path.into_owned().into(),
                 }
             }
+            Self::RenderFormat { source } => source.path().into(),
+            Self::ValidateVersion {} => "parser.format".into(),
         }
     }
 
@@ -891,11 +923,14 @@ impl FinishVersionError {
                 json!({ "expected": expected, "actual": actual })
             }
             Self::ParsePart { source, .. } => source.fields(),
+            Self::RenderFormat { source } => source.fields(),
+            Self::ValidateVersion {} => json!({}),
         }
     }
 }
 
-/// Parses the responses of a remote version plan, one per part in plan order.
+/// Parses the responses of a remote version plan, one per part in plan order,
+/// and combines composite part results with the plan's format.
 #[must_use = "version parsing errors must be handled"]
 pub fn finish_version(
     plan: &RemoteVersionPlan,
@@ -918,7 +953,24 @@ pub fn finish_version(
                 .map_err(|source| FinishVersionError::ParsePart { index, source })
         })
         .collect::<Result<Vec<_>, _>>()?;
-    Ok(versions.remove(0))
+    let Some(format) = &plan.format else {
+        return Ok(versions.remove(0));
+    };
+    let values = plan
+        .parts
+        .iter()
+        .zip(&versions)
+        .map(|(part, version)| {
+            (
+                part.name.as_deref().expect("composite parts are named"),
+                TemplateValue::Literal(version.as_ref()),
+            )
+        })
+        .collect();
+    render_template(format, &values, "parser.format", &plan.limits)
+        .map_err(|source| FinishVersionError::RenderFormat { source })?
+        .parse()
+        .map_err(|_| FinishVersionError::ValidateVersion {})
 }
 
 #[must_use = "checksum parsing errors must be handled"]
