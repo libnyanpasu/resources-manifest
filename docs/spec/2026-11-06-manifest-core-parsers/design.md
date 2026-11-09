@@ -969,8 +969,8 @@ pub struct AssetSnapshot {
 
 `@manifest/generator`（`packages/manifest-generator`）：
 
-1. **模板：** `src/template.ts` 以 TS 值写出 §9.4 的模板，类型来自 `@manifest/metadata`。
-2. **抓取：** 所有请求都在 `src/http.ts`。存在 `GITHUB_TOKEN` 时只对 `api.github.com` 附加。
+1. **模板：** `template.ts` 以 TS 值写出 §9.4 的模板，类型来自 `@manifest/metadata`。
+2. **抓取：** 所有请求都在 `http.ts`（与 downloader 相同的平铺布局）。存在 `GITHUB_TOKEN` 时只对 `api.github.com` 附加。
    - `history` 来源：分页读取 release，取前 `limit` 个非 draft、非 prerelease 的 release，再分页读取每个 release 的资产；
    - `tag` 来源：读取该 tag 的 release 与资产。
 3. **观测 alpha 版本：** 先用不带 `Tag.version` 的快照编译一次，得到临时结果。对每个 `tag` 来源，取临时结果中引用它的每个产物，按版本计划请求 canonical URL，再调用 `finishVersion` 得到版本。
@@ -979,7 +979,7 @@ pub struct AssetSnapshot {
    - 任一条件不满足，说明上游正在发布：本次失败，不写任何文件，由下一次计划运行重试；
    - 版本端点本身可能落后于资产（§9.2 第 6 条），这一风险与宿主相同，下载的字节仍按 digest 校验。
    - 这与宿主解析版本走同一路径，满足 D4 "生成端与消费端对同一组响应得到相同版本"。
-4. **编译与写出：** 写入观测到的版本后再编译一次，`now` 为本次运行开始的时间。在 `--out` 目录写 `resources.json` 与 `snapshot.json`。新 manifest 去掉 `updated_at` 后与已有文件相同时，两个文件都不写。
+4. **编译与写出：** 写入观测到的版本后再编译一次，`now` 为本次运行开始的时间。在 `--out` 目录写 `resources.json` 与 `snapshot.json`。stable 产物的最新 release 必须带 digest，否则默认选择得到 `none`，本次失败。新 manifest 去掉 `updated_at` 后与已有文件相同、且已有的 `snapshot.json` 仍能复现它时，两个文件都不写；否则先快照后 manifest，各经临时文件与 rename 写出，已有文件缺失、不是合法 JSON 或不能互相复现时视为需要重写，中断留下的不完整一对由下一次运行补齐。GitHub ID 从响应文本中按原样读取，不经过 JS number。
 5. **不写 v1 `version.json`：** v1 继续由 clash-nyanpasu 的上游脚本生成，直到 D6 退役。
 6. **测试：** 本地 HTTP fixture 覆盖分页、筛选、版本观测、版本不一致时的失败，以及两次读取之间资产变化时的失败。运行时间可注入：同一组响应与同一时间两次运行，输出逐字节相同；已有输出相同（除 `updated_at`）时不写文件。对真实上游的运行记录在 PR 描述中，作为手工验证，不进 CI。
 

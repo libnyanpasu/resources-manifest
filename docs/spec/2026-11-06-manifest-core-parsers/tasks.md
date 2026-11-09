@@ -406,14 +406,14 @@
 
 ## D3 — generator（行为卡）
 
-- [ ] `packages/manifest-generator` 按 design §9.7 实现：`src/template.ts`、`src/http.ts`、抓取、alpha 版本观测、编译与写出；命令行用 `node:util` 的 `parseArgs`，`--out` 必填。
+- [ ] `packages/manifest-generator` 按 design §9.7 实现：`template.ts`、`http.ts`、抓取、alpha 版本观测、编译与写出；命令行用 `node:util` 的 `parseArgs`，`--out` 必填。
 - [ ] 模板按 design §9.4 的产物表与 release 来源。
 - [ ] 测试（本地 `node:http` 服务，不访问外网）：分页与筛选、`limit`、alpha 版本观测、同一来源版本不一致时失败且不写文件、两次读取之间资产变化时失败、manifest 无变化时不写、注入相同运行时间时两次运行逐字节相同。
 - [ ] 手工对真实上游运行一次；在 PR 描述中记录输出大小、每个产物名都在快照中，以及 alpha 的版本。
 
 **验证**
 
-- `pnpm test` 中上述用例通过；`rg -n "fetch\(" packages/manifest-generator` 只出现在 `src/http.ts`。
+- `pnpm test` 中上述用例通过；`rg -n "fetch\(" packages/manifest-generator` 只出现在 `http.ts`。
 
 ## 里程碑卡
 
