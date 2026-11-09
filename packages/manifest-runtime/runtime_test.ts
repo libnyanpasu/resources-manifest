@@ -518,3 +518,17 @@ test("policies must be objects and maps reject entry arrays", () => {
     "arg.values",
   );
 });
+
+test("the browser entry exports the bindings of the Node entry", async () => {
+  const node = await import("@manifest/runtime");
+  const web = await import("@manifest/runtime/web");
+  const { initRuntime, ...bindings } = web;
+  assert.equal(typeof initRuntime, "function");
+  assert.deepEqual(Object.keys(bindings).sort(), Object.keys(node).sort());
+  for (const [name, value] of Object.entries(bindings)) {
+    assert.equal(value, node[name as keyof typeof node], name);
+  }
+  // The Node entry initialized the shared glue, so browser bindings work too.
+  using validated = web.validateManifest(manifestInput());
+  assert.equal(validated.newerMinor, false);
+});

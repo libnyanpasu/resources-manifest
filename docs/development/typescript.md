@@ -52,9 +52,9 @@ with different meanings do not imply a common constant.
 
 Keep constants immutable and safe to import. Runtime-varying values need functions
 or explicit inputs rather than stale module-level snapshots. Do not turn a constant
-module into hidden mutable state or eager IO. The runtime facade deliberately
-initializes wasm on import; preserve that documented boundary rather than spreading
-it to unrelated modules.
+module into hidden mutable state or eager IO. The runtime's Node entry deliberately
+initializes wasm on import, and its browser entry only through `initRuntime()`;
+preserve that documented boundary rather than spreading it to unrelated modules.
 
 ## Errors and host boundaries
 
